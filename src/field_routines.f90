@@ -1986,7 +1986,7 @@ CONTAINS
     TYPE(VARYING_STRING) :: LOCAL_ERROR
    
     CALL ENTERS("FIELD_COMPONENT_VALUES_INITIALISE_INTG",ERR,ERROR,*999)
-
+    
     IF(ASSOCIATED(FIELD)) THEN
       IF(FIELD%FIELD_FINISHED) THEN
         !Check the variable type
@@ -2002,6 +2002,7 @@ CONTAINS
                   FIELD_PARAMETER_SET=>FIELD_VARIABLE%PARAMETER_SETS%SET_TYPE(FIELD_SET_TYPE)%PTR
                   IF(ASSOCIATED(FIELD_PARAMETER_SET)) THEN
                     !Get the parameters values
+                    NULLIFY(FIELD_PARAMETERS)
                     CALL DISTRIBUTED_VECTOR_DATA_GET(FIELD_PARAMETER_SET%PARAMETERS,FIELD_PARAMETERS,ERR,ERROR,*999)
                     !Set the field components to give a constant value. Note that as the value is constant we can set the ghost dofs
                     !and not worry about updating the field parameter set.

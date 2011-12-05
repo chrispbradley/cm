@@ -1843,7 +1843,7 @@ CONTAINS
                         IF((EQUATIONS%INTERPOLATION%MATERIALS_INTERP_POINT(FIELD_U_VARIABLE_TYPE)%PTR%VALUES(1,1)<ZERO_TOLERANCE)&
                           & .OR. (EQUATIONS%INTERPOLATION%MATERIALS_INTERP_POINT(FIELD_U_VARIABLE_TYPE)%PTR%VALUES(2,1) &
                           & <ZERO_TOLERANCE)) THEN
-                          LOCAL_ERROR="The value of the surface area to volume ratio or the capacitance is below zero tolerance"
+                          LOCAL_ERROR="The value of the surface area to volume ratio or the capacitance is below zero tolerance."
                           CALL FLAG_ERROR(LOCAL_ERROR,ERR,ERROR,*999)
                         ENDIF
                         STIFFNESS_MATRIX%ELEMENT_MATRIX%MATRIX(mhs,nhs)=STIFFNESS_MATRIX%ELEMENT_MATRIX%MATRIX(mhs,nhs)+SUM*RWG/ &
