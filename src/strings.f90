@@ -86,6 +86,14 @@ MODULE STRINGS
   END INTERFACE !NUMBER_TO_CHARACTER
 
   !>Converts a number to its equivalent varying string representation.
+  INTERFACE NumberToVstring
+    MODULE PROCEDURE NumberToVstringIntg
+    MODULE PROCEDURE NumberToVstringLIntg
+    MODULE PROCEDURE NumberToVstringSP
+    MODULE PROCEDURE NumberToVstringDP
+  END INTERFACE NumberToVstring
+
+  !>Converts a number to its equivalent varying string representation.
   INTERFACE NUMBER_TO_VSTRING
     MODULE PROCEDURE NUMBER_TO_VSTRING_INTG
     MODULE PROCEDURE NUMBER_TO_VSTRING_LINTG
@@ -148,8 +156,8 @@ MODULE STRINGS
   END INTERFACE !VSTRING_TO_UPPERCASE
 
   PUBLIC IS_ABBREVIATION,IS_DIGIT,IS_LETTER,IS_WHITESPACE,LIST_TO_CHARACTER,LOGICAL_TO_CHARACTER,LOGICAL_TO_VSTRING, &
-    & NUMBER_TO_CHARACTER,NUMBER_TO_VSTRING,STRING_TO_DOUBLE,STRING_TO_INTEGER,STRING_TO_LONG_INTEGER,STRING_TO_LOGICAL, &
-    & STRING_TO_SINGLE,CHARACTER_TO_LOWERCASE,VSTRING_TO_LOWERCASE,CHARACTER_TO_UPPERCASE,VSTRING_TO_UPPERCASE
+    & NUMBER_TO_CHARACTER,NumberToVstring,NUMBER_TO_VSTRING,STRING_TO_DOUBLE,STRING_TO_INTEGER,STRING_TO_LONG_INTEGER, &
+    & STRING_TO_LOGICAL,STRING_TO_SINGLE,CHARACTER_TO_LOWERCASE,VSTRING_TO_LOWERCASE,CHARACTER_TO_UPPERCASE,VSTRING_TO_UPPERCASE
   
 CONTAINS
   
@@ -879,7 +887,7 @@ CONTAINS
         IF(NUMBER>=0.0_SP) THEN
           IF((NUMBER<10.0_SP**(i0-1)).AND.(NUMBER>=0.1_SP**(MIN(i0-2,5)))) THEN
             IF(NUMBER>1.0_SP) THEN
-              i1=i0-2-LOG10(NUMBER)
+              i1=i0-2-FLOOR(LOG10(NUMBER),INTG)
               LOCAL_FORMAT="(I2)"
               WRITE(CI1,LOCAL_FORMAT) i1
               LOCAL_FORMAT="(F"//CI0(1:LEN_TRIM(CI0))//"."//CI1(1:LEN_TRIM(CI1))//")"
@@ -899,7 +907,7 @@ CONTAINS
         ELSE
           IF((-NUMBER<10.0_SP**(i0-2)).AND.(-NUMBER>=0.01_SP**(MIN(i0-2,5)))) THEN
             IF(-NUMBER>=1.0_SP) THEN
-              i1=i0-3-LOG10(NUMBER)
+              i1=i0-3-FLOOR(LOG10(NUMBER),INTG)
               LOCAL_FORMAT="(I2)"
               WRITE(CI1,'(I2)') i1
               LOCAL_FORMAT="(F"//CI0(1:LEN_TRIM(CI0))//"."//CI1(1:LEN_TRIM(CI1))//")"
@@ -972,7 +980,7 @@ CONTAINS
         IF(NUMBER>=0.0_DP) THEN
           IF((NUMBER<10.0_DP**(i0-1)).AND.(NUMBER>=0.1_DP**(MIN(i0-2,5)))) THEN
             IF(NUMBER>1.0_DP) THEN
-              i1=i0-2-LOG10(NUMBER)
+              i1=i0-2-FLOOR(LOG10(NUMBER),INTG)
               LOCAL_FORMAT="(I2)"
               WRITE(CI1,LOCAL_FORMAT) i1
               LOCAL_FORMAT="(F"//CI0(1:LEN_TRIM(CI0))//"."//CI1(1:LEN_TRIM(CI1))//")"
@@ -992,7 +1000,7 @@ CONTAINS
         ELSE
           IF((-NUMBER<10.0_DP**(i0-2)).AND.(-NUMBER>=0.01_DP**(MIN(i0-2,5)))) THEN
             IF(-NUMBER>=1.0_DP) THEN
-              i1=i0-3-LOG10(NUMBER)
+              i1=i0-3-FLOOR(LOG10(NUMBER),INTG)
               LOCAL_FORMAT="(I2)"
               WRITE(CI1,'(I2)') i1
               LOCAL_FORMAT="(F"//CI0(1:LEN_TRIM(CI0))//"."//CI1(1:LEN_TRIM(CI1))//")"
@@ -1154,7 +1162,7 @@ CONTAINS
         IF(NUMBER>=0.0_SP) THEN
           IF((NUMBER<10.0_SP**(i0-1)).AND.(NUMBER>=0.1_SP**(MIN(i0-2,5)))) THEN
             IF(NUMBER>1.0_SP) THEN
-              i1=i0-2-LOG10(NUMBER)
+              i1=i0-2-FLOOR(LOG10(NUMBER),INTG)
               LOCAL_FORMAT="(I2)"
               WRITE(CI1,LOCAL_FORMAT) i1
               LOCAL_FORMAT="(F"//CI0(1:LEN_TRIM(CI0))//"."//CI1(1:LEN_TRIM(CI1))//")"
@@ -1174,7 +1182,7 @@ CONTAINS
         ELSE
           IF((-NUMBER<10.0_SP**(i0-2)).AND.(-NUMBER>=0.01_SP**(MIN(i0-2,5)))) THEN
             IF(-NUMBER>=1.0_SP) THEN
-              i1=i0-3-LOG10(NUMBER)
+              i1=i0-3-FLOOR(LOG10(NUMBER),INTG)
               LOCAL_FORMAT="(I2)"
               WRITE(CI1,'(I2)') i1
               LOCAL_FORMAT="(F"//CI0(1:LEN_TRIM(CI0))//"."//CI1(1:LEN_TRIM(CI1))//")"
@@ -1253,7 +1261,7 @@ CONTAINS
         IF(NUMBER>=0.0_DP) THEN
           IF((NUMBER<10.0_DP**(i0-1)).AND.(NUMBER>=0.1_DP**(MIN(i0-2,5)))) THEN
             IF(NUMBER>1.0_DP) THEN
-              i1=i0-2-LOG10(NUMBER)
+              i1=i0-2-FLOOR(LOG10(NUMBER),INTG)
               LOCAL_FORMAT="(I2)"
               WRITE(CI1,LOCAL_FORMAT) i1
               LOCAL_FORMAT="(F"//CI0(1:LEN_TRIM(CI0))//"."//CI1(1:LEN_TRIM(CI1))//")"
@@ -1273,7 +1281,7 @@ CONTAINS
         ELSE
           IF((-NUMBER<10.0_DP**(i0-2)).AND.(-NUMBER>=0.01_DP**(MIN(i0-2,5)))) THEN
             IF(-NUMBER>=1.0_DP) THEN
-              i1=i0-3-LOG10(NUMBER)
+              i1=i0-3-FLOOR(LOG10(NUMBER),INTG)
               LOCAL_FORMAT="(I2)"
               WRITE(CI1,'(I2)') i1
               LOCAL_FORMAT="(F"//CI0(1:LEN_TRIM(CI0))//"."//CI1(1:LEN_TRIM(CI1))//")"
@@ -1314,6 +1322,291 @@ CONTAINS
 !    CALL EXITS("NUMBER_TO_VSTRING_DP")
     RETURN    
   END FUNCTION NUMBER_TO_VSTRING_DP
+  
+  !
+  !================================================================================================================================
+  !
+
+  !>Converts an integer number to its equivalent varying string representation as determined by the supplied format. The format is of the form of a standard Fortran integer format e.g. "I3".
+  FUNCTION NumberToVstringIntg(number,FORMAT,err,error)
+  
+    !Argument variables
+    INTEGER(INTG), INTENT(IN) :: number !<The number to convert
+    CHARACTER(LEN=*), INTENT(IN) :: format !<The format to use in the conversion
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Function variable
+    TYPE(VARYING_STRING) :: NumberToVstringIntg !<On exit, the varying string equivalent of the number
+    !Local variables
+    CHARACTER(LEN=MaxStrLen) :: localFormat,localString
+    
+!!TODO: put back Enters,Exits.
+
+!    CALL Enters("NumberToVstringIntg",err,error,*999)
+
+!!TODO: remove dependance on localString
+    
+    NumberToVstringIntg=""
+    
+    IF(format(1:1)=="*") THEN
+      localFormat="(I12)"
+    ELSE
+      localFormat="("//format(1:LEN_TRIM(format))//")"
+    ENDIF
+    WRITE(localString,localFormat,ERR=999) number
+
+    !Trim leading blanks
+    NumberToVstringIntg=ADJUSTL(localString(1:LEN_TRIM(localString)))
+
+!    CALL Exits("NumberToVstringIntg")
+    RETURN
+999 CALL FlagError("Error converting an integer to a varying string.",err,error,*998)
+998 CALL Errors("NumberToVstringIntg",err,error)
+!    CALL Exits("NumberToVstringIntg")
+    RETURN    
+  END FUNCTION NumberToVstringIntg
+  
+  !
+  !================================================================================================================================
+  !
+
+  !>Converts a long integer number to its equivalent varying string representation as determined by the supplied format. The format is of the form of a standard Fortran integer format e.g., "I3".
+  FUNCTION NumberToVstringLIntg(number,FORMAT,err,error)
+  
+    !Argument variables
+    INTEGER(LINTG), INTENT(IN) :: number !<The number to convert
+    CHARACTER(LEN=*), INTENT(IN) :: format !<The format to use in the conversion
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Function variable
+    TYPE(VARYING_STRING) :: NumberToVstringLIntg !<On exit, the varying string equivalent of the number
+    !Local variables
+    CHARACTER(LEN=MaxStrLen) :: localFormat,localString
+    
+!!TODO: put back Enters,Exits.
+
+!    CALL Enters("NumberToVstringLIntg",err,error,*999)
+
+!!TODO: remove dependance on localString
+    
+    NumberToVstringLIntg=""
+    
+    IF(format(1:1)=="*") THEN
+      localFormat="(I18)"
+    ELSE
+      localFormat="("//format(1:LEN_TRIM(format))//")"
+    ENDIF
+    WRITE(localString,localFormat,ERR=999) number
+
+    !Trim leading blanks
+    NumberToVstringLIntg=ADJUSTL(localString(1:LEN_TRIM(localString)))
+
+!    CALL Exits("NumberToVstringLIntg")
+    RETURN
+999 CALL FlagError("Error converting a long integer to a varying string",err,error,*998)
+998 CALL Errors("NumberToVstringLIntg",err,error)
+!    CALL Exits("NumberToVstringLIntg")
+    RETURN    
+  END FUNCTION NumberToVstringLIntg
+  
+  !
+  !================================================================================================================================
+  !
+
+  !>Converts a single precision number to its equivalent varying string representation as determined by the supplied format string. Note If FORMAT is an asterisk followed by a number between 1 and 32 the format will be chosen to maximise the number of significant digits, e.g., FORMAT="*8" will return a string of 8 characters representing the supplied number in either F8.? or E8.? format depending on its magnitude.
+  FUNCTION NumberToVstringSP(number, FORMAT, err, error)
+  
+    !Argument variables
+    REAL(SP), INTENT(IN) :: number !<The number to convert
+    CHARACTER(LEN=*), INTENT(IN) :: format !<The format to use in the conversion
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Function variable
+    TYPE(VARYING_STRING) :: NumberToVstringSP !<On exit, the varying string equivalent of the number
+    !Local variables
+    INTEGER(INTG) :: asteriskPos,i0,i1,length
+    CHARACTER(LEN=MaxStrLen) :: ci0,ci1
+    CHARACTER(LEN=MaxStrLen) :: localFormat,localString
+    
+!!TODO: put back Enters,Exits.
+    
+    !CALL Enters("NumberToVstringSP",err,error,*999)
+
+!!TODO: remove dependance on localString
+    
+    NumberToVstringSP=""    
+
+    asteriskPos=INDEX(format,"*")
+    length=LEN_TRIM(format)
+    IF(asteriskPos==1.AND.length==1) THEN !Free format
+      WRITE(localString,*,ERR=999) number      
+    ELSE IF(asteriskPos>0) THEN !Adjustable format
+      ci0=format(asteriskPos+1:LEN_TRIM(format))
+      READ(ci0,'(BN,I2)') i0
+      IF(i0<=MaxStrLen) THEN
+        IF(number>=0.0_SP) THEN
+          IF((number<10.0_SP**(i0-1)).AND.(number>=0.1_SP**(MIN(i0-2,5)))) THEN
+            IF(number>1.0_SP) THEN
+              i1=i0-2-FLOOR(LOG10(number),INTG)
+              localFormat="(I2)"
+              WRITE(ci1,localFormat) i1
+              localFormat="(F"//ci0(1:LEN_TRIM(ci0))//"."//ci1(1:LEN_TRIM(ci1))//")"
+              WRITE(localString,localFormat,ERR=999) number
+            ELSE
+              localFormat="(I2)"
+              WRITE(ci1,localFormat) i0-2
+              localFormat="(F"//ci0(1:LEN_TRIM(ci0))//"."//ci1(1:LEN_TRIM(ci1))//")"
+              WRITE(localString,localFormat,ERR=999) number
+            ENDIF
+          ELSE
+            localFormat="(I2)"
+            WRITE(ci1,localFormat) i0-6
+            localFormat="(E"//ci0(1:LEN_TRIM(ci0))//"."//ci1(1:LEN_TRIM(ci1))//")"
+            WRITE(localString,localFormat,ERR=999) number
+          ENDIF
+        ELSE
+          IF((-number<10.0_SP**(i0-2)).AND.(-number>=0.01_SP**(MIN(i0-2,5)))) THEN
+            IF(-number>=1.0_SP) THEN
+              i1=i0-3-FLOOR(LOG10(number),INTG)
+              localFormat="(I2)"
+              WRITE(ci1,'(I2)') i1
+              localFormat="(F"//ci0(1:LEN_TRIM(ci0))//"."//ci1(1:LEN_TRIM(ci1))//")"
+              WRITE(localString,localFormat,ERR=999) number
+            ELSE
+              localFormat="(I2)"
+              WRITE(ci1,localFormat) i0-2
+              localFormat="(F"//ci0(1:LEN_TRIM(ci0))//"."//ci1(1:LEN_TRIM(ci1))//")"
+              WRITE(localString,localFormat,ERR=999) number
+            ENDIF
+          ELSE
+            localFormat="(I2)"
+            WRITE(ci1,localFormat) i0-6
+            localFormat="(E"//ci0(1:LEN_TRIM(ci0))//"."//ci1(1:LEN_TRIM(ci1))//")"
+            WRITE(localString,localFormat,ERR=999) number
+          ENDIF
+        ENDIF
+      ELSE
+        CALL FlagError("Invalid format.",err,error,*999)
+        GOTO 999
+      ENDIF
+    ELSE
+      localFormat='('//format(1:LEN_TRIM(format))//')'
+      WRITE(localString,localFormat,ERR=999) number
+    ENDIF
+
+    !Add an extra zero if required
+    IF(localString(LEN_TRIM(localString):LEN_TRIM(localString))==".") localString=localString(1:LEN_TRIM(localString))//"0"
+    
+    !Trim leading blanks
+    NumberToVstringSP=ADJUSTL(localString(1:LEN_TRIM(localString)))
+
+    CALL Exits("NumberToVstringSP")
+    RETURN
+999 CALL FlagError("Error converting a single precision number to a varying string",err,error,*998)
+998 CALL Errors("NumberToVstringSP",err,error)
+    CALL Exits("NumberToVstringSP")
+    RETURN    
+  END FUNCTION NumberToVstringSP
+  
+  !
+  !================================================================================================================================
+  !
+
+  !>Converts a double precision number to its equivalent varying string representation as determined by the supplied format string. Note If FORMAT is an asterisk followed by a number between 1 and 32 the format will be chosen to maximise the number of significant digits, e.g., FORMAT="*8" will return a string of 8 characters representing the supplied number in either F8.? or E8.? format depending on its magnitude.
+  FUNCTION NumberToVstringDP(number, FORMAT, err, error)
+      
+    !Argument variables
+    REAL(DP), INTENT(IN) :: number !<The number to convert
+    CHARACTER(LEN=*), INTENT(IN) :: format !<The format to use in the conversion
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Function variable
+    TYPE(VARYING_STRING) :: NumberToVstringDP !<On exit, the varying string equivalent of the number
+    !Local variables
+    INTEGER(INTG) :: asteriskPos,i0,i1,length
+    CHARACTER(LEN=2) :: ci0,ci1
+    CHARACTER(LEN=MAXSTRLEN) :: localFormat,localString
+    
+!!TODO: put back Enters,Exits.
+
+!    CALL Enters("NumberToVstringDP",err,error,*999)
+
+!!TODO: remove dependance on localString
+    
+    NumberToVstringDP=""    
+
+    asteriskPos=INDEX(format,"*")
+    length=LEN_TRIM(format)
+    IF(asteriskPos==1.AND.length==1) THEN !Free format
+      WRITE(localString,*,ERR=999) number      
+    ELSE IF(asteriskPos>0) THEN !Adjustable format
+      ci0=format(asteriskPos+1:LEN_TRIM(format))
+      READ(ci0,'(BN,I2)') i0
+      IF(i0<=MAXSTRLEN) THEN
+        IF(number>=0.0_DP) THEN
+          IF((number<10.0_DP**(i0-1)).AND.(number>=0.1_DP**(MIN(i0-2,5)))) THEN
+            IF(number>1.0_DP) THEN
+              i1=i0-2-FLOOR(LOG10(number),INTG)
+              localFormat="(I2)"
+              WRITE(ci1,localFormat) i1
+              localFormat="(F"//ci0(1:LEN_TRIM(ci0))//"."//ci1(1:LEN_TRIM(ci1))//")"
+              WRITE(localString,localFormat,ERR=999) number
+            ELSE
+              localFormat="(I2)"
+              WRITE(ci1,localFormat) i0-2
+              localFormat="(F"//ci0(1:LEN_TRIM(ci0))//"."//ci1(1:LEN_TRIM(ci1))//")"
+              WRITE(localString,localFormat,ERR=999) number
+            ENDIF
+          ELSE
+            localFormat="(I2)"
+            WRITE(ci1,localFormat) i0-6
+            localFormat="(E"//ci0(1:LEN_TRIM(ci0))//"."//ci1(1:LEN_TRIM(ci1))//")"
+            WRITE(localString,localFormat,ERR=999) number
+          ENDIF
+        ELSE
+          IF((-number<10.0_DP**(i0-2)).AND.(-number>=0.01_DP**(MIN(i0-2,5)))) THEN
+            IF(-number>=1.0_DP) THEN
+              i1=i0-3-FLOOR(LOG10(number),INTG)
+              localFormat="(I2)"
+              WRITE(ci1,'(I2)') i1
+              localFormat="(F"//ci0(1:LEN_TRIM(ci0))//"."//ci1(1:LEN_TRIM(ci1))//")"
+              WRITE(localString,localFormat,ERR=999) number
+            ELSE
+              localFormat="(I2)"
+              WRITE(ci1,localFormat) i0-2
+              localFormat="(F"//ci0(1:LEN_TRIM(ci0))//"."//ci1(1:LEN_TRIM(ci1))//")"
+              WRITE(localString,localFormat,ERR=999) number
+            ENDIF
+          ELSE
+            localFormat="(I2)"
+            WRITE(ci1,localFormat) i0-6
+            localFormat="(E"//ci0(1:LEN_TRIM(ci0))//"."//ci1(1:LEN_TRIM(ci1))//")"
+            WRITE(localString,localFormat,ERR=999) number
+          ENDIF
+        ENDIF
+      ELSE
+        CALL FlagError("Invalid format.",err,error,*999)
+      ENDIF
+    ELSE
+      localFormat='('//format(1:LEN_TRIM(format))//')'
+      WRITE(localString,localFormat,ERR=999) number
+    ENDIF
+
+    !Add an extra zero if required
+    IF(localString(LEN_TRIM(localString):LEN_TRIM(localString))==".") localString=localString(1:LEN_TRIM(localString))//"0"
+
+    !!Do you really want to do this???
+    !Trim leading blanks
+    !NumberToVstringDP=ADJUSTL(localString(1:LEN_TRIM(localString)))
+    NumberToVstringDP=localString(1:LEN_TRIM(localString))
+
+!    CALL Exits("NumberToVstringDP")
+    RETURN
+999 CALL FlagError("Error converting double precision number to a varying string.",err,error,*998)
+998 CALL Errors("NumberToVstringDP",err,error)
+!    CALL Exits("NumberToVstringDP")
+    RETURN    
+  END FUNCTION NumberToVstringDP
   
   !
   !================================================================================================================================

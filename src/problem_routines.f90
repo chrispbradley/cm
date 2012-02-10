@@ -1316,7 +1316,7 @@ CONTAINS
                     CALL EQUATIONS_SET_JACOBIAN_EVALUATE(EQUATIONS_SET,ERR,ERROR,*999)
                   ENDDO !equations_set_idx
                   !Assemble the dynamic nonlinear solver matrices
-                  CALL SOLVER_MATRICES_DYNAMIC_ASSEMBLE(SOLVER,SOLVER_MATRICES_JACOBIAN_ONLY,ERR,ERROR,*999)
+                  CALL SolverMatrices_DynamicAssemble(SOLVER,SOLVER_MATRICES_JACOBIAN_ONLY,ERR,ERROR,*999)
                 ELSE
                   CALL FLAG_ERROR("Solver equations linking solver mapping is not dynamic.",ERR,ERROR,*999)
                 END IF
@@ -1331,7 +1331,7 @@ CONTAINS
                   CALL EQUATIONS_SET_JACOBIAN_EVALUATE(EQUATIONS_SET,ERR,ERROR,*999)
                 ENDDO !equations_set_idx
                 !Assemble the static nonlinear solver matrices
-                CALL SOLVER_MATRICES_STATIC_ASSEMBLE(SOLVER,SOLVER_MATRICES_JACOBIAN_ONLY,ERR,ERROR,*999)          
+                CALL SolverMatrices_StaticAssemble(SOLVER,SOLVER_MATRICES_JACOBIAN_ONLY,ERR,ERROR,*999)          
               END IF       
             ELSE
               CALL FLAG_ERROR("Solver equations solver type is not associated.",ERR,ERROR,*999)      
@@ -1436,7 +1436,7 @@ CONTAINS
                     END SELECT
                   ENDDO !equations_set_idx
                   !Assemble the final solver residual.
-                  CALL SOLVER_MATRICES_DYNAMIC_ASSEMBLE(SOLVER,SOLVER_MATRICES_RHS_RESIDUAL_ONLY,ERR,ERROR,*999)
+                  CALL SolverMatrices_DynamicAssemble(SOLVER,SOLVER_MATRICES_RHS_RESIDUAL_ONLY,ERR,ERROR,*999)
                 ELSE
                   CALL FLAG_ERROR("Solver equations linking solver mapping is not dynamic.",ERR,ERROR,*999)
                 END IF
@@ -1464,7 +1464,7 @@ CONTAINS
                   END SELECT
                 ENDDO !equations_set_idx
                 !Assemble the solver matrices
-                CALL SOLVER_MATRICES_STATIC_ASSEMBLE(SOLVER,SOLVER_MATRICES_RHS_RESIDUAL_ONLY,ERR,ERROR,*999)
+                CALL SolverMatrices_StaticAssemble(SOLVER,SOLVER_MATRICES_RHS_RESIDUAL_ONLY,ERR,ERROR,*999)
               END IF
             ELSE
                CALL FLAG_ERROR("Solver equations solver type is not associated.",ERR,ERROR,*999)

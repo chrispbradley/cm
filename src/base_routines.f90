@@ -198,10 +198,22 @@ MODULE BASE_ROUTINES
   END INTERFACE !EXTRACT_ERROR_MESSAGE
 
   !>Flags an error condition \see BASE_ROUTINES
+  INTERFACE FlagError
+    MODULE PROCEDURE FlagErrorC
+    MODULE PROCEDURE FlagErrorVS
+  END INTERFACE FlagError
+  
+  !>Flags an error condition \see BASE_ROUTINES
   INTERFACE FLAG_ERROR
     MODULE PROCEDURE FLAG_ERROR_C
     MODULE PROCEDURE FLAG_ERROR_VS
   END INTERFACE !FLAG_ERROR
+  
+  !>Flags a warning to the user \see BASE_ROUTINES
+  INTERFACE FlagWarning
+    MODULE PROCEDURE FlagWarningC
+    MODULE PROCEDURE FlagWarningVS
+  END INTERFACE FlagWarning
   
   !>Flags a warning to the user \see BASE_ROUTINES
   INTERFACE FLAG_WARNING
@@ -224,10 +236,12 @@ MODULE BASE_ROUTINES
 
   PUBLIC DIAGNOSTICS_SET_ON,DIAGNOSTICS_SET_OFF
 
-  PUBLIC ENTERS,ERRORS,EXITS
+  PUBLIC Enters,Errors,Exits
 
   PUBLIC EXTRACT_ERROR_MESSAGE
   
+  PUBLIC FlagError,FlagWarning
+
   PUBLIC FLAG_ERROR,FLAG_WARNING
   
   PUBLIC OUTPUT_SET_OFF,OUTPUT_SET_ON
@@ -284,7 +298,7 @@ CONTAINS
   !
 
   !>Records the entry into the named procedure and initialises the error code \see BASE_ROUTINES::EXITS
-  SUBROUTINE ENTERS(NAME,ERR,ERROR,*)
+  SUBROUTINE Enters(NAME,ERR,ERROR,*)
 
     !Argument variables
     CHARACTER(LEN=*), INTENT(IN) :: NAME !<The name of the routine being entered
@@ -393,14 +407,14 @@ CONTAINS
 
     RETURN
 999 RETURN 1
-  END SUBROUTINE ENTERS
+  END SUBROUTINE Enters
 
   !
   !================================================================================================================================
   !
 
   !>Records the exiting error of the subroutine 
-  SUBROUTINE ERRORS(NAME,ERR,ERROR)
+  SUBROUTINE Errors(NAME,ERR,ERROR)
 
     !Argument variables
     CHARACTER(LEN=*), INTENT(IN) :: NAME !<The name of the routine with an error condition
@@ -416,14 +430,14 @@ CONTAINS
 
     RETURN
 
-  END SUBROUTINE ERRORS
+  END SUBROUTINE Errors
 
   !
   !================================================================================================================================
   !
 
   !>Records the exit out of the named procedure \see BASE_ROUTINES::ENTERS
-  SUBROUTINE EXITS(NAME)
+  SUBROUTINE Exits(NAME)
 
     !Argument variables
     CHARACTER(LEN=*), INTENT(IN) :: NAME !<The name of the routine exiting
@@ -534,7 +548,7 @@ CONTAINS
     ENDIF
 
 999 RETURN
-  END SUBROUTINE EXITS
+  END SUBROUTINE Exits
 
   !
   !================================================================================================================================
@@ -581,6 +595,46 @@ CONTAINS
   !
 
   !>Sets the error string specified by a character string and flags an error 
+  SUBROUTINE FlagErrorC(string,err,error,*)
+
+    !Argument variables
+    CHARACTER(LEN=*), INTENT(IN) :: string !<The error condition string
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local variables
+    INTEGER(INTG) :: stringLength
+
+    IF(err==0) err=1
+    stringLength=LEN_TRIM(string)
+    error=string(1:stringLength)
+
+    RETURN 1
+  END SUBROUTINE FlagErrorC
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Sets the error string specified by a varying string and flags an error.
+  SUBROUTINE FlagErrorVS(string,err,error,*)
+
+    !Argument variables
+    TYPE(VARYING_STRING), INTENT(IN) :: string !<The error condition string
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local variables
+
+    IF(err==0) err=1
+    error=string
+
+    RETURN 1
+  END SUBROUTINE FlagErrorVS
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Sets the error string specified by a character string and flags an error 
   SUBROUTINE FLAG_ERROR_C(STRING,ERR,ERROR,*)
 
     !Argument variables
@@ -615,6 +669,56 @@ CONTAINS
 
     RETURN 1
   END SUBROUTINE FLAG_ERROR_VS
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Writes a warning message specified by a character string to the user.
+  SUBROUTINE FlagWarningC(string,err,error,*)
+
+    !Argument variables
+    CHARACTER(LEN=*), INTENT(IN) :: string !<The warning string
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local variables
+
+    IF(NUMBER_OF_COMPUTATIONAL_NODES>1) THEN
+      WRITE(OP_STRING,'(">>WARNING (",I0,"): ",A)') MY_COMPUTATIONAL_NODE_NUMBER,string
+    ELSE
+      WRITE(OP_STRING,'(">>WARNING: ",A)') string
+    ENDIF
+    CALL WRITE_STR(WARNING_OUTPUT_TYPE,err,error,*999)
+
+    RETURN 
+999 CALL Errors("FLAG_WARNING_C",err,error)
+    RETURN 1
+  END SUBROUTINE FlagWarningC
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Writes a warning message specified by a varying string to the user.
+  SUBROUTINE FlagWarningVS(string,err,error,*)
+
+    !Argument variables
+    TYPE(VARYING_STRING), INTENT(IN) :: string !<The warning string
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local variables
+
+    IF(NUMBER_OF_COMPUTATIONAL_NODES>1) THEN
+      WRITE(OP_STRING,'(">>WARNING (",I0,"): ",A)') MY_COMPUTATIONAL_NODE_NUMBER,CHAR(string)
+    ELSE
+      WRITE(OP_STRING,'(">>WARNING: ",A)') CHAR(string)
+    ENDIF
+    CALL WRITE_STR(WARNING_OUTPUT_TYPE,err,error,*999)
+
+    RETURN 
+999 CALL Errors("FLAG_WARNING_VS",err,error)
+    RETURN 1
+  END SUBROUTINE FlagWarningVS
 
   !
   !================================================================================================================================

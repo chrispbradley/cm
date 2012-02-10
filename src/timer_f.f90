@@ -74,19 +74,52 @@ MODULE TIMER
 
   INTERFACE
 
-    SUBROUTINE CPUTIMER(RETURN_TIME, TIME_TYPE, ERR, CERROR) BIND(C,NAME="CPUTimer")
+    SUBROUTINE CpuTimerC(returnTime, timeType, err, cerror) BIND(C,NAME="CPUTimer")
       USE ISO_C_BINDING
-      REAL(C_DOUBLE), INTENT(OUT) :: RETURN_TIME
-      INTEGER(C_INT), INTENT(IN) :: TIME_TYPE
-      INTEGER(C_INT), INTENT(OUT) :: ERR
-      CHARACTER(C_CHAR), INTENT(OUT) :: CERROR(*)
-    END SUBROUTINE CPUTIMER
+      REAL(C_DOUBLE), INTENT(OUT) :: returnTime
+      INTEGER(C_INT), INTENT(IN) :: timeType
+      INTEGER(C_INT), INTENT(OUT) :: err
+      CHARACTER(C_CHAR), INTENT(OUT) :: cerror(*)
+    END SUBROUTINE CpuTimerC
 
   END INTERFACE
 
-  PUBLIC USER_CPU,SYSTEM_CPU,TOTAL_CPU,CPU_TIMER
+  PUBLIC USER_CPU,SYSTEM_CPU,TOTAL_CPU
+
+  PUBLIC CpuTimer
+
+  PUBLIC CPU_TIMER
 
 CONTAINS
+
+  !
+  !============================================================================
+  !
+
+  !>CPU_TIMER returns the CPU time in TIME(1). TIME_TYPE indicates the type of time required.
+  SUBROUTINE CpuTimer(timeType,time,err,error,*)
+
+    !Argument variables
+    INTEGER(INTG), INTENT(IN) :: timeType !<The required time type \see TIMER_TimerType,TIMER
+    REAL(SP), INTENT(OUT) :: time(*) !<On return, the requested time.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local variables
+    REAL(DP) :: returnTime
+    CHARACTER(KIND=C_CHAR,LEN=MAXSTRLEN) :: cerror
+
+    CALL Enters("CpuTimer",err,error,*999)
+    
+    CALL CpuTimerC(returnTime,timeType,err,cerror)
+    time(1)=REAL(returnTime,SP)
+    IF(err/=0) CALL FlagError(cerror,err,error,*999)
+    
+    CALL Exits("CpuTimer")
+    RETURN
+999 CALL Errors("CpuTimer",err,error)
+    CALL Exits("CpuTimer")
+    RETURN 1
+  END SUBROUTINE CpuTimer
 
   !
   !============================================================================
@@ -106,7 +139,7 @@ CONTAINS
 
     CALL ENTERS("CPU_TIMER",ERR, ERROR,*999)
     
-    CALL CPUTIMER(RETURN_TIME,TIME_TYPE,ERR,CERROR)
+    CALL CPUTIMERC(RETURN_TIME,TIME_TYPE,ERR,CERROR)
     TIME(1)=REAL(RETURN_TIME,SP)
     IF(ERR/=0) CALL FLAG_ERROR(CERROR,ERR,ERROR,*999)
     
