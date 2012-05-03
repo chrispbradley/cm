@@ -862,9 +862,11 @@ MODULE FIELD_ROUTINES
   
   PUBLIC FIELD_PARAMETER_SET_CREATE
 
+  PUBLIC FIELD_PARAMETER_SET_CREATED
+
   PUBLIC Field_ParameterSetDataGet,Field_ParameterSetDataRestore
 
-  PUBLIC FIELD_PARAMETER_SET_DATA_GET,FIELD_PARAMETER_SET_DATA_RESTORE
+  PUBLIC FIELD_PARAMETER_SET_DATA_GET, FIELD_PARAMETER_SET_DATA_RESTORE
 
   PUBLIC Field_ParameterSetGetConstant,Field_ParameterSetGetElement,Field_ParameterSetGetLocalDof,Field_ParameterSetGetNode, &
     & Field_ParameterSetGetGaussPoint
@@ -896,6 +898,8 @@ MODULE FIELD_ROUTINES
   
   PUBLIC FIELD_USER_NUMBER_FIND, FIELD_USER_NUMBER_TO_FIELD
 
+  PUBLIC Field_VariableGet
+  
   PUBLIC FIELD_VARIABLE_GET
 
   PUBLIC Field_VariableLabelGet,Field_VariableLabelSet,Field_VariableLabelSetAndLock
@@ -15240,6 +15244,66 @@ CONTAINS
   !================================================================================================================================
   !
 
+  !>Checks whether a field parameter set has been created
+  SUBROUTINE FIELD_PARAMETER_SET_CREATED(FIELD,VARIABLE_TYPE,FIELD_SET_TYPE,PARAMETER_SET_CREATED,ERR,ERROR,*)
+
+    !Argument variables
+    TYPE(FIELD_TYPE), POINTER :: FIELD !<A pointer to the field
+    INTEGER(INTG),  INTENT(IN) :: VARIABLE_TYPE !<The field variable type to check the parameter set creation for \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+    INTEGER(INTG), INTENT(IN) :: FIELD_SET_TYPE !<The field parameter set identifier \see FIELD_ROUTINES_ParameterSetTypes,FIELD_ROUTINES
+    LOGICAL, INTENT(OUT) :: PARAMETER_SET_CREATED
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    !Local Variables
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: FIELD_VARIABLE
+    TYPE(VARYING_STRING) :: LOCAL_ERROR
+
+    CALL ENTERS("FIELD_PARAMETER_SET_CREATED",ERR,ERROR,*999)
+
+    IF(ASSOCIATED(FIELD)) THEN
+      IF(VARIABLE_TYPE>0.AND.VARIABLE_TYPE<=FIELD_NUMBER_OF_VARIABLE_TYPES) THEN
+        FIELD_VARIABLE=>FIELD%VARIABLE_TYPE_MAP(VARIABLE_TYPE)%PTR
+        IF(ASSOCIATED(FIELD_VARIABLE)) THEN
+          !Check the set type input
+          IF(FIELD_SET_TYPE>0.AND.FIELD_SET_TYPE<FIELD_NUMBER_OF_SET_TYPES) THEN
+            !Check if this set type has been created
+            IF(ASSOCIATED(FIELD_VARIABLE%PARAMETER_SETS%SET_TYPE(FIELD_SET_TYPE)%PTR)) THEN
+              PARAMETER_SET_CREATED=.TRUE.
+            ELSE
+              PARAMETER_SET_CREATED=.FALSE.
+            END IF
+          ELSE
+            LOCAL_ERROR="The field parameter set type of "//TRIM(NUMBER_TO_VSTRING(FIELD_SET_TYPE,"*",ERR,ERROR))// &
+              & " is invalid. The field parameter set type must be between 1 and "// &
+              & TRIM(NUMBER_TO_VSTRING(FIELD_NUMBER_OF_SET_TYPES,"*",ERR,ERROR))//"."
+            CALL FLAG_ERROR(LOCAL_ERROR,ERR,ERROR,*999)
+          ENDIF
+        ELSE
+          LOCAL_ERROR="The field variable type of "//TRIM(NUMBER_TO_VSTRING(VARIABLE_TYPE,"*",ERR,ERROR))// &
+            & " has not been created on field number "//TRIM(NUMBER_TO_VSTRING(FIELD%USER_NUMBER,"*",ERR,ERROR))//"."
+          CALL FLAG_ERROR(LOCAL_ERROR,ERR,ERROR,*999)
+        ENDIF
+      ELSE
+        LOCAL_ERROR="The field variable type of "//TRIM(NUMBER_TO_VSTRING(VARIABLE_TYPE,"*",ERR,ERROR))// &
+          & " is invalid. The variable type must be between 1 and "// &
+          & TRIM(NUMBER_TO_VSTRING(FIELD_NUMBER_OF_VARIABLE_TYPES,"*",ERR,ERROR))//"."
+        CALL FLAG_ERROR(LOCAL_ERROR,ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FLAG_ERROR("Field is not associated.",ERR,ERROR,*999)
+    ENDIF
+
+    CALL EXITS("FIELD_PARAMETER_SET_CREATED")
+    RETURN
+999 CALL ERRORS("FIELD_PARAMETER_SET_CREATED",ERR,ERROR)
+    CALL EXITS("FIELD_PARAMETER_SET_CREATED")
+    RETURN 1
+  END SUBROUTINE FIELD_PARAMETER_SET_CREATED
+
+  !
+  !================================================================================================================================
+  !
+
   !>Destroys the parameter set of type set type for a field variable and deallocates all memory. \see OPENCMISS::CMISSFieldParameterSetDestroy
   SUBROUTINE FIELD_PARAMETER_SET_DESTROY(FIELD,VARIABLE_TYPE,FIELD_SET_TYPE,ERR,ERROR,*)
 
@@ -23241,52 +23305,78 @@ CONTAINS
   !
 
   !>Returns a pointer to a field variable
-  SUBROUTINE FIELD_VARIABLE_GET(FIELD,VARIABLE_TYPE,FIELD_VARIABLE,ERR,ERROR,*)
+  SUBROUTINE Field_VariableGet(field,variableType,fieldVariable,err,error,*)
 
     !Argument variables
-    TYPE(FIELD_TYPE), POINTER :: FIELD !<A pointer to the field to get the variable for.
-    INTEGER(INTG), INTENT(IN) :: VARIABLE_TYPE !<The type of field variable to set. \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
-    TYPE(FIELD_VARIABLE_TYPE), POINTER :: FIELD_VARIABLE !<On exit, a pointer to the field variable. Must not be associated on entry.
-    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
-    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    TYPE(FIELD_TYPE), POINTER :: field !<A pointer to the field to get the variable for.
+    INTEGER(INTG), INTENT(IN) :: variableType !<The type of field variable to set. \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: fieldVariable !<On exit, a pointer to the field variable. Must not be associated on entry.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
-    TYPE(VARYING_STRING) :: LOCAL_ERROR
+    TYPE(VARYING_STRING) :: localError
 
-    CALL ENTERS("FIELD_VARIABLE_GET",ERR,ERROR,*999)
+    CALL Enters("Field_VariableGet",err,error,*999)
 
-    IF(ASSOCIATED(FIELD)) THEN
-      IF(FIELD%FIELD_FINISHED) THEN
-        IF(VARIABLE_TYPE>=1.AND.VARIABLE_TYPE<=FIELD_NUMBER_OF_VARIABLE_TYPES) THEN
-          IF(ASSOCIATED(FIELD_VARIABLE)) THEN
-            CALL FLAG_ERROR("Field variable is already associated.",ERR,ERROR,*999)
+    IF(ASSOCIATED(field)) THEN
+      IF(field%FIELD_FINISHED) THEN
+        IF(variableType>=1.AND.variableType<=FIELD_NUMBER_OF_VARIABLE_TYPES) THEN
+          IF(ASSOCIATED(fieldVariable)) THEN
+            CALL FlagError("Field variable is already associated.",err,error,*999)
           ELSE
-            NULLIFY(FIELD_VARIABLE)
-            FIELD_VARIABLE=>FIELD%VARIABLE_TYPE_MAP(VARIABLE_TYPE)%PTR
-            IF(.NOT.ASSOCIATED(FIELD_VARIABLE)) THEN
-              LOCAL_ERROR="The field variable type of "//TRIM(NUMBER_TO_VSTRING(VARIABLE_TYPE,"*",ERR,ERROR))// &
-                & " has not been defined on field number "//TRIM(NUMBER_TO_VSTRING(FIELD%USER_NUMBER,"*",ERR,ERROR))//"."
-              CALL FLAG_ERROR(LOCAL_ERROR,ERR,ERROR,*999)
+            NULLIFY(fieldVariable)
+            fieldVariable=>field%VARIABLE_TYPE_MAP(variableType)%ptr
+            IF(.NOT.ASSOCIATED(fieldVariable)) THEN
+              localError="The field variable type of "//TRIM(NumberToVString(variableType,"*",err,error))// &
+                & " has not been defined on field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",err,error))//"."
+              CALL FlagError(localError,err,error,*999)
             ENDIF
           ENDIF
         ELSE
-          LOCAL_ERROR="The field variable type of "//TRIM(NUMBER_TO_VSTRING(VARIABLE_TYPE,"*",ERR,ERROR))// &
+          localError="The field variable type of "//TRIM(NumberToVString(variableType,"*",err,error))// &
             & " is invalid. The field variable type must be between 1 and "// &
-            & TRIM(NUMBER_TO_VSTRING(FIELD_NUMBER_OF_VARIABLE_TYPES,"*",ERR,ERROR))//"."
-          CALL FLAG_ERROR(LOCAL_ERROR,ERR,ERROR,*999)
+            & TRIM(NumberToVString(FIELD_NUMBER_OF_VARIABLE_TYPES,"*",err,error))//"."
+          CALL FlagError(localError,err,error,*999)
         ENDIF
       ELSE
-        LOCAL_ERROR="Field number "//TRIM(NUMBER_TO_VSTRING(FIELD%USER_NUMBER,"*",ERR,ERROR))// &
+        localError="Field number "//TRIM(NumberToVString(field%USER_NUMBER,"*",err,error))// &
           & " has not been finished."
-        CALL FLAG_ERROR(LOCAL_ERROR,ERR,ERROR,*999)
+        CALL FlagError(localError,err,error,*999)
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Field is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Field is not associated.",err,error,*999)
     ENDIF
 
-    CALL EXITS("FIELD_VARIABLE_GET")
+    CALL Exits("Field_VariableGet")
     RETURN
-999 CALL ERRORS("FIELD_VARIABLE_GET",ERR,ERROR)
-    CALL EXITS("FIELD_VARIABLE_GET")
+999 CALL Errors("Field_VariableGet",err,error)
+    CALL Exits("Field_VariableGet")
+    RETURN 1
+  END SUBROUTINE Field_VariableGet
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Returns a pointer to a field variable
+  SUBROUTINE FIELD_VARIABLE_GET(field,variableType,fieldVariable,err,error,*)
+
+    !Argument variables
+    TYPE(FIELD_TYPE), POINTER :: field !<A pointer to the field to get the variable for.
+    INTEGER(INTG), INTENT(IN) :: variableType !<The type of field variable to set. \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: fieldVariable !<On exit, a pointer to the field variable. Must not be associated on entry.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+ 
+    CALL Enters("FIELD_VARIABLE_GET",err,error,*999)
+
+    CALL Field_VariableGet(field,variableType,fieldVariable,err,error,*999)
+
+    CALL Exits("FIELD_VARIABLE_GET")
+    RETURN
+999 CALL Errors("FIELD_VARIABLE_GET",err,error)
+    CALL Exits("FIELD_VARIABLE_GET")
     RETURN 1
   END SUBROUTINE FIELD_VARIABLE_GET
 
