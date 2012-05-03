@@ -11493,7 +11493,7 @@ CONTAINS
     CALL EXTRACT_ERROR_MESSAGE(errorMessage,err,error,*999)
 
     RETURN
-999 RETURN 1
+999 RETURN
 
   END SUBROUTINE CMISSExtractErrorMessageC
 
@@ -11512,7 +11512,7 @@ CONTAINS
     CALL EXTRACT_ERROR_MESSAGE(errorMessage,err,error,*999)
 
     RETURN
-999 RETURN 1
+999 RETURN 
 
   END SUBROUTINE CMISSExtractErrorMessageVS
 
@@ -47992,8 +47992,6 @@ CONTAINS
     TYPE(CMISSFieldMLIOType), INTENT(IN) :: fieldml !< The FieldML context containing the evaluator to use.
     TYPE(VARYING_STRING), INTENT(IN) :: filename !< The name of the file to write the FieldML document to.
     INTEGER(INTG), INTENT(OUT) :: err !< The error code.
-
-    TYPE(VARYING_STRING) :: LOCAL_ERROR
 
     CALL ENTERS("CMISSFieldML_OutputWriteVS",err,error,*999)
 

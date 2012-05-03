@@ -354,7 +354,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     INTEGER(INTG) :: component_idx,derivative_idx,element_idx,Gauss_idx,GLOBAL_DERIV_INDEX,local_ny,node_idx, &
-      & NUMBER_OF_ANALYTIC_COMPONENTS,NUMBER_OF_DIMENSIONS,NUMBER_OF_MATERIALS_COMPONENTS,variable_idx, &
+      & NUMBER_OF_ANALYTIC_COMPONENTS,NUMBER_OF_DIMENSIONS,variable_idx, &
       & variable_type,version_idx
     REAL(DP) :: NORMAL(3),POSITION(3),TANGENTS(3,3),VALUE
     REAL(DP) :: ANALYTIC_DUMMY_VALUES(1)=0.0_DP
@@ -2238,7 +2238,6 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    TYPE(EQUATIONS_SET_SETUP_TYPE) :: EQUATIONS_SET_SETUP_INFO
     TYPE(VARYING_STRING) :: LOCAL_ERROR
 
     CALL ENTERS("EQUATIONS_SET_BOUNDARY_CONDITIONS_ANALYTIC",ERR,ERROR,*999)
@@ -3041,7 +3040,6 @@ CONTAINS
     TYPE(DOMAIN_ELEMENTS_TYPE), POINTER :: elementsTopology
     TYPE(BASIS_TYPE), POINTER :: basis
     TYPE(DISTRIBUTED_VECTOR_TYPE), POINTER :: parameters
-    REAL(DP),POINTER :: columnData(:)  ! parameter set vector
     TYPE(FIELD_VARIABLE_TYPE), POINTER :: rowVariable,columnVariable
     TYPE(ELEMENT_VECTOR_TYPE) :: elementVector
     INTEGER(INTG) :: componentIdx,localNy,version,derivativeIdx,derivative,nodeIdx,node,column
@@ -5806,7 +5804,6 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    TYPE(EQUATIONS_SET_SETUP_TYPE) :: EQUATIONS_SET_SETUP_INFO
     TYPE(VARYING_STRING) :: LOCAL_ERROR
 
     CALL ENTERS("EQUATIONS_SET_SPECIFICATION_SET",ERR,ERROR,*999)

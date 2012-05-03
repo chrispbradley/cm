@@ -294,8 +294,8 @@ CONTAINS
                       SOLVER_EQUATIONS=>BOUNDARY_CONDITIONS%SOLVER_EQUATIONS
                       IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
                         IF(ASSOCIATED(SOLVER_EQUATIONS%SOLVER_MAPPING)) THEN
-                          DO equations_set_idx=1,SOLVER_EQUATIONS%SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
-                            EQUATIONS_SET=>SOLVER_EQUATIONS%SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+                          DO equations_set_idx=1,SOLVER_EQUATIONS%SOLVER_MAPPING%numberOfEquationsSets
+                            EQUATIONS_SET=>SOLVER_EQUATIONS%SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
                             IF(ASSOCIATED(EQUATIONS_SET)) THEN
                               EQUATIONS=>EQUATIONS_SET%EQUATIONS
                               IF(ASSOCIATED(EQUATIONS)) THEN
@@ -585,8 +585,8 @@ CONTAINS
         ELSE
           IF(ASSOCIATED(SOLVER_EQUATIONS%SOLVER_MAPPING)) THEN
             !Check for an equations set type that requires load incremented boundary conditions
-            DO equations_set_idx=1,SOLVER_EQUATIONS%SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
-              EQUATIONS_SET=>SOLVER_EQUATIONS%SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+            DO equations_set_idx=1,SOLVER_EQUATIONS%SOLVER_MAPPING%numberOfEquationsSets
+              EQUATIONS_SET=>SOLVER_EQUATIONS%SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
               IF(ASSOCIATED(EQUATIONS_SET)) THEN
                 SELECT CASE(EQUATIONS_SET%CLASS)
                 CASE(EQUATIONS_SET_ELASTICITY_CLASS,EQUATIONS_SET_MULTI_PHYSICS_CLASS)
@@ -732,8 +732,8 @@ CONTAINS
           SOLVER_EQUATIONS%BOUNDARY_CONDITIONS%BOUNDARY_CONDITIONS_FINISHED=.FALSE.
           SOLVER_EQUATIONS%BOUNDARY_CONDITIONS%NUMBER_OF_BOUNDARY_CONDITIONS_VARIABLES=0
           SOLVER_EQUATIONS%BOUNDARY_CONDITIONS%SOLVER_EQUATIONS=>SOLVER_EQUATIONS
-          DO equations_set_idx=1,SOLVER_EQUATIONS%SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
-            EQUATIONS_SET=>SOLVER_EQUATIONS%SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+          DO equations_set_idx=1,SOLVER_EQUATIONS%SOLVER_MAPPING%numberOfEquationsSets
+            EQUATIONS_SET=>SOLVER_EQUATIONS%SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
             IF(ASSOCIATED(EQUATIONS_SET)) THEN
               EQUATIONS=>EQUATIONS_SET%EQUATIONS
               IF(ASSOCIATED(EQUATIONS)) THEN
@@ -905,8 +905,8 @@ CONTAINS
         !Also create current & previous pressue set types, if FINITE ELASTICITY equations type
         !\todo: this is a hacky place to do it
         IF(ASSOCIATED(SOLVER_EQUATIONS%SOLVER_MAPPING)) THEN
-          DO equations_set_idx=1,SOLVER_EQUATIONS%SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
-            EQUATIONS_SET=>SOLVER_EQUATIONS%SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+          DO equations_set_idx=1,SOLVER_EQUATIONS%SOLVER_MAPPING%numberOfEquationsSets
+            EQUATIONS_SET=>SOLVER_EQUATIONS%SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
             IF(ASSOCIATED(EQUATIONS_SET)) THEN
               EQUATIONS=>EQUATIONS_SET%EQUATIONS
               IF(ASSOCIATED(EQUATIONS)) THEN
@@ -2819,8 +2819,8 @@ CONTAINS
               equations_set_idx=0
               EQUATIONS_SET_FOUND = .FALSE.
               DO WHILE(.NOT.EQUATIONS_SET_FOUND .AND. &
-                & equations_set_idx<SOLVER_EQUATIONS%SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS)
-                EQUATIONS_SET=>SOLVER_EQUATIONS%SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+                & equations_set_idx<SOLVER_EQUATIONS%SOLVER_MAPPING%numberOfEquationsSets)
+                EQUATIONS_SET=>SOLVER_EQUATIONS%SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
                 IF(ASSOCIATED(EQUATIONS_SET)) THEN
                   !Check if equations set has the same dependent field we're after
                   IF(ASSOCIATED(FIELD_VARIABLE%FIELD,EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD)) THEN
@@ -3009,8 +3009,8 @@ CONTAINS
               equations_set_idx=0
               EQUATIONS_SET_FOUND = .FALSE.
               DO WHILE(.NOT.EQUATIONS_SET_FOUND .AND. &
-                & equations_set_idx<SOLVER_EQUATIONS%SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS)
-                EQUATIONS_SET=>SOLVER_EQUATIONS%SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+                & equations_set_idx<SOLVER_EQUATIONS%SOLVER_MAPPING%numberOfEquationsSets)
+                EQUATIONS_SET=>SOLVER_EQUATIONS%SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
                 IF(ASSOCIATED(EQUATIONS_SET)) THEN
                   !Check if equations set has the same dependent field we're after
                   IF(ASSOCIATED(FIELD_VARIABLE%FIELD,EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD)) THEN
@@ -3271,8 +3271,8 @@ CONTAINS
               equations_set_idx=0
               EQUATIONS_SET_FOUND = .FALSE.
               DO WHILE(.NOT.EQUATIONS_SET_FOUND .AND. &
-                & equations_set_idx<SOLVER_EQUATIONS%SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS)
-                EQUATIONS_SET=>SOLVER_EQUATIONS%SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+                & equations_set_idx<SOLVER_EQUATIONS%SOLVER_MAPPING%numberOfEquationsSets)
+                EQUATIONS_SET=>SOLVER_EQUATIONS%SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
                 IF(ASSOCIATED(EQUATIONS_SET)) THEN
                   !Check if equations set has the same dependent field we're after
                   IF(ASSOCIATED(FIELD_VARIABLE%FIELD,EQUATIONS_SET%DEPENDENT%DEPENDENT_FIELD)) THEN
@@ -3795,8 +3795,8 @@ CONTAINS
         IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
           MAX_NUMBER_LINEAR_MATRICES=0
           MAX_NUMBER_DYNAMIC_MATRICES=0
-          DO equations_set_idx=1,SOLVER_EQUATIONS%SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
-            EQUATIONS_SET=>SOLVER_EQUATIONS%SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+          DO equations_set_idx=1,SOLVER_EQUATIONS%SOLVER_MAPPING%numberOfEquationsSets
+            EQUATIONS_SET=>SOLVER_EQUATIONS%SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
             IF(ASSOCIATED(EQUATIONS_SET)) THEN
               EQUATIONS=>EQUATIONS_SET%EQUATIONS
               IF(ASSOCIATED(EQUATIONS)) THEN
@@ -3824,13 +3824,13 @@ CONTAINS
               CALL FLAG_ERROR("Equations set is not associated.",ERR,ERROR,*998)
             ENDIF
           ENDDO
-          ALLOCATE(BOUNDARY_CONDITIONS_DIRICHLET%LINEAR_SPARSITY_INDICES(SOLVER_EQUATIONS%SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS, &
+          ALLOCATE(BOUNDARY_CONDITIONS_DIRICHLET%LINEAR_SPARSITY_INDICES(SOLVER_EQUATIONS%SOLVER_MAPPING%numberOfEquationsSets, &
                 & MAX_NUMBER_LINEAR_MATRICES),STAT=ERR)
           IF(ERR/=0) CALL FLAG_ERROR("Could not allocate Dirichlet linear sparsity indices array",ERR,ERROR,*999)
-          ALLOCATE(BOUNDARY_CONDITIONS_DIRICHLET%DYNAMIC_SPARSITY_INDICES(SOLVER_EQUATIONS%SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS,&
+          ALLOCATE(BOUNDARY_CONDITIONS_DIRICHLET%DYNAMIC_SPARSITY_INDICES(SOLVER_EQUATIONS%SOLVER_MAPPING%numberOfEquationsSets,&
                 & MAX_NUMBER_DYNAMIC_MATRICES),STAT=ERR)
           IF(ERR/=0) CALL FLAG_ERROR("Could not allocate Dirichlet dynamic sparsity indices array",ERR,ERROR,*999)
-          DO equations_set_idx=1,SOLVER_EQUATIONS%SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
+          DO equations_set_idx=1,SOLVER_EQUATIONS%SOLVER_MAPPING%numberOfEquationsSets
             DO matrix_idx=1,MAX_NUMBER_LINEAR_MATRICES
               NULLIFY(BOUNDARY_CONDITIONS_DIRICHLET%LINEAR_SPARSITY_INDICES(equations_set_idx,matrix_idx)%PTR)
             ENDDO

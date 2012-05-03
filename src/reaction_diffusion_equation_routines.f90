@@ -1429,7 +1429,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local variables
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: SOLVER_EQUATIONS  !<A pointer to the solver equations
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING !<A pointer to the solver mapping
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING !<A pointer to the solver mapping
     TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET !<A pointer to the equations set
     TYPE(VARYING_STRING) :: LOCAL_ERROR
 
@@ -1454,8 +1454,8 @@ CONTAINS
                 SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
                 IF(ASSOCIATED(SOLVER_MAPPING)) THEN
                   !Make sure the equations sets are up to date
-                  DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
-                    EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+                  DO equations_set_idx=1,SOLVER_MAPPING%numberOfEquationsSets
+                    EQUATIONS_SET=>SOLVER_MAPPING%equationsSets(equations_set_idx)%ptr
 
                     CURRENT_LOOP_ITERATION=CONTROL_LOOP%TIME_LOOP%ITERATION_NUMBER
                     OUTPUT_ITERATION_NUMBER=CONTROL_LOOP%TIME_LOOP%OUTPUT_NUMBER

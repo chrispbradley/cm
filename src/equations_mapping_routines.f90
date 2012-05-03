@@ -81,7 +81,7 @@ MODULE EQUATIONS_MAPPING_ROUTINES
     & EQUATIONS_MAPPING_DYNAMIC_VARIABLE_TYPE_SET,EquationsMapping_LhsVariableTypeSet, &
     & EQUATIONS_MAPPING_LINEAR_MATRICES_COEFFS_SET, &
     & EQUATIONS_MAPPING_LINEAR_MATRICES_NUMBER_SET,EQUATIONS_MAPPING_LINEAR_MATRICES_VARIABLE_TYPES_SET, &
-    & EQUATIONS_MAPPING_RESIDUAL_COEFF_SET,EQUATIONS_MAPPING_RESIDUAL_VARIABLE_TYPES_SET, &
+    & EQUATIONS_MAPPING_RESIDUAL_COEFFS_SET,EQUATIONS_MAPPING_RESIDUAL_VARIABLE_TYPES_SET, &
     & EQUATIONS_MAPPING_RESIDUAL_VARIABLES_NUMBER_SET, &
     & EQUATIONS_MAPPING_RHS_COEFF_SET,EQUATIONS_MAPPING_RHS_VARIABLE_TYPE_SET, &
     & EQUATIONS_MAPPING_SOURCE_COEFF_SET,EQUATIONS_MAPPING_SOURCE_VARIABLE_TYPE_SET
@@ -100,8 +100,8 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code 
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
-    INTEGER(INTG) :: columnIdx,dofIdx,linearMatrixStart,matrixIdx,numberOfRows,numberOfGlobalRows,rowIdx, &
-      & totalNumberOfRows,variableIdx,variableType
+    INTEGER(INTG) :: columnIdx,dofIdx,matrixIdx,numberOfRows,numberOfGlobalRows,rowIdx, &
+      & totalNumberOfRows,residualIdx,variableType
     TYPE(EQUATIONS_MAPPING_CREATE_VALUES_CACHE_TYPE), POINTER :: createValuesCache
     TYPE(EQUATIONS_MAPPING_DYNAMIC_TYPE), POINTER :: dynamicMapping
     TYPE(EquationsMapping_LhsType), POINTER :: lhsMapping
@@ -403,6 +403,8 @@ CONTAINS
                   IF(err/=0) CALL FlagError("Could not allocate Jacobian to variable maps.",err,error,*999)
                   ALLOCATE(nonlinearMapping%RESIDUAL_VARIABLES(nonlinearMapping%NUMBER_OF_RESIDUAL_VARIABLES),STAT=err)
                   IF(err/=0) CALL FlagError("Could not allocate nonlinear mapping residual variables.",err,error,*999)
+                  ALLOCATE(nonlinearMapping%RESIDUAL_COEFFICIENTS(nonlinearMapping%NUMBER_OF_RESIDUAL_VARIABLES),STAT=err)
+                  IF(err/=0) CALL FlagError("Could not allocate nonlinear mapping residual coefficients.",err,error,*999)
                   DO matrixIdx=1,nonlinearMapping%NUMBER_OF_RESIDUAL_VARIABLES
                     CALL EQUATIONS_MAPPING_VAR_TO_EQUATS_JACOBIAN_MAP_INITIALISE(nonlinearMapping% &
                       & VAR_TO_JACOBIAN_MAP(matrixIdx),err,error,*999)
@@ -413,6 +415,7 @@ CONTAINS
                       & RESIDUAL_VARIABLE_TYPES(matrixIdx))%ptr
                     nonlinearMapping%VAR_TO_JACOBIAN_MAP(matrixIdx)%variable=>dependentVariable
                     nonlinearMapping%RESIDUAL_VARIABLES(matrixIdx)%ptr=>dependentVariable
+                    nonlinearMapping%RESIDUAL_COEFFICIENTS(matrixIdx)=createValuesCache%RESIDUAL_COEFFICIENTS(matrixIdx)
                     !Allocate and set dof to Jacobian columns map
                     ALLOCATE(nonlinearMapping%VAR_TO_JACOBIAN_MAP(matrixIdx)%DOF_TO_COLUMNS_MAP(dependentVariable% &
                       & TOTAL_NUMBER_OF_DOFS),STAT=err)
@@ -430,7 +433,8 @@ CONTAINS
                     nonlinearMapping%JACOBIAN_TO_VAR_MAP(matrixIdx)%variable=>dependentVariable
                     nonlinearMapping%JACOBIAN_TO_VAR_MAP(matrixIdx)%NUMBER_OF_COLUMNS= &
                       & dependentVariable%DOMAIN_MAPPING%NUMBER_OF_GLOBAL
-                    nonlinearMapping%JACOBIAN_TO_VAR_MAP(matrixIdx)%JACOBIAN_COEFFICIENT=createValuesCache%RESIDUAL_COEFFICIENT
+                    nonlinearMapping%JACOBIAN_TO_VAR_MAP(matrixIdx)%JACOBIAN_COEFFICIENT= &
+                      & createValuesCache%RESIDUAL_COEFFICIENTS(matrixIdx)
                     ALLOCATE(nonlinearMapping%JACOBIAN_TO_VAR_MAP(matrixIdx)%EQUATIONS_COLUMN_TO_DOF_VARIABLE_MAP( &
                       & dependentVariable%DOMAIN_MAPPING%NUMBER_OF_GLOBAL),STAT=err)
                     nonlinearMapping%JACOBIAN_TO_VAR_MAP(matrixIdx)%EQUATIONS_COLUMN_TO_DOF_VARIABLE_MAP=0
@@ -640,15 +644,15 @@ CONTAINS
       nonlinearMapping=>equationsMapping%NONLINEAR_MAPPING
       IF(ASSOCIATED(nonlinearMapping)) THEN
         CALL WriteString(DIAGNOSTIC_OUTPUT_TYPE,"  Nonlinear mappings:",err,error,*999)
-        DO matrixIdx=1,nonlinearMapping%NUMBER_OF_RESIDUAL_VARIABLES
-          CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"      Matrix number : ",matrixIdx,err,error,*999)
+        DO residualIdx=1,nonlinearMapping%NUMBER_OF_RESIDUAL_VARIABLES
+          CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"      Residual number : ",residualIdx,err,error,*999)
           CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"    Residual variable type = ",nonlinearMapping% &
-            & JACOBIAN_TO_VAR_MAP(matrixIdx)%VARIABLE_TYPE,err,error,*999)
+            & JACOBIAN_TO_VAR_MAP(residualIdx)%VARIABLE_TYPE,err,error,*999)
           CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"    Total number of residual DOFs = ",nonlinearMapping% &
-            & JACOBIAN_TO_VAR_MAP(matrixIdx)%VARIABLE%TOTAL_NUMBER_OF_DOFS,err,error,*999)
-        ENDDO
-        CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"    Residual coefficient = ",nonlinearMapping%RESIDUAL_COEFFICIENT, &
-          & err,error,*999)
+            & JACOBIAN_TO_VAR_MAP(residualIdx)%VARIABLE%TOTAL_NUMBER_OF_DOFS,err,error,*999)
+          CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"    Residual coefficient = ",nonlinearMapping%RESIDUAL_COEFFICIENTS( &
+            & residualIdx),err,error,*999)
+       ENDDO
         CALL WriteString(DIAGNOSTIC_OUTPUT_TYPE,"    Jacobian mappings:",err,error,*999)
         CALL WriteString(DIAGNOSTIC_OUTPUT_TYPE,"    Variable to Jacobian mappings:",err,error,*999)
         DO matrixIdx=1,nonlinearMapping%NUMBER_OF_RESIDUAL_VARIABLES
@@ -960,6 +964,7 @@ CONTAINS
       IF(ALLOCATED(CREATE_VALUES_CACHE%LINEAR_MATRIX_VARIABLE_TYPES)) DEALLOCATE(CREATE_VALUES_CACHE%LINEAR_MATRIX_VARIABLE_TYPES)
       IF(ALLOCATED(CREATE_VALUES_CACHE%LINEAR_MATRIX_COEFFICIENTS)) DEALLOCATE(CREATE_VALUES_CACHE%LINEAR_MATRIX_COEFFICIENTS)
       IF(ALLOCATED(CREATE_VALUES_CACHE%RESIDUAL_VARIABLE_TYPES)) DEALLOCATE(CREATE_VALUES_CACHE%RESIDUAL_VARIABLE_TYPES)
+      IF(ALLOCATED(CREATE_VALUES_CACHE%RESIDUAL_COEFFICIENTS)) DEALLOCATE(CREATE_VALUES_CACHE%RESIDUAL_COEFFICIENTS)
       DEALLOCATE(CREATE_VALUES_CACHE)
     ENDIF
        
@@ -1011,7 +1016,6 @@ CONTAINS
               EQUATIONS_MAPPING%CREATE_VALUES_CACHE%DYNAMIC_MASS_MATRIX_NUMBER=0
               EQUATIONS_MAPPING%CREATE_VALUES_CACHE%NUMBER_OF_LINEAR_EQUATIONS_MATRICES=0
               EQUATIONS_MAPPING%CREATE_VALUES_CACHE%NUMBER_OF_RESIDUAL_VARIABLES=0
-              EQUATIONS_MAPPING%CREATE_VALUES_CACHE%RESIDUAL_COEFFICIENT=1.0_DP
               EQUATIONS_MAPPING%CREATE_VALUES_CACHE%RHS_VARIABLE_TYPE=0
               EQUATIONS_MAPPING%CREATE_VALUES_CACHE%RHS_COEFFICIENT=1.0_DP
               EQUATIONS_MAPPING%CREATE_VALUES_CACHE%SOURCE_VARIABLE_TYPE=0
@@ -2399,7 +2403,7 @@ CONTAINS
 
     !Argument variables
     TYPE(EQUATIONS_MAPPING_TYPE), POINTER :: EQUATIONS_MAPPING !<A pointer to the equations mapping.
-    REAL(DP), INTENT(IN) :: LINEAR_MATRIX_COEFFICIENTS(:) !<The linear matrix coefficients
+    REAL(DP), INTENT(IN) :: LINEAR_MATRIX_COEFFICIENTS(:) !<LINEAR_MATRIX_COEFFICIENTS(matrixIdx). The linear matrix coefficient for the matrixIdx'th linear matrix.
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
@@ -2801,6 +2805,8 @@ CONTAINS
         & DEALLOCATE(NONLINEAR_MAPPING%EQUATIONS_ROW_TO_RESIDUAL_DOF_MAP)
       IF(ALLOCATED(NONLINEAR_MAPPING%RESIDUAL_VARIABLES)) &
         & DEALLOCATE(NONLINEAR_MAPPING%RESIDUAL_VARIABLES)
+      IF(ALLOCATED(NONLINEAR_MAPPING%RESIDUAL_COEFFICIENTS)) &
+        & DEALLOCATE(NONLINEAR_MAPPING%RESIDUAL_COEFFICIENTS)
       IF(ALLOCATED(NONLINEAR_MAPPING%VAR_TO_JACOBIAN_MAP)) &
         & DEALLOCATE(NONLINEAR_MAPPING%VAR_TO_JACOBIAN_MAP)
       IF(ALLOCATED(NONLINEAR_MAPPING%JACOBIAN_TO_VAR_MAP)) &
@@ -2840,7 +2846,6 @@ CONTAINS
         IF(err/=0) CALL FlagError("Could not allocate equations mapping nonlinear mapping.",err,error,*999)
         EQUATIONS_MAPPING%NONLINEAR_MAPPING%EQUATIONS_MAPPING=>EQUATIONS_MAPPING
         EQUATIONS_MAPPING%NONLINEAR_MAPPING%NUMBER_OF_RESIDUAL_VARIABLES=0
-        EQUATIONS_MAPPING%NONLINEAR_MAPPING%RESIDUAL_COEFFICIENT=1.0_DP
       ENDIF
     ELSE
       CALL FlagError("Equations is not associated.",ERR,ERROR,*998)
@@ -2859,23 +2864,35 @@ CONTAINS
   !
 
   !>Sets the coefficient applied to the equations set residual vector.
-  SUBROUTINE EQUATIONS_MAPPING_RESIDUAL_COEFF_SET(EQUATIONS_MAPPING,RESIDUAL_COEFFICIENT,err,error,*)
+  SUBROUTINE EQUATIONS_MAPPING_RESIDUAL_COEFFS_SET(EQUATIONS_MAPPING,RESIDUAL_COEFFICIENTS,err,error,*)
 
     !Argument variables
     TYPE(EQUATIONS_MAPPING_TYPE), POINTER :: EQUATIONS_MAPPING !<A pointer to the equations mapping to set
-    REAL(DP), INTENT(IN) :: RESIDUAL_COEFFICIENT!<The coefficient applied to the equations set residual vector.
+    REAL(DP), INTENT(IN) :: RESIDUAL_COEFFICIENTS(:) !<RESIDUAL_COEFFICIENTS(residualIdx). The coefficient applied to the residualIdx'th residual vector.
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
+    TYPE(EQUATIONS_MAPPING_CREATE_VALUES_CACHE_TYPE), POINTER :: CREATE_VALUES_CACHE
+    TYPE(VARYING_STRING) :: LOCAL_ERROR
 
-    CALL Enters("EQUATIONS_MAPPING_RESIDUAL_COEFF_SET",err,error,*999)
+    CALL Enters("EQUATIONS_MAPPING_RESIDUAL_COEFFS_SET",err,error,*999)
 
     IF(ASSOCIATED(EQUATIONS_MAPPING)) THEN
       IF(EQUATIONS_MAPPING%EQUATIONS_MAPPING_FINISHED) THEN
         CALL FlagError("Equations mapping have been finished.",err,error,*999)
       ELSE
-        IF(ASSOCIATED(EQUATIONS_MAPPING%CREATE_VALUES_CACHE)) THEN
-          EQUATIONS_MAPPING%CREATE_VALUES_CACHE%RESIDUAL_COEFFICIENT=RESIDUAL_COEFFICIENT
+        CREATE_VALUES_CACHE=>EQUATIONS_MAPPING%CREATE_VALUES_CACHE
+        IF(ASSOCIATED(CREATE_VALUES_CACHE)) THEN
+          IF(SIZE(RESIDUAL_COEFFICIENTS,1)==CREATE_VALUES_CACHE%NUMBER_OF_RESIDUAL_VARIABLES) THEN
+            CREATE_VALUES_CACHE%RESIDUAL_COEFFICIENTS=RESIDUAL_COEFFICIENTS          
+          ELSE
+            LOCAL_ERROR="Invalid size of residual coefficients. The size of the supplied array ("// &
+              & TRIM(NUMBER_TO_VSTRING(SIZE(RESIDUAL_COEFFICIENTS,1),"*",err,error))// &
+              & ") must match the number of residuals ("// &
+              & TRIM(NUMBER_TO_VSTRING(EQUATIONS_MAPPING%CREATE_VALUES_CACHE% &
+              & NUMBER_OF_RESIDUAL_VARIABLES,"*",err,error))//")."
+            CALL FlagError(LOCAL_ERROR,err,error,*999)
+          ENDIF
         ELSE
           CALL FlagError("Equations mapping create values cache is not associated",err,error,*999)
         ENDIF
@@ -2884,12 +2901,12 @@ CONTAINS
       CALL FlagError("Equations mapping is not associated",err,error,*999)
     ENDIF
        
-    CALL Exits("EQUATIONS_MAPPING_RESIDUAL_COEFF_SET")
+    CALL Exits("EQUATIONS_MAPPING_RESIDUAL_COEFFS_SET")
     RETURN
-999 CALL Errors("EQUATIONS_MAPPING_RESIDUAL_COEFF_SET",err,error)
-    CALL Exits("EQUATIONS_MAPPING_RESIDUAL_COEFF_SET")
+999 CALL Errors("EQUATIONS_MAPPING_RESIDUAL_COEFFS_SET",err,error)
+    CALL Exits("EQUATIONS_MAPPING_RESIDUAL_COEFFS_SET")
     RETURN 1
-  END SUBROUTINE EQUATIONS_MAPPING_RESIDUAL_COEFF_SET
+  END SUBROUTINE EQUATIONS_MAPPING_RESIDUAL_COEFFS_SET
 
   !
   !================================================================================================================================

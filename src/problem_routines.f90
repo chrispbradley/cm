@@ -319,8 +319,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(SOLVER_TYPE), POINTER :: SOLVER
-    TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
+   
     CALL ENTERS("PROBLEM_CELLML_EQUATIONS_SOLVE",ERR,ERROR,*999)
     
     IF(ASSOCIATED(CELLML_EQUATIONS)) THEN
@@ -1269,7 +1268,7 @@ CONTAINS
     INTEGER(INTG) :: equations_set_idx,solver_matrix_idx
     TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: SOLVER_equations
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING
     TYPE(SOLVER_MATRICES_TYPE), POINTER :: SOLVER_MATRICES
     TYPE(SOLVER_MATRIX_TYPE), POINTER :: SOLVER_MATRIX
     TYPE(VARYING_STRING) :: LOCAL_ERROR
@@ -1310,8 +1309,8 @@ CONTAINS
                   !Update the field values from the dynamic factor * current solver values AND add in mean predicted displacements/
                   CALL SOLVER_VARIABLES_DYNAMIC_NONLINEAR_UPDATE(SOLVER,ERR,ERROR,*999)
                   !Calculate the Jacobian
-                  DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
-                    EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+                  DO equations_set_idx=1,SOLVER_MAPPING%numberOfEquationsSets
+                    EQUATIONS_SET=>SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
                     !Assemble the equations for dynamic problems
                     CALL EQUATIONS_SET_JACOBIAN_EVALUATE(EQUATIONS_SET,ERR,ERROR,*999)
                   ENDDO !equations_set_idx
@@ -1325,8 +1324,8 @@ CONTAINS
                 !Copy the current solution vector to the dependent field
                 CALL SOLVER_VARIABLES_FIELD_UPDATE(SOLVER,ERR,ERROR,*999)
                 !Calculate the Jacobian
-                DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
-                  EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+                DO equations_set_idx=1,SOLVER_MAPPING%numberOfEquationsSets
+                  EQUATIONS_SET=>SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
                   !Assemble the equations for linear problems
                   CALL EQUATIONS_SET_JACOBIAN_EVALUATE(EQUATIONS_SET,ERR,ERROR,*999)
                 ENDDO !equations_set_idx
@@ -1372,7 +1371,7 @@ CONTAINS
     TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET
     TYPE(SOLVER_TYPE), POINTER :: CELLML_SOLVER,LINKING_SOLVER
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: SOLVER_EQUATIONS
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING
     TYPE(SOLVER_MATRICES_TYPE), POINTER :: SOLVER_MATRICES
     TYPE(SOLVER_MATRIX_TYPE), POINTER :: SOLVER_MATRIX
     
@@ -1424,8 +1423,8 @@ CONTAINS
                     CALL SOLVER_SOLVE(CELLML_SOLVER,ERR,ERROR,*999)
                   ENDIF
                   !Calculate the residual for each element (M, C, K and g)
-                  DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
-                    EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+                  DO equations_set_idx=1,SOLVER_MAPPING%numberOfEquationsSets
+                    EQUATIONS_SET=>SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
                     SELECT CASE(EQUATIONS_SET%EQUATIONS%LINEARITY)
                     CASE(EQUATIONS_LINEAR)            
                       !Assemble the equations for linear equations
@@ -1452,8 +1451,8 @@ CONTAINS
                   CALL SOLVER_SOLVE(CELLML_SOLVER,ERR,ERROR,*999)
                 ENDIF
                 !Make sure the equations sets are up to date
-                DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
-                  EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+                DO equations_set_idx=1,SOLVER_MAPPING%numberOfEquationsSets
+                  EQUATIONS_SET=>SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
                   SELECT CASE(EQUATIONS_SET%EQUATIONS%LINEARITY)
                   CASE(EQUATIONS_LINEAR)            
                     !Assemble the equations for linear equations
@@ -1507,7 +1506,7 @@ CONTAINS
     TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET
     TYPE(EQUATIONS_TYPE), POINTER :: EQUATIONS
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: SOLVER_EQUATIONS
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING
     TYPE(VARYING_STRING) :: LOCAL_ERROR
 
     CALL ENTERS("PROBLEM_PRE_RESIDUAL_EVALUATE",ERR,ERROR,*999)
@@ -1518,8 +1517,8 @@ CONTAINS
         IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
           SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
           IF(ASSOCIATED(SOLVER_MAPPING)) THEN
-            DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
-              EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+            DO equations_set_idx=1,SOLVER_MAPPING%numberOfEquationsSets
+              EQUATIONS_SET=>SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
               IF(ASSOCIATED(EQUATIONS_SET)) THEN
                 EQUATIONS=>EQUATIONS_SET%EQUATIONS
                 IF(ASSOCIATED(EQUATIONS)) THEN
@@ -1631,7 +1630,7 @@ CONTAINS
     TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET
     TYPE(EQUATIONS_TYPE), POINTER :: EQUATIONS
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: SOLVER_EQUATIONS
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING
     TYPE(VARYING_STRING) :: LOCAL_ERROR
 
     CALL ENTERS("PROBLEM_POST_RESIDUAL_EVALUATE",ERR,ERROR,*999)
@@ -1642,8 +1641,8 @@ CONTAINS
         IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
           SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
           IF(ASSOCIATED(SOLVER_MAPPING)) THEN
-            DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
-              EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+            DO equations_set_idx=1,SOLVER_MAPPING%numberOfEquationsSets
+              EQUATIONS_SET=>SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
               IF(ASSOCIATED(EQUATIONS_SET)) THEN
                 EQUATIONS=>EQUATIONS_SET%EQUATIONS
                 IF(ASSOCIATED(EQUATIONS)) THEN
@@ -1865,7 +1864,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local variables
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING
     TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET
     INTEGER(INTG) :: equations_set_idx
 
@@ -1875,8 +1874,8 @@ CONTAINS
       SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
       IF(ASSOCIATED(SOLVER_MAPPING)) THEN
         !Make sure the equations sets are up to date
-        DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
-          EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+        DO equations_set_idx=1,SOLVER_MAPPING%numberOfEquationsSets
+          EQUATIONS_SET=>SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
           CALL EQUATIONS_SET_LOAD_INCREMENT_APPLY(EQUATIONS_SET,SOLVER_EQUATIONS%BOUNDARY_CONDITIONS,ITERATION_NUMBER, &
             & MAXIMUM_NUMBER_OF_ITERATIONS,ERR,ERROR,*999)
         ENDDO !equations_set_idx
@@ -2230,7 +2229,7 @@ CONTAINS
     TYPE(CONTROL_LOOP_TYPE), POINTER :: CONTROL_LOOP,CONTROL_TIME_LOOP
     TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET
     TYPE(SOLVER_TYPE), POINTER :: SOLVER
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING
     TYPE(SOLVERS_TYPE), POINTER :: SOLVERS
     
     CALL ENTERS("PROBLEM_SOLVER_EQUATIONS_DYNAMIC_LINEAR_SOLVE",ERR,ERROR,*999)
@@ -2245,8 +2244,8 @@ CONTAINS
             SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
             IF(ASSOCIATED(SOLVER_MAPPING)) THEN
               !Make sure the equations sets are up to date
-              DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
-                EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+              DO equations_set_idx=1,SOLVER_MAPPING%numberOfEquationsSets
+                EQUATIONS_SET=>SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
                 !Assemble the equations for linear problems
                 CALL EQUATIONS_SET_ASSEMBLE(EQUATIONS_SET,ERR,ERROR,*999)
               ENDDO !equations_set_idx
@@ -2269,8 +2268,8 @@ CONTAINS
               !Solve for the next time i.e., current time + time increment
               CALL SOLVER_SOLVE(SOLVER,ERR,ERROR,*999)
               !Back-substitute to find flux values for linear problems
-              DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
-                EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+              DO equations_set_idx=1,SOLVER_MAPPING%numberOfEquationsSets
+                EQUATIONS_SET=>SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
                 CALL EQUATIONS_SET_BACKSUBSTITUTE(EQUATIONS_SET,SOLVER_EQUATIONS%BOUNDARY_CONDITIONS,ERR,ERROR,*999)
               ENDDO !equations_set_idx
             ELSE
@@ -2315,7 +2314,7 @@ CONTAINS
     TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET
     TYPE(SOLVER_TYPE), POINTER :: SOLVER
     TYPE(DYNAMIC_SOLVER_TYPE), POINTER :: DYNAMIC_SOLVER
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING
     TYPE(SOLVERS_TYPE), POINTER :: SOLVERS
     TYPE(VARYING_STRING) :: LOCAL_ERROR
     
@@ -2332,8 +2331,8 @@ CONTAINS
             IF(ASSOCIATED(CONTROL_LOOP)) THEN
               SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
               IF(ASSOCIATED(SOLVER_MAPPING)) THEN
-                DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
-                  EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+                DO equations_set_idx=1,SOLVER_MAPPING%numberOfEquationsSets
+                  EQUATIONS_SET=>SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
                   IF(DYNAMIC_SOLVER%RESTART.OR..NOT.DYNAMIC_SOLVER%SOLVER_INITIALISED) THEN
                     !If we need to restart or we haven't initialised yet, make sure the equations sets are up to date
                     EQUATIONS=>EQUATIONS_SET%EQUATIONS
@@ -2419,7 +2418,7 @@ CONTAINS
     TYPE(CONTROL_LOOP_TYPE), POINTER :: CONTROL_LOOP
     TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET
     TYPE(SOLVER_TYPE), POINTER :: SOLVER
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING
     TYPE(SOLVERS_TYPE), POINTER :: SOLVERS
      
     CALL ENTERS("PROBLEM_SOLVER_EQUATIONS_QUASISTATIC_LINEAR_SOLVE",ERR,ERROR,*999)
@@ -2434,8 +2433,8 @@ CONTAINS
             SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
             IF(ASSOCIATED(SOLVER_MAPPING)) THEN
               !Make sure the equations sets are up to date
-              DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
-                EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+              DO equations_set_idx=1,SOLVER_MAPPING%numberOfEquationsSets
+                EQUATIONS_SET=>SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
                 !CALL EQUATIONS_SET_FIXED_CONDITIONS_APPLY(EQUATIONS_SET,ERR,ERROR,*999)    
                 !Assemble the equations for linear problems
                 CALL EQUATIONS_SET_ASSEMBLE(EQUATIONS_SET,ERR,ERROR,*999)
@@ -2445,8 +2444,8 @@ CONTAINS
               !Solve for the current time
               CALL SOLVER_SOLVE(SOLVER,ERR,ERROR,*999)
               !Back-substitute to find flux values for linear problems
-              DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
-                EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+              DO equations_set_idx=1,SOLVER_MAPPING%numberOfEquationsSets
+                EQUATIONS_SET=>SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
                 CALL EQUATIONS_SET_BACKSUBSTITUTE(EQUATIONS_SET,SOLVER_EQUATIONS%BOUNDARY_CONDITIONS,ERR,ERROR,*999)
               ENDDO !equations_set_idx
             ELSE
@@ -2488,7 +2487,7 @@ CONTAINS
     TYPE(CONTROL_LOOP_TYPE), POINTER :: CONTROL_LOOP
     TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET
     TYPE(SOLVER_TYPE), POINTER :: SOLVER
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING
     TYPE(SOLVERS_TYPE), POINTER :: SOLVERS
    
     CALL ENTERS("PROBLEM_SOLVER_EQUATIONS_QUASISTATIC_NONLINEAR_SOLVE",ERR,ERROR,*999)
@@ -2503,8 +2502,8 @@ CONTAINS
             SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
             IF(ASSOCIATED(SOLVER_MAPPING)) THEN
               !Make sure the equations sets are up to date
-              DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
-                EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+              DO equations_set_idx=1,SOLVER_MAPPING%numberOfEquationsSets
+                EQUATIONS_SET=>SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
                 !CALL EQUATIONS_SET_FIXED_CONDITIONS_APPLY(EQUATIONS_SET,ERR,ERROR,*999)    
                 !Assemble the equations for linear problems
                 CALL EQUATIONS_SET_ASSEMBLE(EQUATIONS_SET,ERR,ERROR,*999)
@@ -2555,7 +2554,7 @@ CONTAINS
     TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET
     TYPE(INTERFACE_CONDITION_TYPE), POINTER :: INTERFACE_CONDITION
     TYPE(SOLVER_TYPE), POINTER :: SOLVER
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING
     
 #ifdef TAUPROF
     CHARACTER(12) :: CVAR
@@ -2571,13 +2570,13 @@ CONTAINS
         SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
         IF(ASSOCIATED(SOLVER_MAPPING)) THEN
           !Make sure the equations sets are up to date
-          DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
+          DO equations_set_idx=1,SOLVER_MAPPING%numberOfEquationsSets
 #ifdef TAUPROF
             WRITE (CVAR,'(a8,i2)') 'Assemble',equations_set_idx
             CALL TAU_PHASE_CREATE_DYNAMIC(PHASE,CVAR)
             CALL TAU_PHASE_START(PHASE)
 #endif
-            EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+            EQUATIONS_SET=>SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
             !CALL EQUATIONS_SET_FIXED_CONDITIONS_APPLY(EQUATIONS_SET,ERR,ERROR,*999)    
             !Assemble the equations for linear problems
             CALL EQUATIONS_SET_ASSEMBLE(EQUATIONS_SET,ERR,ERROR,*999)
@@ -2586,13 +2585,13 @@ CONTAINS
 #endif
           ENDDO !equations_set_idx          
           !Make sure the interface matrices are up to date
-          DO interface_condition_idx=1,SOLVER_MAPPING%NUMBER_OF_INTERFACE_CONDITIONS
+          DO interface_condition_idx=1,SOLVER_MAPPING%numberOfInterfaceConditions
 #ifdef TAUPROF
             WRITE (CVAR,'(a8,i2)') 'Interface',interface_condition_idx
             CALL TAU_PHASE_CREATE_DYNAMIC(PHASE,CVAR)
             CALL TAU_PHASE_START(PHASE)
 #endif
-            INTERFACE_CONDITION=>SOLVER_MAPPING%INTERFACE_CONDITIONS(interface_condition_idx)%PTR
+            INTERFACE_CONDITION=>SOLVER_MAPPING%interfaceConditions(interface_condition_idx)%PTR
             CALL INTERFACE_CONDITION_ASSEMBLE(INTERFACE_CONDITION,ERR,ERROR,*999)
 #ifdef TAUPROF
             CALL TAU_PHASE_STOP(PHASE)
@@ -2606,8 +2605,8 @@ CONTAINS
           CALL TAU_STATIC_PHASE_START('EQUATIONS_SET_BACKSUBSTITUTE()')
 #endif
           !Back-substitute to find flux values for linear problems
-          DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
-            EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+          DO equations_set_idx=1,SOLVER_MAPPING%numberOfEquationsSets
+            EQUATIONS_SET=>SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
             CALL EQUATIONS_SET_BACKSUBSTITUTE(EQUATIONS_SET,SOLVER_EQUATIONS%BOUNDARY_CONDITIONS,ERR,ERROR,*999)
           ENDDO !equations_set_idx
 #ifdef TAUPROF
@@ -2647,7 +2646,7 @@ CONTAINS
     TYPE(EQUATIONS_TYPE), POINTER :: EQUATIONS
     TYPE(INTERFACE_CONDITION_TYPE), POINTER :: INTERFACE_CONDITION
     TYPE(SOLVER_TYPE), POINTER :: SOLVER
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING
     
 #ifdef TAUPROF
     CHARACTER(12) :: CVAR
@@ -2662,19 +2661,19 @@ CONTAINS
         SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
         IF(ASSOCIATED(SOLVER_MAPPING)) THEN
           !Apply boundary conditition
-          DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
-            EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+          DO equations_set_idx=1,SOLVER_MAPPING%numberOfEquationsSets
+            EQUATIONS_SET=>SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
             !Assemble the equations set
             CALL EQUATIONS_SET_ASSEMBLE(EQUATIONS_SET,ERR,ERROR,*999)
           ENDDO !equations_set_idx          
           !Make sure the interface matrices are up to date
-          DO interface_condition_idx=1,SOLVER_MAPPING%NUMBER_OF_INTERFACE_CONDITIONS
+          DO interface_condition_idx=1,SOLVER_MAPPING%numberOfInterfaceConditions
 #ifdef TAUPROF
             WRITE (CVAR,'(a8,i2)') 'Interface',interface_condition_idx
             CALL TAU_PHASE_CREATE_DYNAMIC(PHASE,CVAR)
             CALL TAU_PHASE_START(PHASE)
 #endif
-            INTERFACE_CONDITION=>SOLVER_MAPPING%INTERFACE_CONDITIONS(interface_condition_idx)%PTR
+            INTERFACE_CONDITION=>SOLVER_MAPPING%interfaceConditions(interface_condition_idx)%PTR
             CALL INTERFACE_CONDITION_ASSEMBLE(INTERFACE_CONDITION,ERR,ERROR,*999)
 #ifdef TAUPROF
             CALL TAU_PHASE_STOP(PHASE)
@@ -2684,8 +2683,8 @@ CONTAINS
           CALL SOLVER_SOLVE(SOLVER,ERR,ERROR,*999)
           !Update the rhs field variable with residuals or backsubstitute for any linear
           !equations sets
-          DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
-            EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+          DO equations_set_idx=1,SOLVER_MAPPING%numberOfEquationsSets
+            EQUATIONS_SET=>SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
             EQUATIONS=>EQUATIONS_SET%EQUATIONS
             IF(ASSOCIATED(EQUATIONS)) THEN
               SELECT CASE(EQUATIONS%LINEARITY)
@@ -2832,7 +2831,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: equations_set_idx
     TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: BOUNDARY_CONDITIONS
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING
     TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET
 
     CALL ENTERS("PROBLEM_SOLVER_EQUATIONS_BOUNDARY_CONDITIONS_ANALYTIC",ERR,ERROR,*999)
@@ -2843,8 +2842,8 @@ CONTAINS
         IF(ASSOCIATED(BOUNDARY_CONDITIONS)) THEN
           SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
           IF(ASSOCIATED(SOLVER_MAPPING)) THEN
-            DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
-              EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+            DO equations_set_idx=1,SOLVER_MAPPING%numberOfEquationsSets
+              EQUATIONS_SET=>SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
               IF(ASSOCIATED(EQUATIONS_SET)) THEN
                 CALL EQUATIONS_SET_BOUNDARY_CONDITIONS_ANALYTIC(EQUATIONS_SET,BOUNDARY_CONDITIONS,ERR,ERROR,*999)
               ELSE
@@ -3295,8 +3294,7 @@ CONTAINS
     !Local Variables
     TYPE(SOLVERS_TYPE), POINTER :: SOLVERS !<A pointer the solvers to update the variables from
     TYPE(SOLVER_TYPE), POINTER :: SOLVER !<A pointer the solver to update the variables from
-    TYPE(CONTROL_LOOP_TYPE), POINTER :: CONTROL_LOOP2 !<A pointer the sub control loop
-    INTEGER(INTG) :: solver_idx,loop_idx
+    INTEGER(INTG) :: solver_idx
 
     NULLIFY(SOLVER)
 

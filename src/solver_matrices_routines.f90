@@ -1,4 +1,4 @@
-!> \file
+ !> \file
 !> \author Chris Bradley
 !> \brief This module handles all solver matrix and rhs routines.
 !>
@@ -91,6 +91,8 @@ MODULE SOLVER_MATRICES_ROUTINES
   PUBLIC SOLVER_MATRICES_CREATE_FINISH,SOLVER_MATRICES_CREATE_START,SOLVER_MATRICES_DESTROY,SOLVER_MATRICES_LIBRARY_TYPE_SET, &
     & SOLVER_MATRICES_OUTPUT,SOLVER_MATRICES_STORAGE_TYPE_SET
 
+  PUBLIC SolverVector_EquationsVectorsAdd
+
 CONTAINS
 
   !
@@ -109,7 +111,7 @@ CONTAINS
     INTEGER(INTG), POINTER :: COLUMN_INDICES(:),ROW_INDICES(:)
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: ROW_DOMAIN_MAP,COLUMN_DOMAIN_MAP
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: SOLVER_EQUATIONS
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING
     TYPE(SOLVER_MATRIX_TYPE), POINTER :: SOLVER_MATRIX
     TYPE(VARYING_STRING) :: DUMMY_ERROR
 
@@ -127,12 +129,12 @@ CONTAINS
           SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
           IF(ASSOCIATED(SOLVER_MAPPING)) THEN
             !Now create the individual solver matrices
-            ROW_DOMAIN_MAP=>SOLVER_MAPPING%ROW_DOFS_MAPPING
+            ROW_DOMAIN_MAP=>SOLVER_MAPPING%rowDofsMapping
             IF(ASSOCIATED(ROW_DOMAIN_MAP)) THEN
               DO matrix_idx=1,SOLVER_MATRICES%NUMBER_OF_MATRICES
                 SOLVER_MATRIX=>SOLVER_MATRICES%MATRICES(matrix_idx)%PTR
                 IF(ASSOCIATED(SOLVER_MATRIX)) THEN
-                  COLUMN_DOMAIN_MAP=>SOLVER_MAPPING%SOLVER_COL_TO_EQUATIONS_COLS_MAP(matrix_idx)%COLUMN_DOFS_MAPPING
+                  COLUMN_DOMAIN_MAP=>SOLVER_MAPPING%solverColToEquationsColsMap(matrix_idx)%columnDofsMapping
                   IF(ASSOCIATED(COLUMN_DOMAIN_MAP)) THEN
                     !!Create the distributed solver matrix
                     CALL DISTRIBUTED_MATRIX_CREATE_START(ROW_DOMAIN_MAP,COLUMN_DOMAIN_MAP,SOLVER_MATRICES%MATRICES(matrix_idx)% &
@@ -329,7 +331,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     INTEGER(INTG) :: DUMMY_ERR,equations_matrix_idx,equations_set_idx,matrix_idx
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING
     TYPE(VARYING_STRING) :: DUMMY_ERROR
 
     CALL ENTERS("SOLVER_MATRICES_INITIALISE",ERR,ERROR,*998)
@@ -345,40 +347,40 @@ CONTAINS
           SOLVER_EQUATIONS%SOLVER_MATRICES%SOLVER_EQUATIONS=>SOLVER_EQUATIONS
           SOLVER_EQUATIONS%SOLVER_MATRICES%SOLVER_MATRICES_FINISHED=.FALSE.
           SOLVER_EQUATIONS%SOLVER_MATRICES%SOLVER_MAPPING=>SOLVER_MAPPING
-          SOLVER_EQUATIONS%SOLVER_MATRICES%NUMBER_OF_ROWS=SOLVER_MAPPING%NUMBER_OF_ROWS
-          SOLVER_EQUATIONS%SOLVER_MATRICES%NUMBER_OF_GLOBAL_ROWS=SOLVER_MAPPING%NUMBER_OF_GLOBAL_ROWS
+          SOLVER_EQUATIONS%SOLVER_MATRICES%NUMBER_OF_ROWS=SOLVER_MAPPING%numberOfRows
+          SOLVER_EQUATIONS%SOLVER_MATRICES%NUMBER_OF_GLOBAL_ROWS=SOLVER_MAPPING%numberOfGlobalRows
           SOLVER_EQUATIONS%SOLVER_MATRICES%LIBRARY_TYPE=DISTRIBUTED_MATRIX_VECTOR_PETSC_TYPE
-          SOLVER_EQUATIONS%SOLVER_MATRICES%NUMBER_OF_MATRICES=SOLVER_MAPPING%NUMBER_OF_SOLVER_MATRICES
-          ALLOCATE(SOLVER_EQUATIONS%SOLVER_MATRICES%MATRICES(SOLVER_MAPPING%NUMBER_OF_SOLVER_MATRICES),STAT=ERR)
+          SOLVER_EQUATIONS%SOLVER_MATRICES%NUMBER_OF_MATRICES=SOLVER_MAPPING%numberOfSolverMatrices
+          ALLOCATE(SOLVER_EQUATIONS%SOLVER_MATRICES%MATRICES(SOLVER_MAPPING%numberOfSolverMatrices),STAT=ERR)
           IF(ERR/=0) CALL FLAG_ERROR("Could not allocate solver matrices matrices.",ERR,ERROR,*999)
-          DO matrix_idx=1,SOLVER_MAPPING%NUMBER_OF_SOLVER_MATRICES
+          DO matrix_idx=1,SOLVER_MAPPING%numberOfSolverMatrices
             NULLIFY(SOLVER_EQUATIONS%SOLVER_MATRICES%MATRICES(matrix_idx)%PTR)
             CALL SOLVER_MATRIX_INITIALISE(SOLVER_EQUATIONS%SOLVER_MATRICES,matrix_idx,ERR,ERROR,*999)
-            DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
-              IF(ALLOCATED(SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)%EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM( &
-                & matrix_idx)%DYNAMIC_EQUATIONS_TO_SOLVER_MATRIX_MAPS)) THEN
-                DO equations_matrix_idx=1,SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                  & EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM(matrix_idx)%NUMBER_OF_DYNAMIC_EQUATIONS_MATRICES
+            DO equations_set_idx=1,SOLVER_MAPPING%numberOfEquationsSets
+              IF(ALLOCATED(SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)%equationsToSolverMatrixMapsSm( &
+                & matrix_idx)%dynamicEquationsToSolverMatrixMaps)) THEN
+                DO equations_matrix_idx=1,SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                  & equationsToSolverMatrixMapsSm(matrix_idx)%numberOfDynamicEquationsMatrices
                   !Add the solver matrix to the solvers mapping
-                  SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)%EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM( &
-                    & matrix_idx)%DYNAMIC_EQUATIONS_TO_SOLVER_MATRIX_MAPS(equations_matrix_idx)%PTR%SOLVER_MATRIX=> &
+                  SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)%equationsToSolverMatrixMapsSm( &
+                    & matrix_idx)%dynamicEquationsToSolverMatrixMaps(equations_matrix_idx)%ptr%solverMatrix=> &
                     & SOLVER_EQUATIONS%SOLVER_MATRICES%MATRICES(matrix_idx)%PTR
                 ENDDO !equations_matrix_idx
               ELSE
-                IF(ALLOCATED(SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                  & EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM(matrix_idx)%JACOBIAN_TO_SOLVER_MATRIX_MAPS)) THEN
-                  DO equations_matrix_idx=1,SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                    & EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM(matrix_idx)%NUMBER_OF_EQUATIONS_JACOBIANS
-                    SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                      & EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM(matrix_idx)%JACOBIAN_TO_SOLVER_MATRIX_MAPS(equations_matrix_idx)%PTR% &
-                      & SOLVER_MATRIX=>SOLVER_EQUATIONS%SOLVER_MATRICES%MATRICES(matrix_idx)%PTR
+                IF(ALLOCATED(SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                  & equationsToSolverMatrixMapsSm(matrix_idx)%jacobianToSolverMatrixMaps)) THEN
+                  DO equations_matrix_idx=1,SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                    & equationsToSolverMatrixMapsSm(matrix_idx)%numberOfEquationsJacobians
+                    SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                      & equationsToSolverMatrixMapsSm(matrix_idx)%jacobianToSolverMatrixMaps(equations_matrix_idx)%ptr% &
+                      & solverMatrix=>SOLVER_EQUATIONS%SOLVER_MATRICES%MATRICES(matrix_idx)%PTR
                   ENDDO
                 ELSE
-                  DO equations_matrix_idx=1,SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                    & EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM(matrix_idx)%NUMBER_OF_LINEAR_EQUATIONS_MATRICES
+                  DO equations_matrix_idx=1,SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                    & equationsToSolverMatrixMapsSm(matrix_idx)%numberOfLinearEquationsMatrices
                     !Add the solver matrix to the solvers mapping
-                    SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)%EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM( &
-                      & matrix_idx)%LINEAR_EQUATIONS_TO_SOLVER_MATRIX_MAPS(equations_matrix_idx)%PTR%SOLVER_MATRIX=> &
+                    SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)%equationsToSolverMatrixMapsSm( &
+                      & matrix_idx)%linearEquationsToSolverMatrixMaps(equations_matrix_idx)%ptr%solverMatrix=> &
                       & SOLVER_EQUATIONS%SOLVER_MATRICES%MATRICES(matrix_idx)%PTR
                   ENDDO !equations_matrix_idx
                 ENDIF
@@ -702,8 +704,8 @@ CONTAINS
     TYPE(EQUATIONS_MATRICES_TYPE), POINTER :: EQUATIONS_MATRICES
     TYPE(EQUATIONS_MATRICES_DYNAMIC_TYPE), POINTER :: DYNAMIC_MATRICES
     TYPE(EQUATIONS_MATRICES_LINEAR_TYPE), POINTER :: LINEAR_MATRICES
-    TYPE(EQUATIONS_TO_SOLVER_MAPS_TYPE), POINTER :: EQUATIONS_TO_SOLVER_MAP
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING
+    TYPE(EquationsToSolverMapsType), POINTER :: EQUATIONS_TO_SOLVER_MAP
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING
     TYPE(SOLVER_MATRICES_TYPE), POINTER :: SOLVER_MATRICES
     TYPE(VARYING_STRING) :: LOCAL_ERROR
     
@@ -727,10 +729,10 @@ CONTAINS
                   ENDIF
                   IF(ASSOCIATED(EQUATIONS_MATRICES)) THEN
                     IF(EQUATIONS_MATRICES%EQUATIONS_MATRICES_FINISHED) THEN
-                      IF(equations_set_idx>0.AND.equations_set_idx<=SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS) THEN
-                        EQUATIONS_TO_SOLVER_MAP=>SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                          & EQUATIONS_TO_SOLVER_MATRIX_MAPS_EM(EQUATIONS_MATRIX%MATRIX_NUMBER)% &
-                          & EQUATIONS_TO_SOLVER_MATRIX_MAPS(SOLVER_MATRIX%MATRIX_NUMBER)%PTR
+                      IF(equations_set_idx>0.AND.equations_set_idx<=SOLVER_MAPPING%numberOfEquationsSets) THEN
+                        EQUATIONS_TO_SOLVER_MAP=>SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                          & equationsToSolverMatrixMapsEm(EQUATIONS_MATRIX%MATRIX_NUMBER)% &
+                          & equationsToSolverMatrixMaps(SOLVER_MATRIX%MATRIX_NUMBER)%PTR
                         IF(ASSOCIATED(EQUATIONS_TO_SOLVER_MAP)) THEN
                           SOLVER_DISTRIBUTED_MATRIX=>SOLVER_MATRIX%MATRIX
                           IF(ASSOCIATED(SOLVER_DISTRIBUTED_MATRIX)) THEN
@@ -744,24 +746,24 @@ CONTAINS
                                 !Loop over the rows of the equations matrix
                                 DO equations_row_number=1,EQUATIONS_MATRICES%NUMBER_OF_ROWS
                                   !Loop over the solution rows this equations row is mapped to
-                                  DO solver_row_idx=1,SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                                    & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number)%NUMBER_OF_SOLVER_ROWS
-                                    solver_row_number=SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                                      & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number)% &
-                                      & SOLVER_ROWS(solver_row_idx)
-                                    row_coupling_coefficient=SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP( &
-                                      & equations_set_idx)%EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number)% &
-                                      & COUPLING_COEFFICIENTS(solver_row_idx)
+                                  DO solver_row_idx=1,SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                                    & equationsRowToSolverRowsMaps(equations_row_number)%numberOfSolverRows
+                                    solver_row_number=SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                                      & equationsRowToSolverRowsMaps(equations_row_number)% &
+                                      & solverRows(solver_row_idx)
+                                    row_coupling_coefficient=SOLVER_MAPPING%equationsSetToSolverMap( &
+                                      & equations_set_idx)%equationsRowToSolverRowsMaps(equations_row_number)% &
+                                      & couplingCoefficients(solver_row_idx)
                                     !Loop over the columns of the equations matrix
                                     DO equations_column_number=1,EQUATIONS_MATRIX%NUMBER_OF_COLUMNS
                                       !Loop over the solution columns this equations column is mapped to
-                                      DO solver_column_idx=1,EQUATIONS_TO_SOLVER_MAP%EQUATIONS_COL_TO_SOLVER_COLS_MAP( &
-                                        & equations_column_number)%NUMBER_OF_SOLVER_COLS
-                                        solver_column_number=EQUATIONS_TO_SOLVER_MAP%EQUATIONS_COL_TO_SOLVER_COLS_MAP( &
-                                          & equations_column_number)%SOLVER_COLS(solver_column_idx)
+                                      DO solver_column_idx=1,EQUATIONS_TO_SOLVER_MAP%equationsColToSolverColsMap( &
+                                        & equations_column_number)%numberOfSolverCols
+                                        solver_column_number=EQUATIONS_TO_SOLVER_MAP%equationsColToSolverColsMap( &
+                                          & equations_column_number)%solverCols(solver_column_idx)
                                         column_coupling_coefficient=EQUATIONS_TO_SOLVER_MAP% &
-                                          & EQUATIONS_COL_TO_SOLVER_COLS_MAP(equations_column_number)% &
-                                          & COUPLING_COEFFICIENTS(solver_column_idx)
+                                          & equationsColToSolverColsMap(equations_column_number)% &
+                                          & couplingCoefficients(solver_column_idx)
                                         !Add in the solver matrix value
                                         VALUE=ALPHA*EQUATIONS_MATRIX_DATA(equations_row_number+ &
                                           & (equations_column_number-1)*EQUATIONS_MATRICES%TOTAL_NUMBER_OF_ROWS)* &
@@ -776,23 +778,23 @@ CONTAINS
                                 !Loop over the rows of the equations matrix
                                 DO equations_row_number=1,EQUATIONS_MATRICES%NUMBER_OF_ROWS
                                   !Loop over the solution rows this equations row is mapped to
-                                  DO solver_row_idx=1,SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                                    & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number)%NUMBER_OF_SOLVER_ROWS
-                                    solver_row_number=SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                                      & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number)% &
-                                      & SOLVER_ROWS(solver_row_idx)
-                                    row_coupling_coefficient=SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP( &
-                                      & equations_set_idx)%EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number)% &
-                                      & COUPLING_COEFFICIENTS(solver_row_idx)
+                                  DO solver_row_idx=1,SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                                    & equationsRowToSolverRowsMaps(equations_row_number)%numberOfSolverRows
+                                    solver_row_number=SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                                      & equationsRowToSolverRowsMaps(equations_row_number)% &
+                                      & solverRows(solver_row_idx)
+                                    row_coupling_coefficient=SOLVER_MAPPING%equationsSetToSolverMap( &
+                                      & equations_set_idx)%equationsRowToSolverRowsMaps(equations_row_number)% &
+                                      & couplingCoefficients(solver_row_idx)
                                     equations_column_number=equations_row_number
                                     !Loop over the solution columns this equations column is mapped to
-                                    DO solver_column_idx=1,EQUATIONS_TO_SOLVER_MAP%EQUATIONS_COL_TO_SOLVER_COLS_MAP( &
-                                      & equations_column_number)%NUMBER_OF_SOLVER_COLS
-                                      solver_column_number=EQUATIONS_TO_SOLVER_MAP%EQUATIONS_COL_TO_SOLVER_COLS_MAP( &
-                                        & equations_column_number)%SOLVER_COLS(solver_column_idx)
+                                    DO solver_column_idx=1,EQUATIONS_TO_SOLVER_MAP%equationsColToSolverColsMap( &
+                                      & equations_column_number)%numberOfSolverCols
+                                      solver_column_number=EQUATIONS_TO_SOLVER_MAP%equationsColToSolverColsMap( &
+                                        & equations_column_number)%solverCols(solver_column_idx)
                                       column_coupling_coefficient=EQUATIONS_TO_SOLVER_MAP% &
-                                        & EQUATIONS_COL_TO_SOLVER_COLS_MAP(equations_column_number)% &
-                                        & COUPLING_COEFFICIENTS(solver_column_idx)
+                                        & equationsColToSolverColsMap(equations_column_number)% &
+                                        & couplingCoefficients(solver_column_idx)
                                       !Add in the solver matrix value
                                       VALUE=ALPHA*EQUATIONS_MATRIX_DATA(equations_row_number)* &
                                         & row_coupling_coefficient*column_coupling_coefficient
@@ -811,25 +813,25 @@ CONTAINS
                                 !Loop over the rows of the equations matrix
                                 DO equations_row_number=1,EQUATIONS_MATRICES%NUMBER_OF_ROWS
                                   !Loop over the solution rows this equations row is mapped to
-                                  DO solver_row_idx=1,SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                                    & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number)%NUMBER_OF_SOLVER_ROWS
-                                    solver_row_number=SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                                      & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number)% &
-                                      & SOLVER_ROWS(solver_row_idx)
-                                    row_coupling_coefficient=SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP( &
-                                      & equations_set_idx)%EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number)% &
-                                      & COUPLING_COEFFICIENTS(solver_row_idx)
+                                  DO solver_row_idx=1,SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                                    & equationsRowToSolverRowsMaps(equations_row_number)%numberOfSolverRows
+                                    solver_row_number=SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                                      & equationsRowToSolverRowsMaps(equations_row_number)% &
+                                      & solverRows(solver_row_idx)
+                                    row_coupling_coefficient=SOLVER_MAPPING%equationsSetToSolverMap( &
+                                      & equations_set_idx)%equationsRowToSolverRowsMaps(equations_row_number)% &
+                                      & couplingCoefficients(solver_row_idx)
                                     !Loop over the columns of the equations matrix
                                     DO equations_column_idx=ROW_INDICES(equations_row_number),ROW_INDICES(equations_row_number+1)-1
                                       equations_column_number=COLUMN_INDICES(equations_column_idx)
                                       !Loop over the solution columns this equations column is mapped to
-                                      DO solver_column_idx=1,EQUATIONS_TO_SOLVER_MAP%EQUATIONS_COL_TO_SOLVER_COLS_MAP( &
-                                        & equations_column_number)%NUMBER_OF_SOLVER_COLS
-                                        solver_column_number=EQUATIONS_TO_SOLVER_MAP%EQUATIONS_COL_TO_SOLVER_COLS_MAP( &
-                                          & equations_column_number)%SOLVER_COLS(solver_column_idx)
+                                      DO solver_column_idx=1,EQUATIONS_TO_SOLVER_MAP%equationsColToSolverColsMap( &
+                                        & equations_column_number)%numberOfSolverCols
+                                        solver_column_number=EQUATIONS_TO_SOLVER_MAP%equationsColToSolverColsMap( &
+                                          & equations_column_number)%solverCols(solver_column_idx)
                                         column_coupling_coefficient=EQUATIONS_TO_SOLVER_MAP% &
-                                          & EQUATIONS_COL_TO_SOLVER_COLS_MAP(equations_column_number)% &
-                                          & COUPLING_COEFFICIENTS(solver_column_idx)
+                                          & equationsColToSolverColsMap(equations_column_number)% &
+                                          & couplingCoefficients(solver_column_idx)
                                         !Add in the solver matrix value
                                         VALUE=ALPHA*EQUATIONS_MATRIX_DATA(equations_column_idx)*row_coupling_coefficient* &
                                           & column_coupling_coefficient
@@ -863,7 +865,7 @@ CONTAINS
                         LOCAL_ERROR="The specified equations set index of "// &
                           & TRIM(NUMBER_TO_VSTRING(equations_set_idx,"*",ERR,ERROR))// &
                           & " is invalid. The equations set index needs to be between 1 and "// &
-                          & TRIM(NUMBER_TO_VSTRING(SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS,"*",ERR,ERROR))//"."
+                          & TRIM(NUMBER_TO_VSTRING(SOLVER_MAPPING%numberOfEquationsSets,"*",ERR,ERROR))//"."
                         CALL FLAG_ERROR(LOCAL_ERROR,ERR,ERROR,*999)
                       ENDIF
                     ELSE
@@ -921,8 +923,8 @@ CONTAINS
     REAL(DP), POINTER :: INTERFACE_MATRIX_DATA(:)
     TYPE(DISTRIBUTED_MATRIX_TYPE), POINTER :: INTERFACE_DISTRIBUTED_MATRIX,SOLVER_DISTRIBUTED_MATRIX
     TYPE(INTERFACE_MATRICES_TYPE), POINTER :: INTERFACE_MATRICES
-    TYPE(INTERFACE_TO_SOLVER_MAPS_TYPE), POINTER :: INTERFACE_TO_SOLVER_MAP
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING
+    TYPE(InterfaceToSolverMapsType), POINTER :: INTERFACE_TO_SOLVER_MAP
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING
     TYPE(SOLVER_MATRICES_TYPE), POINTER :: SOLVER_MATRICES
     TYPE(VARYING_STRING) :: LOCAL_ERROR
     
@@ -939,9 +941,9 @@ CONTAINS
                 INTERFACE_MATRICES=>INTERFACE_MATRIX%INTERFACE_MATRICES
                 IF(ASSOCIATED(INTERFACE_MATRICES)) THEN
                   IF(INTERFACE_MATRICES%INTERFACE_MATRICES_FINISHED) THEN
-                    IF(interface_condition_idx>0.AND.interface_condition_idx<=SOLVER_MAPPING%NUMBER_OF_INTERFACE_CONDITIONS) THEN
-                      INTERFACE_TO_SOLVER_MAP=>SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
-                        & INTERFACE_TO_SOLVER_MATRIX_MAPS_IM(INTERFACE_MATRIX%MATRIX_NUMBER)%INTERFACE_TO_SOLVER_MATRIX_MAPS( &
+                    IF(interface_condition_idx>0.AND.interface_condition_idx<=SOLVER_MAPPING%numberOfInterfaceConditions) THEN
+                      INTERFACE_TO_SOLVER_MAP=>SOLVER_MAPPING%interfaceConditionToSolverMap(interface_condition_idx)% &
+                        & interfaceToSolverMatrixMapsIm(INTERFACE_MATRIX%MATRIX_NUMBER)%interfaceToSolverMatrixMaps( &
                         & SOLVER_MATRIX%MATRIX_NUMBER)%PTR
                       IF(ASSOCIATED(INTERFACE_TO_SOLVER_MAP)) THEN
                         SOLVER_DISTRIBUTED_MATRIX=>SOLVER_MATRIX%MATRIX
@@ -956,30 +958,30 @@ CONTAINS
                               !Loop over the rows of the interface matrix
                               DO interface_row_number=1,INTERFACE_MATRIX%NUMBER_OF_ROWS
                                 !Loop over the solution rows this interface row is mapped to
-                                DO solver_row_idx=1,SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
-                                  & INTERFACE_TO_SOLVER_MATRIX_MAPS_IM(INTERFACE_MATRIX%MATRIX_NUMBER)% &
-                                  & INTERFACE_ROW_TO_SOLVER_ROWS_MAP(interface_row_number)%NUMBER_OF_SOLVER_ROWS
-                                  solver_row_number=SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
-                                    & INTERFACE_TO_SOLVER_MATRIX_MAPS_IM(INTERFACE_MATRIX%MATRIX_NUMBER)% &
-                                    & INTERFACE_ROW_TO_SOLVER_ROWS_MAP(interface_row_number)%SOLVER_ROW
-                                  row_coupling_coefficient=SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP( &
-                                    & interface_condition_idx)%INTERFACE_TO_SOLVER_MATRIX_MAPS_IM(INTERFACE_MATRIX%MATRIX_NUMBER)% &
-                                    & INTERFACE_ROW_TO_SOLVER_ROWS_MAP(interface_row_number)%COUPLING_COEFFICIENT
+                                DO solver_row_idx=1,SOLVER_MAPPING%interfaceConditionToSolverMap(interface_condition_idx)% &
+                                  & interfaceToSolverMatrixMapsIm(INTERFACE_MATRIX%MATRIX_NUMBER)% &
+                                  & interfaceRowToSolverRowsMap(interface_row_number)%numberOfSolverRows
+                                  solver_row_number=SOLVER_MAPPING%interfaceConditionToSolverMap(interface_condition_idx)% &
+                                    & interfaceToSolverMatrixMapsIm(INTERFACE_MATRIX%MATRIX_NUMBER)% &
+                                    & interfaceRowToSolverRowsMap(interface_row_number)%solverRow
+                                  row_coupling_coefficient=SOLVER_MAPPING%interfaceConditionToSolverMap( &
+                                    & interface_condition_idx)%interfaceToSolverMatrixMapsIm(INTERFACE_MATRIX%MATRIX_NUMBER)% &
+                                    & interfaceRowToSolverRowsMap(interface_row_number)%couplingCoefficient
                                   !Loop over the columns of the interface matrix
                                   DO interface_column_number=1,INTERFACE_MATRICES%TOTAL_NUMBER_OF_COLUMNS
                                     !Loop over the solution columns this interface column is mapped to
-                                    DO solver_column_idx=1,SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP( &
-                                      & interface_condition_idx)%INTERFACE_TO_SOLVER_MATRIX_MAPS_SM( &
-                                      & SOLVER_MATRIX%MATRIX_NUMBER)%INTERFACE_COL_TO_SOLVER_COLS_MAP( &
-                                      & interface_column_number)%NUMBER_OF_SOLVER_COLS
-                                      solver_column_number=SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP( &
-                                        & interface_condition_idx)%INTERFACE_TO_SOLVER_MATRIX_MAPS_SM( &
-                                        & SOLVER_MATRIX%MATRIX_NUMBER)%INTERFACE_COL_TO_SOLVER_COLS_MAP( &
-                                        & interface_column_number)%SOLVER_COLS(solver_column_idx)
-                                      column_coupling_coefficient=SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP( &
-                                        & interface_condition_idx)%INTERFACE_TO_SOLVER_MATRIX_MAPS_SM( &
-                                        & SOLVER_MATRIX%MATRIX_NUMBER)%INTERFACE_COL_TO_SOLVER_COLS_MAP( &
-                                        & interface_column_number)%COUPLING_COEFFICIENTS(solver_column_idx)
+                                    DO solver_column_idx=1,SOLVER_MAPPING%interfaceConditionToSolverMap( &
+                                      & interface_condition_idx)%interfaceToSolverMatrixMapsSm( &
+                                      & SOLVER_MATRIX%MATRIX_NUMBER)%interfaceColToSolverColsMap( &
+                                      & interface_column_number)%numberOfSolverCols
+                                      solver_column_number=SOLVER_MAPPING%interfaceConditionToSolverMap( &
+                                        & interface_condition_idx)%interfaceToSolverMatrixMapsSm( &
+                                        & SOLVER_MATRIX%MATRIX_NUMBER)%interfaceColToSolverColsMap( &
+                                        & interface_column_number)%solverCols(solver_column_idx)
+                                      column_coupling_coefficient=SOLVER_MAPPING%interfaceConditionToSolverMap( &
+                                        & interface_condition_idx)%interfaceToSolverMatrixMapsSm( &
+                                        & SOLVER_MATRIX%MATRIX_NUMBER)%interfaceColToSolverColsMap( &
+                                        & interface_column_number)%couplingCoefficients(solver_column_idx)
                                       !Add in the solver matrix value
                                       VALUE=ALPHA*INTERFACE_MATRIX_DATA(interface_row_number+ &
                                         & (interface_column_number-1)*INTERFACE_MATRIX%TOTAL_NUMBER_OF_ROWS)* &
@@ -994,29 +996,29 @@ CONTAINS
                               !Loop over the rows of the interface matrix
                               DO interface_row_number=1,INTERFACE_MATRIX%NUMBER_OF_ROWS
                                 !Loop over the solution rows this interface row is mapped to
-                                DO solver_row_idx=1,SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
-                                  & INTERFACE_TO_SOLVER_MATRIX_MAPS_IM(INTERFACE_MATRIX%MATRIX_NUMBER)% &
-                                  & INTERFACE_ROW_TO_SOLVER_ROWS_MAP(interface_row_number)%NUMBER_OF_SOLVER_ROWS
-                                  solver_row_number=SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
-                                    & INTERFACE_TO_SOLVER_MATRIX_MAPS_IM(INTERFACE_MATRIX%MATRIX_NUMBER)% &
-                                    & INTERFACE_ROW_TO_SOLVER_ROWS_MAP(interface_row_number)%SOLVER_ROW
-                                  row_coupling_coefficient=SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP( &
-                                    & interface_condition_idx)%INTERFACE_TO_SOLVER_MATRIX_MAPS_IM(INTERFACE_MATRIX%MATRIX_NUMBER)% &
-                                    & INTERFACE_ROW_TO_SOLVER_ROWS_MAP(interface_row_number)%COUPLING_COEFFICIENT
+                                DO solver_row_idx=1,SOLVER_MAPPING%interfaceConditionToSolverMap(interface_condition_idx)% &
+                                  & interfaceToSolverMatrixMapsIm(INTERFACE_MATRIX%MATRIX_NUMBER)% &
+                                  & interfaceRowToSolverRowsMap(interface_row_number)%numberOfSolverRows
+                                  solver_row_number=SOLVER_MAPPING%interfaceConditionToSolverMap(interface_condition_idx)% &
+                                    & interfaceToSolverMatrixMapsIm(INTERFACE_MATRIX%MATRIX_NUMBER)% &
+                                    & interfaceRowToSolverRowsMap(interface_row_number)%solverRow
+                                  row_coupling_coefficient=SOLVER_MAPPING%interfaceConditionToSolverMap( &
+                                    & interface_condition_idx)%interfaceToSolverMatrixMapsIm(INTERFACE_MATRIX%MATRIX_NUMBER)% &
+                                    & interfaceRowToSolverRowsMap(interface_row_number)%couplingCoefficient
                                   interface_column_number=interface_row_number
                                   !Loop over the solution columns this interface column is mapped to
-                                  DO solver_column_idx=1,SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP( &
-                                      & interface_condition_idx)%INTERFACE_TO_SOLVER_MATRIX_MAPS_SM( &
-                                      & SOLVER_MATRIX%MATRIX_NUMBER)%INTERFACE_COL_TO_SOLVER_COLS_MAP( &
-                                      & interface_column_number)%NUMBER_OF_SOLVER_COLS
-                                    solver_column_number=SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP( &
-                                      & interface_condition_idx)%INTERFACE_TO_SOLVER_MATRIX_MAPS_SM( &
-                                      & SOLVER_MATRIX%MATRIX_NUMBER)%INTERFACE_COL_TO_SOLVER_COLS_MAP( &
-                                      & interface_column_number)%SOLVER_COLS(solver_column_idx)
-                                    column_coupling_coefficient=SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP( &
-                                      & interface_condition_idx)%INTERFACE_TO_SOLVER_MATRIX_MAPS_SM( &
-                                      & SOLVER_MATRIX%MATRIX_NUMBER)%INTERFACE_COL_TO_SOLVER_COLS_MAP( &
-                                      & interface_column_number)%COUPLING_COEFFICIENTS(solver_column_idx)
+                                  DO solver_column_idx=1,SOLVER_MAPPING%interfaceConditionToSolverMap( &
+                                      & interface_condition_idx)%interfaceToSolverMatrixMapsSm( &
+                                      & SOLVER_MATRIX%MATRIX_NUMBER)%interfaceColToSolverColsMap( &
+                                      & interface_column_number)%numberOfSolverCols
+                                    solver_column_number=SOLVER_MAPPING%interfaceConditionToSolverMap( &
+                                      & interface_condition_idx)%interfaceToSolverMatrixMapsSm( &
+                                      & SOLVER_MATRIX%MATRIX_NUMBER)%interfaceColToSolverColsMap( &
+                                      & interface_column_number)%solverCols(solver_column_idx)
+                                    column_coupling_coefficient=SOLVER_MAPPING%interfaceConditionToSolverMap( &
+                                      & interface_condition_idx)%interfaceToSolverMatrixMapsSm( &
+                                      & SOLVER_MATRIX%MATRIX_NUMBER)%interfaceColToSolverColsMap( &
+                                      & interface_column_number)%couplingCoefficients(solver_column_idx)
                                     !Add in the solver matrix value
                                     VALUE=ALPHA*INTERFACE_MATRIX_DATA(interface_row_number)* &
                                       & row_coupling_coefficient*column_coupling_coefficient
@@ -1035,31 +1037,31 @@ CONTAINS
                               !Loop over the rows of the interface matrix
                               DO interface_row_number=1,INTERFACE_MATRIX%NUMBER_OF_ROWS
                                 !Loop over the solution rows this interface row is mapped to
-                                DO solver_row_idx=1,SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
-                                  & INTERFACE_TO_SOLVER_MATRIX_MAPS_IM(INTERFACE_MATRIX%MATRIX_NUMBER)% &
-                                  & INTERFACE_ROW_TO_SOLVER_ROWS_MAP(interface_row_number)%NUMBER_OF_SOLVER_ROWS
-                                  solver_row_number=SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
-                                    & INTERFACE_TO_SOLVER_MATRIX_MAPS_IM(INTERFACE_MATRIX%MATRIX_NUMBER)% &
-                                    & INTERFACE_ROW_TO_SOLVER_ROWS_MAP(interface_row_number)%SOLVER_ROW
-                                  row_coupling_coefficient=SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP( &
-                                    & interface_condition_idx)%INTERFACE_TO_SOLVER_MATRIX_MAPS_IM(INTERFACE_MATRIX%MATRIX_NUMBER)% &
-                                    & INTERFACE_ROW_TO_SOLVER_ROWS_MAP(interface_row_number)%COUPLING_COEFFICIENT
+                                DO solver_row_idx=1,SOLVER_MAPPING%interfaceConditionToSolverMap(interface_condition_idx)% &
+                                  & interfaceToSolverMatrixMapsIm(INTERFACE_MATRIX%MATRIX_NUMBER)% &
+                                  & interfaceRowToSolverRowsMap(interface_row_number)%numberOfSolverRows
+                                  solver_row_number=SOLVER_MAPPING%interfaceConditionToSolverMap(interface_condition_idx)% &
+                                    & interfaceToSolverMatrixMapsIm(INTERFACE_MATRIX%MATRIX_NUMBER)% &
+                                    & interfaceRowToSolverRowsMap(interface_row_number)%solverRow
+                                  row_coupling_coefficient=SOLVER_MAPPING%interfaceConditionToSolverMap( &
+                                    & interface_condition_idx)%interfaceToSolverMatrixMapsIm(INTERFACE_MATRIX%MATRIX_NUMBER)% &
+                                    & interfaceRowToSolverRowsMap(interface_row_number)%couplingCoefficient
                                   !Loop over the columns of the interface matrix
                                   DO interface_column_idx=ROW_INDICES(interface_row_number),ROW_INDICES(interface_row_number+1)-1
                                     interface_column_number=COLUMN_INDICES(interface_column_idx)
                                     !Loop over the solution columns this interface column is mapped to
-                                    DO solver_column_idx=1,SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP( &
-                                      & interface_condition_idx)%INTERFACE_TO_SOLVER_MATRIX_MAPS_SM( &
-                                      & SOLVER_MATRIX%MATRIX_NUMBER)%INTERFACE_COL_TO_SOLVER_COLS_MAP( &
-                                      & interface_column_number)%NUMBER_OF_SOLVER_COLS
-                                      solver_column_number=SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP( &
-                                        & interface_condition_idx)%INTERFACE_TO_SOLVER_MATRIX_MAPS_SM( &
-                                        & SOLVER_MATRIX%MATRIX_NUMBER)%INTERFACE_COL_TO_SOLVER_COLS_MAP( &
-                                        & interface_column_number)%SOLVER_COLS(solver_column_idx)
-                                      column_coupling_coefficient=SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP( &
-                                        & interface_condition_idx)%INTERFACE_TO_SOLVER_MATRIX_MAPS_SM( &
-                                        & SOLVER_MATRIX%MATRIX_NUMBER)%INTERFACE_COL_TO_SOLVER_COLS_MAP( &
-                                        & interface_column_number)%COUPLING_COEFFICIENTS(solver_column_idx)
+                                    DO solver_column_idx=1,SOLVER_MAPPING%interfaceConditionToSolverMap( &
+                                      & interface_condition_idx)%interfaceToSolverMatrixMapsSm( &
+                                      & SOLVER_MATRIX%MATRIX_NUMBER)%interfaceColToSolverColsMap( &
+                                      & interface_column_number)%numberOfSolverCols
+                                      solver_column_number=SOLVER_MAPPING%interfaceConditionToSolverMap( &
+                                        & interface_condition_idx)%interfaceToSolverMatrixMapsSm( &
+                                        & SOLVER_MATRIX%MATRIX_NUMBER)%interfaceColToSolverColsMap( &
+                                        & interface_column_number)%solverCols(solver_column_idx)
+                                      column_coupling_coefficient=SOLVER_MAPPING%interfaceConditionToSolverMap( &
+                                        & interface_condition_idx)%interfaceToSolverMatrixMapsSm( &
+                                        & SOLVER_MATRIX%MATRIX_NUMBER)%interfaceColToSolverColsMap( &
+                                        & interface_column_number)%couplingCoefficients(solver_column_idx)
                                       !Add in the solver matrix value
                                       VALUE=ALPHA*INTERFACE_MATRIX_DATA(interface_column_idx)*row_coupling_coefficient* &
                                         & column_coupling_coefficient
@@ -1091,22 +1093,22 @@ CONTAINS
                                   !Loop over the columns of the interface matrix
                                   DO interface_column_number=1,INTERFACE_MATRICES%NUMBER_OF_COLUMNS
                                     !Loop over the solver rows this interface column is mapped to
-                                    DO solver_row_idx=1,SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
-                                      & INTERFACE_COLUMN_TO_SOLVER_ROWS_MAPS(interface_column_number)%NUMBER_OF_SOLVER_ROWS
-                                      solver_row_number=SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
-                                        & INTERFACE_COLUMN_TO_SOLVER_ROWS_MAPS(interface_column_number)%SOLVER_ROW
-                                      row_coupling_coefficient=SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP( &
-                                        & interface_condition_idx)%INTERFACE_COLUMN_TO_SOLVER_ROWS_MAPS(interface_column_number)% &
-                                        & COUPLING_COEFFICIENT
+                                    DO solver_row_idx=1,SOLVER_MAPPING%interfaceConditionToSolverMap(interface_condition_idx)% &
+                                      & interfaceColumnToSolverRowsMaps(interface_column_number)%numberOfSolverRows
+                                      solver_row_number=SOLVER_MAPPING%interfaceConditionToSolverMap(interface_condition_idx)% &
+                                        & interfaceColumnToSolverRowsMaps(interface_column_number)%solverRow
+                                      row_coupling_coefficient=SOLVER_MAPPING%interfaceConditionToSolverMap( &
+                                        & interface_condition_idx)%interfaceColumnToSolverRowsMaps(interface_column_number)% &
+                                        & couplingCoefficient
                                       !Loop over the rows of the interface matrix
                                       DO interface_row_number=1,INTERFACE_MATRIX%TOTAL_NUMBER_OF_ROWS
                                         !Loop over the solver columns this interface row is mapped to
-                                        DO solver_column_idx=1,INTERFACE_TO_SOLVER_MAP%INTERFACE_ROW_TO_SOLVER_COLS_MAP( &
-                                          & interface_row_number)%NUMBER_OF_SOLVER_COLS
-                                          solver_column_number=INTERFACE_TO_SOLVER_MAP%INTERFACE_ROW_TO_SOLVER_COLS_MAP( &
-                                            & interface_row_number)%SOLVER_COLS(solver_column_idx)
-                                          column_coupling_coefficient=INTERFACE_TO_SOLVER_MAP%INTERFACE_ROW_TO_SOLVER_COLS_MAP( &
-                                            & interface_row_number)%COUPLING_COEFFICIENTS(solver_column_idx)
+                                        DO solver_column_idx=1,INTERFACE_TO_SOLVER_MAP%interfaceRowToSolverColsMap( &
+                                          & interface_row_number)%numberOfSolverCols
+                                          solver_column_number=INTERFACE_TO_SOLVER_MAP%interfaceRowToSolverColsMap( &
+                                            & interface_row_number)%solverCols(solver_column_idx)
+                                          column_coupling_coefficient=INTERFACE_TO_SOLVER_MAP%interfaceRowToSolverColsMap( &
+                                            & interface_row_number)%couplingCoefficients(solver_column_idx)
                                           !Add in the solver matrix value
                                           VALUE=ALPHA*INTERFACE_MATRIX_DATA(interface_column_number+ &
                                             & (interface_row_number-1)*INTERFACE_MATRICES%TOTAL_NUMBER_OF_COLUMNS)* &
@@ -1121,21 +1123,21 @@ CONTAINS
                                   !Loop over the columns of the interface matrix
                                   DO interface_column_number=1,INTERFACE_MATRICES%NUMBER_OF_COLUMNS
                                     !Loop over the solver rows this interface column is mapped to
-                                    DO solver_row_idx=1,SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
-                                      & INTERFACE_COLUMN_TO_SOLVER_ROWS_MAPS(interface_column_number)%NUMBER_OF_SOLVER_ROWS
-                                      solver_row_number=SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
-                                        & INTERFACE_COLUMN_TO_SOLVER_ROWS_MAPS(interface_column_number)%SOLVER_ROW
-                                      row_coupling_coefficient=SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP( &
-                                        & interface_condition_idx)%INTERFACE_COLUMN_TO_SOLVER_ROWS_MAPS(interface_column_number)% &
-                                        & COUPLING_COEFFICIENT
+                                    DO solver_row_idx=1,SOLVER_MAPPING%interfaceConditionToSolverMap(interface_condition_idx)% &
+                                      & interfaceColumnToSolverRowsMaps(interface_column_number)%numberOfSolverRows
+                                      solver_row_number=SOLVER_MAPPING%interfaceConditionToSolverMap(interface_condition_idx)% &
+                                        & interfaceColumnToSolverRowsMaps(interface_column_number)%solverRow
+                                      row_coupling_coefficient=SOLVER_MAPPING%interfaceConditionToSolverMap( &
+                                        & interface_condition_idx)%interfaceColumnToSolverRowsMaps(interface_column_number)% &
+                                        & couplingCoefficient
                                       interface_row_number=interface_column_number
                                       !Loop over the solver columns this interface row is mapped to
-                                      DO solver_column_idx=1,INTERFACE_TO_SOLVER_MAP%INTERFACE_ROW_TO_SOLVER_COLS_MAP( &
-                                        & interface_row_number)%NUMBER_OF_SOLVER_COLS
-                                        solver_column_number=INTERFACE_TO_SOLVER_MAP%INTERFACE_ROW_TO_SOLVER_COLS_MAP( &
-                                          & interface_row_number)%SOLVER_COLS(solver_column_idx)
-                                        column_coupling_coefficient=INTERFACE_TO_SOLVER_MAP%INTERFACE_ROW_TO_SOLVER_COLS_MAP( &
-                                          & interface_row_number)%COUPLING_COEFFICIENTS(solver_column_idx)
+                                      DO solver_column_idx=1,INTERFACE_TO_SOLVER_MAP%interfaceRowToSolverColsMap( &
+                                        & interface_row_number)%numberOfSolverCols
+                                        solver_column_number=INTERFACE_TO_SOLVER_MAP%interfaceRowToSolverColsMap( &
+                                          & interface_row_number)%solverCols(solver_column_idx)
+                                        column_coupling_coefficient=INTERFACE_TO_SOLVER_MAP%interfaceRowToSolverColsMap( &
+                                          & interface_row_number)%couplingCoefficients(solver_column_idx)
                                         !Add in the solver matrix value
                                         VALUE=ALPHA*INTERFACE_MATRIX_DATA(interface_column_number)* &
                                           & row_coupling_coefficient*column_coupling_coefficient
@@ -1154,24 +1156,24 @@ CONTAINS
                                   !Loop over the columns of the interface matrix
                                   DO interface_column_number=1,INTERFACE_MATRICES%NUMBER_OF_COLUMNS
                                     !Loop over the solver rows this interface column is mapped to
-                                    DO solver_row_idx=1,SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
-                                      & INTERFACE_COLUMN_TO_SOLVER_ROWS_MAPS(interface_column_number)%NUMBER_OF_SOLVER_ROWS
-                                      solver_row_number=SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
-                                        & INTERFACE_COLUMN_TO_SOLVER_ROWS_MAPS(interface_column_number)%SOLVER_ROW
-                                      row_coupling_coefficient=SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP( &
-                                        & interface_condition_idx)%INTERFACE_COLUMN_TO_SOLVER_ROWS_MAPS(interface_column_number)% &
-                                        & COUPLING_COEFFICIENT
+                                    DO solver_row_idx=1,SOLVER_MAPPING%interfaceConditionToSolverMap(interface_condition_idx)% &
+                                      & interfaceColumnToSolverRowsMaps(interface_column_number)%numberOfSolverRows
+                                      solver_row_number=SOLVER_MAPPING%interfaceConditionToSolverMap(interface_condition_idx)% &
+                                        & interfaceColumnToSolverRowsMaps(interface_column_number)%solverRow
+                                      row_coupling_coefficient=SOLVER_MAPPING%interfaceConditionToSolverMap( &
+                                        & interface_condition_idx)%interfaceColumnToSolverRowsMaps(interface_column_number)% &
+                                        & couplingCoefficient
                                       !Loop over the rows of the interface matrix
                                       DO interface_row_idx=ROW_INDICES(interface_column_number), &
                                         & ROW_INDICES(interface_column_number+1)-1
                                         interface_row_number=COLUMN_INDICES(interface_row_idx)
                                         !Loop over the solver columns this interface row is mapped to
-                                        DO solver_column_idx=1,INTERFACE_TO_SOLVER_MAP%INTERFACE_ROW_TO_SOLVER_COLS_MAP( &
-                                          & interface_row_number)%NUMBER_OF_SOLVER_COLS
-                                          solver_column_number=INTERFACE_TO_SOLVER_MAP%INTERFACE_ROW_TO_SOLVER_COLS_MAP( &
-                                            & interface_row_number)%SOLVER_COLS(solver_column_idx)
-                                          column_coupling_coefficient=INTERFACE_TO_SOLVER_MAP%INTERFACE_ROW_TO_SOLVER_COLS_MAP( &
-                                            & interface_row_number)%COUPLING_COEFFICIENTS(solver_column_idx)
+                                        DO solver_column_idx=1,INTERFACE_TO_SOLVER_MAP%interfaceRowToSolverColsMap( &
+                                          & interface_row_number)%numberOfSolverCols
+                                          solver_column_number=INTERFACE_TO_SOLVER_MAP%interfaceRowToSolverColsMap( &
+                                            & interface_row_number)%solverCols(solver_column_idx)
+                                          column_coupling_coefficient=INTERFACE_TO_SOLVER_MAP%interfaceRowToSolverColsMap( &
+                                            & interface_row_number)%couplingCoefficients(solver_column_idx)
                                           !Add in the solver matrix value
                                           VALUE=ALPHA*INTERFACE_MATRIX_DATA(interface_row_idx)*row_coupling_coefficient* &
                                             & column_coupling_coefficient
@@ -1210,7 +1212,7 @@ CONTAINS
                       LOCAL_ERROR="The specified interface condition index of "// &
                         & TRIM(NUMBER_TO_VSTRING(interface_condition_idx,"*",ERR,ERROR))// &
                         & " is invalid. The interface condition index needs to be between 1 and "// &
-                        & TRIM(NUMBER_TO_VSTRING(SOLVER_MAPPING%NUMBER_OF_INTERFACE_CONDITIONS,"*",ERR,ERROR))//"."
+                        & TRIM(NUMBER_TO_VSTRING(SOLVER_MAPPING%numberOfInterfaceConditions,"*",ERR,ERROR))//"."
                       CALL FLAG_ERROR(LOCAL_ERROR,ERR,ERROR,*999)
                     ENDIF
                   ELSE
@@ -1266,8 +1268,8 @@ CONTAINS
     TYPE(DISTRIBUTED_MATRIX_TYPE), POINTER :: JACOBIAN_DISTRIBUTED_MATRIX,SOLVER_DISTRIBUTED_MATRIX
     TYPE(EQUATIONS_MATRICES_TYPE), POINTER :: EQUATIONS_MATRICES
     TYPE(EQUATIONS_MATRICES_NONLINEAR_TYPE), POINTER :: NONLINEAR_MATRICES
-    TYPE(JACOBIAN_TO_SOLVER_MAP_TYPE), POINTER :: JACOBIAN_TO_SOLVER_MAP
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING
+    TYPE(JacobianToSolverMapType), POINTER :: JACOBIAN_TO_SOLVER_MAP
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING
     TYPE(SOLVER_MATRICES_TYPE), POINTER :: SOLVER_MATRICES
     TYPE(VARYING_STRING) :: LOCAL_ERROR
     
@@ -1296,9 +1298,9 @@ CONTAINS
                   EQUATIONS_MATRICES=>NONLINEAR_MATRICES%EQUATIONS_MATRICES
                   IF(ASSOCIATED(EQUATIONS_MATRICES)) THEN
                     IF(EQUATIONS_MATRICES%EQUATIONS_MATRICES_FINISHED) THEN
-                      IF(equations_set_idx>0.AND.equations_set_idx<=SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS) THEN
-                        JACOBIAN_TO_SOLVER_MAP=>SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                          & EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM(SOLVER_MATRIX%MATRIX_NUMBER)%JACOBIAN_TO_SOLVER_MATRIX_MAPS( &
+                      IF(equations_set_idx>0.AND.equations_set_idx<=SOLVER_MAPPING%numberOfEquationsSets) THEN
+                        JACOBIAN_TO_SOLVER_MAP=>SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                          & equationsToSolverMatrixMapsSm(SOLVER_MATRIX%MATRIX_NUMBER)%jacobianToSolverMatrixMaps( &
                           & JACOBIAN_MATRIX%JACOBIAN_NUMBER)%PTR
                         IF(ASSOCIATED(JACOBIAN_TO_SOLVER_MAP)) THEN
                           SOLVER_DISTRIBUTED_MATRIX=>SOLVER_MATRIX%MATRIX
@@ -1314,24 +1316,24 @@ CONTAINS
                                 !Loop over the rows of the Jacobian matrix
                                 DO jacobian_row_number=1,EQUATIONS_MATRICES%NUMBER_OF_ROWS
                                   !Loop over the solution rows this Jacobian row is mapped to
-                                  DO solver_row_idx=1,SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                                    & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(jacobian_row_number)%NUMBER_OF_SOLVER_ROWS
-                                    solver_row_number=SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                                      & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(jacobian_row_number)% &
-                                      & SOLVER_ROWS(solver_row_idx)
-                                    row_coupling_coefficient=SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP( &
-                                      & equations_set_idx)%EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(jacobian_row_number)% &
-                                      & COUPLING_COEFFICIENTS(solver_row_idx)
+                                  DO solver_row_idx=1,SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                                    & equationsRowToSolverRowsMaps(jacobian_row_number)%numberOfSolverRows
+                                    solver_row_number=SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                                      & equationsRowToSolverRowsMaps(jacobian_row_number)% &
+                                      & solverRows(solver_row_idx)
+                                    row_coupling_coefficient=SOLVER_MAPPING%equationsSetToSolverMap( &
+                                      & equations_set_idx)%equationsRowToSolverRowsMaps(jacobian_row_number)% &
+                                      & couplingCoefficients(solver_row_idx)
                                     !Loop over the columns of the Jacobian matrix
                                     DO jacobian_column_number=1,JACOBIAN_MATRIX%NUMBER_OF_COLUMNS
                                       !Loop over the solution columns this Jacobian column is mapped to
-                                      DO solver_column_idx=1,JACOBIAN_TO_SOLVER_MAP%JACOBIAN_COL_TO_SOLVER_COLS_MAP( &
-                                        & jacobian_column_number)%NUMBER_OF_SOLVER_COLS
-                                        solver_column_number=JACOBIAN_TO_SOLVER_MAP%JACOBIAN_COL_TO_SOLVER_COLS_MAP( &
-                                          & jacobian_column_number)%SOLVER_COLS(solver_column_idx)
+                                      DO solver_column_idx=1,JACOBIAN_TO_SOLVER_MAP%jacobianColToSolverColsMap( &
+                                        & jacobian_column_number)%numberOfSolverCols
+                                        solver_column_number=JACOBIAN_TO_SOLVER_MAP%jacobianColToSolverColsMap( &
+                                          & jacobian_column_number)%solverCols(solver_column_idx)
                                         column_coupling_coefficient=JACOBIAN_TO_SOLVER_MAP% &
-                                          & JACOBIAN_COL_TO_SOLVER_COLS_MAP(jacobian_column_number)% &
-                                          & COUPLING_COEFFICIENTS(solver_column_idx)
+                                          & jacobianColToSolverColsMap(jacobian_column_number)% &
+                                          & couplingCoefficients(solver_column_idx)
                                         !Add in the solver matrix value
                                         VALUE=ALPHA*JACOBIAN_MATRIX_DATA(jacobian_row_number+(jacobian_column_number-1)* &
                                           & EQUATIONS_MATRICES%TOTAL_NUMBER_OF_ROWS)*row_coupling_coefficient* &
@@ -1346,23 +1348,23 @@ CONTAINS
                                 !Loop over the rows of the Jacobian matrix
                                 DO jacobian_row_number=1,EQUATIONS_MATRICES%NUMBER_OF_ROWS
                                   !Loop over the solution rows this Jacobian row is mapped to
-                                  DO solver_row_idx=1,SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                                    & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(jacobian_row_number)%NUMBER_OF_SOLVER_ROWS
-                                    solver_row_number=SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                                      & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(jacobian_row_number)% &
-                                      & SOLVER_ROWS(solver_row_idx)
-                                    row_coupling_coefficient=SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP( &
-                                      & equations_set_idx)%EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(jacobian_row_number)% &
-                                      & COUPLING_COEFFICIENTS(solver_row_idx)
+                                  DO solver_row_idx=1,SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                                    & equationsRowToSolverRowsMaps(jacobian_row_number)%numberOfSolverRows
+                                    solver_row_number=SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                                      & equationsRowToSolverRowsMaps(jacobian_row_number)% &
+                                      & solverRows(solver_row_idx)
+                                    row_coupling_coefficient=SOLVER_MAPPING%equationsSetToSolverMap( &
+                                      & equations_set_idx)%equationsRowToSolverRowsMaps(jacobian_row_number)% &
+                                      & couplingCoefficients(solver_row_idx)
                                     jacobian_column_number=jacobian_row_number
                                     !Loop over the solution columns this Jacobian column is mapped to
-                                    DO solver_column_idx=1,JACOBIAN_TO_SOLVER_MAP%JACOBIAN_COL_TO_SOLVER_COLS_MAP( &
-                                      & jacobian_column_number)%NUMBER_OF_SOLVER_COLS
-                                      solver_column_number=JACOBIAN_TO_SOLVER_MAP%JACOBIAN_COL_TO_SOLVER_COLS_MAP( &
-                                        & jacobian_column_number)%SOLVER_COLS(solver_column_idx)
+                                    DO solver_column_idx=1,JACOBIAN_TO_SOLVER_MAP%jacobianColToSolverColsMap( &
+                                      & jacobian_column_number)%numberOfSolverCols
+                                      solver_column_number=JACOBIAN_TO_SOLVER_MAP%jacobianColToSolverColsMap( &
+                                        & jacobian_column_number)%solverCols(solver_column_idx)
                                       column_coupling_coefficient=JACOBIAN_TO_SOLVER_MAP% &
-                                        & JACOBIAN_COL_TO_SOLVER_COLS_MAP(jacobian_column_number)% &
-                                        & COUPLING_COEFFICIENTS(solver_column_idx)
+                                        & jacobianColToSolverColsMap(jacobian_column_number)% &
+                                        & couplingCoefficients(solver_column_idx)
                                       !Add in the solver matrix value
                                       VALUE=ALPHA*JACOBIAN_MATRIX_DATA(jacobian_row_number)* &
                                         & row_coupling_coefficient*column_coupling_coefficient
@@ -1381,26 +1383,26 @@ CONTAINS
                                 !Loop over the rows of the Jacobian matrix
                                 DO jacobian_row_number=1,EQUATIONS_MATRICES%NUMBER_OF_ROWS
                                   !Loop over the solution rows this Jacobian row is mapped to
-                                  DO solver_row_idx=1,SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                                    & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(jacobian_row_number)%NUMBER_OF_SOLVER_ROWS
-                                    solver_row_number=SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                                      & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(jacobian_row_number)% &
-                                      & SOLVER_ROWS(solver_row_idx)
-                                    row_coupling_coefficient=SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP( &
-                                      & equations_set_idx)%EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(jacobian_row_number)% &
-                                      & COUPLING_COEFFICIENTS(solver_row_idx)
+                                  DO solver_row_idx=1,SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                                    & equationsRowToSolverRowsMaps(jacobian_row_number)%numberOfSolverRows
+                                    solver_row_number=SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                                      & equationsRowToSolverRowsMaps(jacobian_row_number)% &
+                                      & solverRows(solver_row_idx)
+                                    row_coupling_coefficient=SOLVER_MAPPING%equationsSetToSolverMap( &
+                                      & equations_set_idx)%equationsRowToSolverRowsMaps(jacobian_row_number)% &
+                                      & couplingCoefficients(solver_row_idx)
                                     !Loop over the columns of the Jacobian matrix
                                     DO jacobian_column_idx=ROW_INDICES(jacobian_row_number), &
                                       & ROW_INDICES(jacobian_row_number+1)-1
                                       jacobian_column_number=COLUMN_INDICES(jacobian_column_idx)
                                       !Loop over the solution columns this equations column is mapped to
-                                      DO solver_column_idx=1,JACOBIAN_TO_SOLVER_MAP%JACOBIAN_COL_TO_SOLVER_COLS_MAP( &
-                                        & jacobian_column_number)%NUMBER_OF_SOLVER_COLS
-                                        solver_column_number=JACOBIAN_TO_SOLVER_MAP%JACOBIAN_COL_TO_SOLVER_COLS_MAP( &
-                                          & jacobian_column_number)%SOLVER_COLS(solver_column_idx)
+                                      DO solver_column_idx=1,JACOBIAN_TO_SOLVER_MAP%jacobianColToSolverColsMap( &
+                                        & jacobian_column_number)%numberOfSolverCols
+                                        solver_column_number=JACOBIAN_TO_SOLVER_MAP%jacobianColToSolverColsMap( &
+                                          & jacobian_column_number)%solverCols(solver_column_idx)
                                         column_coupling_coefficient=JACOBIAN_TO_SOLVER_MAP% &
-                                          & JACOBIAN_COL_TO_SOLVER_COLS_MAP(jacobian_column_number)% &
-                                          & COUPLING_COEFFICIENTS(solver_column_idx)
+                                          & jacobianColToSolverColsMap(jacobian_column_number)% &
+                                          & couplingCoefficients(solver_column_idx)
                                         !Add in the solver matrix value
                                         VALUE=ALPHA*JACOBIAN_MATRIX_DATA(jacobian_column_idx)*row_coupling_coefficient* &
                                           & column_coupling_coefficient
@@ -1434,7 +1436,7 @@ CONTAINS
                         LOCAL_ERROR="The specified equations set index of "// &
                           & TRIM(NUMBER_TO_VSTRING(equations_set_idx,"*",ERR,ERROR))// &
                           & " is invalid. The equations set index needs to be between 1 and "// &
-                          & TRIM(NUMBER_TO_VSTRING(SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS,"*",ERR,ERROR))//"."
+                          & TRIM(NUMBER_TO_VSTRING(SOLVER_MAPPING%numberOfEquationsSets,"*",ERR,ERROR))//"."
                         CALL FLAG_ERROR(LOCAL_ERROR,ERR,ERROR,*999)
                       ENDIF
                     ELSE
@@ -1501,14 +1503,14 @@ CONTAINS
     TYPE(EQUATIONS_MATRICES_DYNAMIC_TYPE), POINTER :: DYNAMIC_MATRICES
     TYPE(EQUATIONS_MATRICES_LINEAR_TYPE), POINTER :: LINEAR_MATRICES
     TYPE(EQUATIONS_MATRICES_NONLINEAR_TYPE), POINTER :: NONLINEAR_MATRICES
-    TYPE(EQUATIONS_TO_SOLVER_MAPS_TYPE), POINTER :: EQUATIONS_TO_SOLVER_MAP
+    TYPE(EquationsToSolverMapsType), POINTER :: EQUATIONS_TO_SOLVER_MAP
     TYPE(INTERFACE_CONDITION_TYPE), POINTER :: INTERFACE_CONDITION
     TYPE(INTERFACE_MATRIX_TYPE), POINTER :: INTERFACE_MATRIX
     TYPE(INTERFACE_MATRICES_TYPE), POINTER :: INTERFACE_MATRICES    
-    TYPE(INTERFACE_TO_SOLVER_MAPS_TYPE), POINTER :: INTERFACE_TO_SOLVER_MAP
-    TYPE(JACOBIAN_TO_SOLVER_MAP_TYPE), POINTER :: JACOBIAN_TO_SOLVER_MAP
+    TYPE(InterfaceToSolverMapsType), POINTER :: INTERFACE_TO_SOLVER_MAP
+    TYPE(JacobianToSolverMapType), POINTER :: JACOBIAN_TO_SOLVER_MAP
     TYPE(LIST_PTR_TYPE), ALLOCATABLE :: COLUMN_INDICES_LISTS(:)
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING
     TYPE(SOLVER_MATRICES_TYPE), POINTER :: SOLVER_MATRICES
     TYPE(VARYING_STRING) :: DUMMY_ERROR,LOCAL_ERROR
     
@@ -1540,22 +1542,22 @@ CONTAINS
                     solver_matrix_idx=SOLVER_MATRIX%MATRIX_NUMBER
                     !Find the maximum number of column indices
                     MAX_COLUMN_INDICES=0
-                    DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
-                      IF(SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                        & EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM(solver_matrix_idx)%NUMBER_OF_DYNAMIC_EQUATIONS_MATRICES>0) THEN
-                        DO equations_matrix_idx=1,SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                          & EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM(solver_matrix_idx)%NUMBER_OF_DYNAMIC_EQUATIONS_MATRICES
-                          EQUATIONS_TO_SOLVER_MAP=>SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                            & EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM(solver_matrix_idx)%DYNAMIC_EQUATIONS_TO_SOLVER_MATRIX_MAPS( &
+                    DO equations_set_idx=1,SOLVER_MAPPING%numberOfEquationsSets
+                      IF(SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                        & equationsToSolverMatrixMapsSm(solver_matrix_idx)%numberOfDynamicEquationsMatrices>0) THEN
+                        DO equations_matrix_idx=1,SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                          & equationsToSolverMatrixMapsSm(solver_matrix_idx)%numberOfDynamicEquationsMatrices
+                          EQUATIONS_TO_SOLVER_MAP=>SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                            & equationsToSolverMatrixMapsSm(solver_matrix_idx)%dynamicEquationsToSolverMatrixMaps( &
                             & equations_matrix_idx)%PTR
                           IF(ASSOCIATED(EQUATIONS_TO_SOLVER_MAP)) THEN
-                            EQUATIONS_MATRIX=>EQUATIONS_TO_SOLVER_MAP%EQUATIONS_MATRIX
+                            EQUATIONS_MATRIX=>EQUATIONS_TO_SOLVER_MAP%equationsMatrix
                             IF(ASSOCIATED(EQUATIONS_MATRIX)) THEN
                               DYNAMIC_MATRICES=>EQUATIONS_MATRIX%DYNAMIC_MATRICES
                               IF(ASSOCIATED(DYNAMIC_MATRICES)) THEN
                                 EQUATIONS_MATRICES=>DYNAMIC_MATRICES%EQUATIONS_MATRICES
                                 IF(ASSOCIATED(EQUATIONS_MATRICES)) THEN
-                                  DISTRIBUTED_MATRIX=>EQUATIONS_MATRIX%MATRIX
+                                  DISTRIBUTED_MATRIX =>EQUATIONS_MATRIX%MATRIX
                                   IF(ASSOCIATED(DISTRIBUTED_MATRIX)) THEN
                                     CALL DISTRIBUTED_MATRIX_MAX_COLUMNS_PER_ROW_GET(DISTRIBUTED_MATRIX,MAX_COLUMNS_PER_ROW, &
                                       & ERR,ERROR,*999)
@@ -1577,13 +1579,13 @@ CONTAINS
                           ENDIF
                         ENDDO !equations_matrix_idx
                       ELSE
-                        DO equations_matrix_idx=1,SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                          & EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM(solver_matrix_idx)%NUMBER_OF_LINEAR_EQUATIONS_MATRICES
-                          EQUATIONS_TO_SOLVER_MAP=>SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                            & EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM(solver_matrix_idx)%LINEAR_EQUATIONS_TO_SOLVER_MATRIX_MAPS( &
+                        DO equations_matrix_idx=1,SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                          & equationsToSolverMatrixMapsSm(solver_matrix_idx)%numberOfLinearEquationsMatrices
+                          EQUATIONS_TO_SOLVER_MAP=>SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                            & equationsToSolverMatrixMapsSm(solver_matrix_idx)%linearEquationsToSolverMatrixMaps( &
                             & equations_matrix_idx)%PTR
                           IF(ASSOCIATED(EQUATIONS_TO_SOLVER_MAP)) THEN
-                            EQUATIONS_MATRIX=>EQUATIONS_TO_SOLVER_MAP%EQUATIONS_MATRIX
+                            EQUATIONS_MATRIX=>EQUATIONS_TO_SOLVER_MAP%equationsMatrix
                             IF(ASSOCIATED(EQUATIONS_MATRIX)) THEN
                               LINEAR_MATRICES=>EQUATIONS_MATRIX%LINEAR_MATRICES
                               IF(ASSOCIATED(LINEAR_MATRICES)) THEN
@@ -1610,13 +1612,13 @@ CONTAINS
                             CALL FLAG_ERROR("Equations to solver matrix map is not associated.",ERR,ERROR,*999)
                           ENDIF
                         ENDDO !equations_matrix_idx
-                        DO equations_matrix_idx=1,SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                          & EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM(solver_matrix_idx)%NUMBER_OF_EQUATIONS_JACOBIANS
-                          JACOBIAN_TO_SOLVER_MAP=>SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                            & EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM(solver_matrix_idx)%JACOBIAN_TO_SOLVER_MATRIX_MAPS( &
+                        DO equations_matrix_idx=1,SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                          & equationsToSolverMatrixMapsSm(solver_matrix_idx)%numberOfEquationsJacobians
+                          JACOBIAN_TO_SOLVER_MAP=>SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                            & equationsToSolverMatrixMapsSm(solver_matrix_idx)%jacobianToSolverMatrixMaps( &
                             & equations_matrix_idx)%PTR
                           IF(ASSOCIATED(JACOBIAN_TO_SOLVER_MAP)) THEN
-                            JACOBIAN_MATRIX=>JACOBIAN_TO_SOLVER_MAP%JACOBIAN_MATRIX
+                            JACOBIAN_MATRIX=>JACOBIAN_TO_SOLVER_MAP%jacobianMatrix
                             IF(ASSOCIATED(JACOBIAN_MATRIX)) THEN
                               NONLINEAR_MATRICES=>JACOBIAN_MATRIX%NONLINEAR_MATRICES
                               IF(ASSOCIATED(NONLINEAR_MATRICES)) THEN
@@ -1643,17 +1645,17 @@ CONTAINS
                         ENDDO !equations_matrix_idx
                       ENDIF
                     ENDDO !equations_set_idx
-                    DO interface_condition_idx=1,SOLVER_MAPPING%NUMBER_OF_INTERFACE_CONDITIONS
-                      INTERFACE_CONDITION=>SOLVER_MAPPING%INTERFACE_CONDITIONS(interface_condition_idx)%PTR
+                    DO interface_condition_idx=1,SOLVER_MAPPING%numberOfInterfaceConditions
+                      INTERFACE_CONDITION=>SOLVER_MAPPING%interfaceConditions(interface_condition_idx)%ptr
                       SELECT CASE(INTERFACE_CONDITION%METHOD)
                       CASE(INTERFACE_CONDITION_LAGRANGE_MULTIPLIERS_METHOD)
-                        DO interface_matrix_idx=1,SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
-                          & INTERFACE_TO_SOLVER_MATRIX_MAPS_SM(solver_matrix_idx)%NUMBER_OF_INTERFACE_MATRICES
-                          INTERFACE_TO_SOLVER_MAP=>SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP(interface_conditioN_idx)% &
-                            & INTERFACE_TO_SOLVER_MATRIX_MAPS_SM(solver_matrix_idx)%INTERFACE_EQUATIONS_TO_SOLVER_MATRIX_MAPS( &
-                            & interface_matrix_idx)%PTR
+                        DO interface_matrix_idx=1,SOLVER_MAPPING%interfaceConditionToSolverMap(interface_condition_idx)% &
+                          & interfaceToSolverMatrixMapsSm(solver_matrix_idx)%numberOfInterfaceMatrices
+                          INTERFACE_TO_SOLVER_MAP=>SOLVER_MAPPING%interfaceConditionToSolverMap(interface_conditioN_idx)% &
+                            & interfaceToSolverMatrixMapsSm(solver_matrix_idx)%interfaceEquationsToSolverMatrixMaps( &
+                            & interface_matrix_idx)%ptr
                           IF(ASSOCIATED(INTERFACE_TO_SOLVER_MAP)) THEN
-                            INTERFACE_MATRIX=>INTERFACE_TO_SOLVER_MAP%INTERFACE_MATRIX
+                            INTERFACE_MATRIX=>INTERFACE_TO_SOLVER_MAP%interfaceMatrix
                             IF(ASSOCIATED(INTERFACE_MATRIX)) THEN
                               INTERFACE_MATRICES=>INTERFACE_MATRIX%INTERFACE_MATRICES
                               IF(ASSOCIATED(INTERFACE_MATRICES)) THEN
@@ -1699,14 +1701,14 @@ CONTAINS
                       END SELECT
                     ENDDO !interface_condition_idx
                     !Allocate lists
-                    ALLOCATE(COLUMN_INDICES_LISTS(SOLVER_MAPPING%NUMBER_OF_ROWS),STAT=ERR)
+                    ALLOCATE(COLUMN_INDICES_LISTS(SOLVER_MAPPING%numberOfRows),STAT=ERR)
                     IF(ERR/=0) CALL FLAG_ERROR("Could not allocate column indices lists.",ERR,ERROR,*999)
                     !Allocate row indices
-                    ALLOCATE(ROW_INDICES(SOLVER_MAPPING%NUMBER_OF_ROWS+1),STAT=ERR)
+                    ALLOCATE(ROW_INDICES(SOLVER_MAPPING%numberOfRows+1),STAT=ERR)
                     IF(ERR/=0) CALL FLAG_ERROR("Could not allocate row indices.",ERR,ERROR,*999)
                     ROW_INDICES(1)=1
                     !Set up the column indicies lists
-                    DO solver_row_number=1,SOLVER_MAPPING%NUMBER_OF_ROWS
+                    DO solver_row_number=1,SOLVER_MAPPING%numberOfRows
                       NULLIFY(COLUMN_INDICES_LISTS(solver_row_number)%PTR)
                       CALL LIST_CREATE_START(COLUMN_INDICES_LISTS(solver_row_number)%PTR,ERR,ERROR,*999)
                       CALL LIST_DATA_TYPE_SET(COLUMN_INDICES_LISTS(solver_row_number)%PTR,LIST_INTG_TYPE,ERR,ERROR,*999)
@@ -1714,17 +1716,17 @@ CONTAINS
                       CALL LIST_CREATE_FINISH(COLUMN_INDICES_LISTS(solver_row_number)%PTR,ERR,ERROR,*999)
                     ENDDO !solver_row_number
                     !Loop over the equations sets
-                    DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
-                      IF(SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                        & EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM(solver_matrix_idx)%NUMBER_OF_DYNAMIC_EQUATIONS_MATRICES>0) THEN
+                    DO equations_set_idx=1,SOLVER_MAPPING%numberOfEquationsSets
+                      IF(SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                        & equationsToSolverMatrixMapsSm(solver_matrix_idx)%numberOfDynamicEquationsMatrices>0) THEN
                         !Loop over the dynamic equations matrices mapped to the solver matrix and calculate the col indices by row.
-                        DO equations_matrix_idx=1,SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                          & EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM(solver_matrix_idx)%NUMBER_OF_DYNAMIC_EQUATIONS_MATRICES
+                        DO equations_matrix_idx=1,SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                          & equationsToSolverMatrixMapsSm(solver_matrix_idx)%numberOfDynamicEquationsMatrices
                           !Note: pointers have been checked above
-                          EQUATIONS_TO_SOLVER_MAP=>SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                            & EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM(solver_matrix_idx)%DYNAMIC_EQUATIONS_TO_SOLVER_MATRIX_MAPS( &
+                          EQUATIONS_TO_SOLVER_MAP=>SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                            & equationsToSolverMatrixMapsSm(solver_matrix_idx)%dynamicEquationsToSolverMatrixMaps( &
                             & equations_matrix_idx)%PTR
-                          EQUATIONS_MATRIX=>EQUATIONS_TO_SOLVER_MAP%EQUATIONS_MATRIX
+                          EQUATIONS_MATRIX=>EQUATIONS_TO_SOLVER_MAP%equationsMatrix
                           DYNAMIC_MATRICES=>EQUATIONS_MATRIX%DYNAMIC_MATRICES
                           EQUATIONS_MATRICES=>DYNAMIC_MATRICES%EQUATIONS_MATRICES
                           DISTRIBUTED_MATRIX=>EQUATIONS_MATRIX%MATRIX
@@ -1734,18 +1736,18 @@ CONTAINS
                             !Loop over the rows of the equations matrix
                             DO equations_row_number=1,EQUATIONS_MATRICES%NUMBER_OF_ROWS
                               !Loop over the solver rows this equations row is mapped to
-                              DO solver_row_idx=1,SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                                & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number)%NUMBER_OF_SOLVER_ROWS
-                                solver_row_number=SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                                  & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number)% &
-                                  & SOLVER_ROWS(solver_row_idx)                                              
+                              DO solver_row_idx=1,SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                                & equationsRowToSolverRowsMaps(equations_row_number)%numberOfSolverRows
+                                solver_row_number=SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                                  & equationsRowToSolverRowsMaps(equations_row_number)% &
+                                  & solverRows(solver_row_idx)                                              
                                 !Loop over the columns of the equations matrix
                                 DO equations_column_number=1,EQUATIONS_MATRIX%NUMBER_OF_COLUMNS
                                   !Loop over the solver columns this equations column is mapped to
-                                  DO solver_column_idx=1,EQUATIONS_TO_SOLVER_MAP%EQUATIONS_COL_TO_SOLVER_COLS_MAP( &
-                                    & equations_column_number)%NUMBER_OF_SOLVER_COLS
-                                    solver_column_number=EQUATIONS_TO_SOLVER_MAP%EQUATIONS_COL_TO_SOLVER_COLS_MAP( &
-                                      & equations_column_number)%SOLVER_COLS(solver_column_idx)
+                                  DO solver_column_idx=1,EQUATIONS_TO_SOLVER_MAP%equationsColToSolverColsMap( &
+                                    & equations_column_number)%numberOfSolverCols
+                                    solver_column_number=EQUATIONS_TO_SOLVER_MAP%equationsColToSolverColsMap( &
+                                      & equations_column_number)%solverCols(solver_column_idx)
                                     CALL LIST_ITEM_ADD(COLUMN_INDICES_LISTS(solver_row_number)%PTR,solver_column_number, &
                                       & ERR,ERROR,*999)
                                   ENDDO !solver_column_idx
@@ -1756,17 +1758,17 @@ CONTAINS
                             !Loop over the rows of the equations matrix
                             DO equations_row_number=1,EQUATIONS_MATRICES%NUMBER_OF_ROWS
                               !Loop over the solver rows this equations row is mapped to
-                              DO solver_row_idx=1,SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                                & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number)%NUMBER_OF_SOLVER_ROWS
-                                solver_row_number=SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                                  & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number)% &
-                                  & SOLVER_ROWS(solver_row_idx)                                              
+                              DO solver_row_idx=1,SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                                & equationsRowToSolverRowsMaps(equations_row_number)%numberOfSolverRows
+                                solver_row_number=SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                                  & equationsRowToSolverRowsMaps(equations_row_number)% &
+                                  & solverRows(solver_row_idx)                                              
                                 equations_column_number=equations_row_number
                                 !Loop over the solver columns this equations column is mapped to
-                                DO solver_column_idx=1,EQUATIONS_TO_SOLVER_MAP%EQUATIONS_COL_TO_SOLVER_COLS_MAP( &
-                                  & equations_column_number)%NUMBER_OF_SOLVER_COLS
-                                  solver_column_number=EQUATIONS_TO_SOLVER_MAP%EQUATIONS_COL_TO_SOLVER_COLS_MAP( &
-                                    & equations_column_number)%SOLVER_COLS(solver_column_idx)
+                                DO solver_column_idx=1,EQUATIONS_TO_SOLVER_MAP%equationsColToSolverColsMap( &
+                                  & equations_column_number)%numberOfSolverCols
+                                  solver_column_number=EQUATIONS_TO_SOLVER_MAP%equationsColToSolverColsMap( &
+                                    & equations_column_number)%solverCols(solver_column_idx)
                                   CALL LIST_ITEM_ADD(COLUMN_INDICES_LISTS(solver_row_number)%PTR,solver_column_number, &
                                     & ERR,ERROR,*999)
                                 ENDDO !solver_column_idx
@@ -1782,20 +1784,20 @@ CONTAINS
                             !Loop over the rows of the equations matrix
                             DO equations_row_number=1,EQUATIONS_MATRICES%NUMBER_OF_ROWS
                               !Loop over the solver rows this equations row is mapped to
-                              DO solver_row_idx=1,SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                                & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number)%NUMBER_OF_SOLVER_ROWS
-                                solver_row_number=SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                                  & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number)% &
-                                  & SOLVER_ROWS(solver_row_idx)
+                              DO solver_row_idx=1,SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                                & equationsRowToSolverRowsMaps(equations_row_number)%numberOfSolverRows
+                                solver_row_number=SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                                  & equationsRowToSolverRowsMaps(equations_row_number)% &
+                                  & solverRows(solver_row_idx)
                                 !Loop over the columns of the equations matrix
                                 DO equations_column_idx=EQUATIONS_ROW_INDICES(equations_row_number), &
                                   & EQUATIONS_ROW_INDICES(equations_row_number+1)-1
                                   equations_column_number=EQUATIONS_COLUMN_INDICES(equations_column_idx)
                                   !Loop over the solver columns this equations column is mapped to
-                                  DO solver_column_idx=1,EQUATIONS_TO_SOLVER_MAP%EQUATIONS_COL_TO_SOLVER_COLS_MAP( &
-                                    & equations_column_number)%NUMBER_OF_SOLVER_COLS
-                                    solver_column_number=EQUATIONS_TO_SOLVER_MAP%EQUATIONS_COL_TO_SOLVER_COLS_MAP( &
-                                      & equations_column_number)%SOLVER_COLS(solver_column_idx)                                   
+                                  DO solver_column_idx=1,EQUATIONS_TO_SOLVER_MAP%equationsColToSolverColsMap( &
+                                    & equations_column_number)%numberOfSolverCols
+                                    solver_column_number=EQUATIONS_TO_SOLVER_MAP%equationsColToSolverColsMap( &
+                                      & equations_column_number)%solverCols(solver_column_idx)                                   
                                     CALL LIST_ITEM_ADD(COLUMN_INDICES_LISTS(solver_row_number)%PTR,solver_column_number, &
                                       & ERR,ERROR,*999)
                                   ENDDO !solver_column_idx
@@ -1814,13 +1816,13 @@ CONTAINS
                         ENDDO !equations_matrix_idx
                       ELSE
                         !Loop over the linear equations matrices mapped to the solver matrix and calculate the col indices by row.
-                        DO equations_matrix_idx=1,SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                          & EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM(solver_matrix_idx)%NUMBER_OF_LINEAR_EQUATIONS_MATRICES
+                        DO equations_matrix_idx=1,SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                          & equationsToSolverMatrixMapsSm(solver_matrix_idx)%numberOfLinearEquationsMatrices
                           !Note: pointers have been checked above
-                          EQUATIONS_TO_SOLVER_MAP=>SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                            & EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM(solver_matrix_idx)%LINEAR_EQUATIONS_TO_SOLVER_MATRIX_MAPS( &
+                          EQUATIONS_TO_SOLVER_MAP=>SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                            & equationsToSolverMatrixMapsSm(solver_matrix_idx)%linearEquationsToSolverMatrixMaps( &
                             & equations_matrix_idx)%PTR
-                          EQUATIONS_MATRIX=>EQUATIONS_TO_SOLVER_MAP%EQUATIONS_MATRIX
+                          EQUATIONS_MATRIX=>EQUATIONS_TO_SOLVER_MAP%equationsMatrix
                           LINEAR_MATRICES=>EQUATIONS_MATRIX%LINEAR_MATRICES
                           EQUATIONS_MATRICES=>LINEAR_MATRICES%EQUATIONS_MATRICES
                           DISTRIBUTED_MATRIX=>EQUATIONS_MATRIX%MATRIX
@@ -1830,18 +1832,18 @@ CONTAINS
                             !Loop over the rows of the equations matrix
                             DO equations_row_number=1,EQUATIONS_MATRICES%NUMBER_OF_ROWS
                               !Loop over the solver rows this equations row is mapped to
-                              DO solver_row_idx=1,SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                                & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number)%NUMBER_OF_SOLVER_ROWS
-                                solver_row_number=SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                                  & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number)% &
-                                  & SOLVER_ROWS(solver_row_idx)                                              
+                              DO solver_row_idx=1,SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                                & equationsRowToSolverRowsMaps(equations_row_number)%numberOfSolverRows
+                                solver_row_number=SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                                  & equationsRowToSolverRowsMaps(equations_row_number)% &
+                                  & solverRows(solver_row_idx)                                              
                                 !Loop over the columns of the equations matrix
                                 DO equations_column_number=1,EQUATIONS_MATRIX%NUMBER_OF_COLUMNS
                                   !Loop over the solver columns this equations column is mapped to
-                                  DO solver_column_idx=1,EQUATIONS_TO_SOLVER_MAP%EQUATIONS_COL_TO_SOLVER_COLS_MAP( &
-                                    & equations_column_number)%NUMBER_OF_SOLVER_COLS
-                                    solver_column_number=EQUATIONS_TO_SOLVER_MAP%EQUATIONS_COL_TO_SOLVER_COLS_MAP( &
-                                      & equations_column_number)%SOLVER_COLS(solver_column_idx)
+                                  DO solver_column_idx=1,EQUATIONS_TO_SOLVER_MAP%equationsColToSolverColsMap( &
+                                    & equations_column_number)%numberOfSolverCols
+                                    solver_column_number=EQUATIONS_TO_SOLVER_MAP%equationsColToSolverColsMap( &
+                                      & equations_column_number)%solverCols(solver_column_idx)
                                     CALL LIST_ITEM_ADD(COLUMN_INDICES_LISTS(solver_row_number)%PTR,solver_column_number, &
                                       & ERR,ERROR,*999)
                                   ENDDO !solver_column_idx
@@ -1852,17 +1854,17 @@ CONTAINS
                             !Loop over the rows of the equations matrix
                             DO equations_row_number=1,EQUATIONS_MATRICES%NUMBER_OF_ROWS
                               !Loop over the solver rows this equations row is mapped to
-                              DO solver_row_idx=1,SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                                & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number)%NUMBER_OF_SOLVER_ROWS
-                                solver_row_number=SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                                  & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number)% &
-                                  & SOLVER_ROWS(solver_row_idx)                                              
+                              DO solver_row_idx=1,SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                                & equationsRowToSolverRowsMaps(equations_row_number)%numberOfSolverRows
+                                solver_row_number=SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                                  & equationsRowToSolverRowsMaps(equations_row_number)% &
+                                  & solverRows(solver_row_idx)                                              
                                 equations_column_number=equations_row_number
                                 !Loop over the solver columns this equations column is mapped to
-                                DO solver_column_idx=1,EQUATIONS_TO_SOLVER_MAP%EQUATIONS_COL_TO_SOLVER_COLS_MAP( &
-                                  & equations_column_number)%NUMBER_OF_SOLVER_COLS
-                                  solver_column_number=EQUATIONS_TO_SOLVER_MAP%EQUATIONS_COL_TO_SOLVER_COLS_MAP( &
-                                    & equations_column_number)%SOLVER_COLS(solver_column_idx)
+                                DO solver_column_idx=1,EQUATIONS_TO_SOLVER_MAP%equationsColToSolverColsMap( &
+                                  & equations_column_number)%numberOfSolverCols
+                                  solver_column_number=EQUATIONS_TO_SOLVER_MAP%equationsColToSolverColsMap( &
+                                    & equations_column_number)%solverCols(solver_column_idx)
                                   CALL LIST_ITEM_ADD(COLUMN_INDICES_LISTS(solver_row_number)%PTR,solver_column_number, &
                                     & ERR,ERROR,*999)
                                 ENDDO !solver_column_idx
@@ -1878,20 +1880,20 @@ CONTAINS
                             !Loop over the rows of the equations matrix
                             DO equations_row_number=1,EQUATIONS_MATRICES%NUMBER_OF_ROWS
                               !Loop over the solver rows this equations row is mapped to
-                              DO solver_row_idx=1,SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                                & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number)%NUMBER_OF_SOLVER_ROWS
-                                solver_row_number=SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                                  & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_number)% &
-                                  & SOLVER_ROWS(solver_row_idx)
+                              DO solver_row_idx=1,SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                                & equationsRowToSolverRowsMaps(equations_row_number)%numberOfSolverRows
+                                solver_row_number=SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                                  & equationsRowToSolverRowsMaps(equations_row_number)% &
+                                  & solverRows(solver_row_idx)
                                 !Loop over the columns of the equations matrix
                                 DO equations_column_idx=EQUATIONS_ROW_INDICES(equations_row_number), &
                                   & EQUATIONS_ROW_INDICES(equations_row_number+1)-1
                                   equations_column_number=EQUATIONS_COLUMN_INDICES(equations_column_idx)
                                   !Loop over the solver columns this equations column is mapped to
-                                  DO solver_column_idx=1,EQUATIONS_TO_SOLVER_MAP%EQUATIONS_COL_TO_SOLVER_COLS_MAP( &
-                                    & equations_column_number)%NUMBER_OF_SOLVER_COLS
-                                    solver_column_number=EQUATIONS_TO_SOLVER_MAP%EQUATIONS_COL_TO_SOLVER_COLS_MAP( &
-                                      & equations_column_number)%SOLVER_COLS(solver_column_idx)                                   
+                                  DO solver_column_idx=1,EQUATIONS_TO_SOLVER_MAP%equationsColToSolverColsMap( &
+                                    & equations_column_number)%numberOfSolverCols
+                                    solver_column_number=EQUATIONS_TO_SOLVER_MAP%equationsColToSolverColsMap( &
+                                      & equations_column_number)%solverCols(solver_column_idx)                                   
                                     CALL LIST_ITEM_ADD(COLUMN_INDICES_LISTS(solver_row_number)%PTR,solver_column_number, &
                                       & ERR,ERROR,*999)
                                   ENDDO !solver_column_idx
@@ -1909,14 +1911,14 @@ CONTAINS
                           END SELECT
                         ENDDO !equations_matrix_idx
                         !Now add any columns from the Jacobians
-                        DO equations_matrix_idx=1,SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                          & EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM(solver_matrix_idx)%NUMBER_OF_EQUATIONS_JACOBIANS
-                          JACOBIAN_TO_SOLVER_MAP=>SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                            & EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM(solver_matrix_idx)%JACOBIAN_TO_SOLVER_MATRIX_MAPS( &
+                        DO equations_matrix_idx=1,SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                          & equationsToSolverMatrixMapsSm(solver_matrix_idx)%numberOfEquationsJacobians
+                          JACOBIAN_TO_SOLVER_MAP=>SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                            & equationsToSolverMatrixMapsSm(solver_matrix_idx)%jacobianToSolverMatrixMaps( &
                             & equations_matrix_idx)%PTR
                           IF(ASSOCIATED(JACOBIAN_TO_SOLVER_MAP)) THEN
                             !Note: pointers have been checked above
-                            JACOBIAN_MATRIX=>JACOBIAN_TO_SOLVER_MAP%JACOBIAN_MATRIX
+                            JACOBIAN_MATRIX=>JACOBIAN_TO_SOLVER_MAP%jacobianMatrix
                             NONLINEAR_MATRICES=>JACOBIAN_MATRIX%NONLINEAR_MATRICES
                             EQUATIONS_MATRICES=>NONLINEAR_MATRICES%EQUATIONS_MATRICES
                             DISTRIBUTED_MATRIX=>JACOBIAN_MATRIX%JACOBIAN
@@ -1926,18 +1928,18 @@ CONTAINS
                               !Loop over the rows of the Jacobian matrix
                               DO jacobian_row_number=1,EQUATIONS_MATRICES%NUMBER_OF_ROWS
                                 !Loop over the solver rows this equations row is mapped to
-                                DO solver_row_idx=1,SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                                  & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(jacobian_row_number)%NUMBER_OF_SOLVER_ROWS
-                                  solver_row_number=SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                                    & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(jacobian_row_number)% &
-                                    & SOLVER_ROWS(solver_row_idx)
+                                DO solver_row_idx=1,SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                                  & equationsRowToSolverRowsMaps(jacobian_row_number)%numberOfSolverRows
+                                  solver_row_number=SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                                    & equationsRowToSolverRowsMaps(jacobian_row_number)% &
+                                    & solverRows(solver_row_idx)
                                   !Loop over the columns of the Jacobian
                                   DO jacobian_column_number=1,JACOBIAN_MATRIX%NUMBER_OF_COLUMNS
                                     !Loop over the solver columns this equations column is mapped to
-                                    DO solver_column_idx=1,JACOBIAN_TO_SOLVER_MAP%JACOBIAN_COL_TO_SOLVER_COLS_MAP( &
-                                      & jacobian_column_number)%NUMBER_OF_SOLVER_COLS
-                                      solver_column_number=JACOBIAN_TO_SOLVER_MAP%JACOBIAN_COL_TO_SOLVER_COLS_MAP( &
-                                        & jacobian_column_number)%SOLVER_COLS(solver_column_idx)
+                                    DO solver_column_idx=1,JACOBIAN_TO_SOLVER_MAP%jacobianColToSolverColsMap( &
+                                      & jacobian_column_number)%numberOfSolverCols
+                                      solver_column_number=JACOBIAN_TO_SOLVER_MAP%jacobianColToSolverColsMap( &
+                                        & jacobian_column_number)%solverCols(solver_column_idx)
                                       CALL LIST_ITEM_ADD(COLUMN_INDICES_LISTS(solver_row_number)%PTR,solver_column_number, &
                                         & ERR,ERROR,*999)
                                     ENDDO !solver_column_idx
@@ -1948,17 +1950,17 @@ CONTAINS
                               !Loop over the rows of the Jacobian matrix
                               DO jacobian_row_number=1,EQUATIONS_MATRICES%NUMBER_OF_ROWS
                                 !Loop over the solver rows this equations row is mapped to
-                                DO solver_row_idx=1,SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                                  & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(jacobian_row_number)%NUMBER_OF_SOLVER_ROWS
-                                  solver_row_number=SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                                    & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(jacobian_row_number)% &
-                                    & SOLVER_ROWS(solver_row_idx)
+                                DO solver_row_idx=1,SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                                  & equationsRowToSolverRowsMaps(jacobian_row_number)%numberOfSolverRows
+                                  solver_row_number=SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                                    & equationsRowToSolverRowsMaps(jacobian_row_number)% &
+                                    & solverRows(solver_row_idx)
                                   jacobian_column_number=jacobian_row_number
                                   !Loop over the solver columns this equations column is mapped to
-                                  DO solver_column_idx=1,JACOBIAN_TO_SOLVER_MAP%JACOBIAN_COL_TO_SOLVER_COLS_MAP( &
-                                    & jacobian_column_number)%NUMBER_OF_SOLVER_COLS
-                                    solver_column_number=JACOBIAN_TO_SOLVER_MAP%JACOBIAN_COL_TO_SOLVER_COLS_MAP( &
-                                      & jacobian_column_number)%SOLVER_COLS(solver_column_idx)
+                                  DO solver_column_idx=1,JACOBIAN_TO_SOLVER_MAP%jacobianColToSolverColsMap( &
+                                    & jacobian_column_number)%numberOfSolverCols
+                                    solver_column_number=JACOBIAN_TO_SOLVER_MAP%jacobianColToSolverColsMap( &
+                                      & jacobian_column_number)%solverCols(solver_column_idx)
                                     CALL LIST_ITEM_ADD(COLUMN_INDICES_LISTS(solver_row_number)%PTR,solver_column_number, &
                                       & ERR,ERROR,*999)
                                   ENDDO !solver_column_idx
@@ -1974,20 +1976,20 @@ CONTAINS
                               !Loop over the rows of the Jacobian matrix
                               DO jacobian_row_number=1,EQUATIONS_MATRICES%NUMBER_OF_ROWS
                                 !Loop over the solver rows this equations row is mapped to
-                                DO solver_row_idx=1,SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                                  & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(jacobian_row_number)%NUMBER_OF_SOLVER_ROWS
-                                  solver_row_number=SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                                    & EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(jacobian_row_number)% &
-                                    & SOLVER_ROWS(solver_row_idx)
+                                DO solver_row_idx=1,SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                                  & equationsRowToSolverRowsMaps(jacobian_row_number)%numberOfSolverRows
+                                  solver_row_number=SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                                    & equationsRowToSolverRowsMaps(jacobian_row_number)% &
+                                    & solverRows(solver_row_idx)
                                   !Loop over the columns of the Jacobian matrix
                                   DO jacobian_column_idx=EQUATIONS_ROW_INDICES(jacobian_row_number), &
                                     & EQUATIONS_ROW_INDICES(jacobian_row_number+1)-1
                                     jacobian_column_number=EQUATIONS_COLUMN_INDICES(jacobian_column_idx)
                                     !Loop over the solver columns this Jacobian column is mapped to
-                                    DO solver_column_idx=1,JACOBIAN_TO_SOLVER_MAP%JACOBIAN_COL_TO_SOLVER_COLS_MAP( &
-                                      & jacobian_column_number)%NUMBER_OF_SOLVER_COLS
-                                      solver_column_number=JACOBIAN_TO_SOLVER_MAP%JACOBIAN_COL_TO_SOLVER_COLS_MAP( &
-                                        & jacobian_column_number)%SOLVER_COLS(solver_column_idx)
+                                    DO solver_column_idx=1,JACOBIAN_TO_SOLVER_MAP%jacobianColToSolverColsMap( &
+                                      & jacobian_column_number)%numberOfSolverCols
+                                      solver_column_number=JACOBIAN_TO_SOLVER_MAP%jacobianColToSolverColsMap( &
+                                        & jacobian_column_number)%solverCols(solver_column_idx)
                                       CALL LIST_ITEM_ADD(COLUMN_INDICES_LISTS(solver_row_number)%PTR,solver_column_number, &
                                         & ERR,ERROR,*999)
                                     ENDDO !solver_column_idx
@@ -2007,21 +2009,21 @@ CONTAINS
                         ENDDO !equations_matrix_idx
                       ENDIF
                       !Now add in any interface matrices columns
-                      DO interface_condition_idx=1,SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx)% &
-                        & NUMBER_OF_INTERFACE_CONDITIONS
+                      DO interface_condition_idx=1,SOLVER_MAPPING%equationsSetToSolverMap(equations_set_idx)% &
+                        & numberOfInterfaceConditions
                       ENDDO !interface_condition_idx
                     ENDDO !equations_set_idx
                     !Loop over any equations sets
-                    DO interface_condition_idx=1,SOLVER_MAPPING%NUMBER_OF_INTERFACE_CONDITIONS
-                      INTERFACE_CONDITION=>SOLVER_MAPPING%INTERFACE_CONDITIONS(interface_condition_idx)%PTR
+                    DO interface_condition_idx=1,SOLVER_MAPPING%numberOfInterfaceConditions
+                      INTERFACE_CONDITION=>SOLVER_MAPPING%interfaceConditions(interface_condition_idx)%PTR
                       SELECT CASE(INTERFACE_CONDITION%METHOD)
                       CASE(INTERFACE_CONDITION_LAGRANGE_MULTIPLIERS_METHOD)
-                        DO interface_matrix_idx=1,SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
-                          & INTERFACE_TO_SOLVER_MATRIX_MAPS_SM(solver_matrix_idx)%NUMBER_OF_INTERFACE_MATRICES
-                          INTERFACE_TO_SOLVER_MAP=>SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP(interface_conditioN_idx)% &
-                            & INTERFACE_TO_SOLVER_MATRIX_MAPS_SM(solver_matrix_idx)%INTERFACE_EQUATIONS_TO_SOLVER_MATRIX_MAPS( &
+                        DO interface_matrix_idx=1,SOLVER_MAPPING%interfaceConditionToSolverMap(interface_condition_idx)% &
+                          & interfaceToSolverMatrixMapsSm(solver_matrix_idx)%numberOfInterfaceMatrices
+                          INTERFACE_TO_SOLVER_MAP=>SOLVER_MAPPING%interfaceConditionToSolverMap(interface_conditioN_idx)% &
+                            & interfaceToSolverMatrixMapsSm(solver_matrix_idx)%interfaceEquationsToSolverMatrixMaps( &
                             & interface_matrix_idx)%PTR
-                          INTERFACE_MATRIX=>INTERFACE_TO_SOLVER_MAP%INTERFACE_MATRIX
+                          INTERFACE_MATRIX=>INTERFACE_TO_SOLVER_MAP%interfaceMatrix
                           INTERFACE_MATRICES=>INTERFACE_MATRIX%INTERFACE_MATRICES
                           DISTRIBUTED_MATRIX=>INTERFACE_MATRIX%MATRIX
                           CALL DISTRIBUTED_MATRIX_STORAGE_TYPE_GET(DISTRIBUTED_MATRIX,INTERFACE_STORAGE_TYPE,ERR,ERROR,*999)
@@ -2030,21 +2032,21 @@ CONTAINS
                             !Loop over the rows of the interface matrix
                             DO interface_row_number=1,INTERFACE_MATRIX%NUMBER_OF_ROWS
                               !Loop over the solver rows this interface column is mapped to
-                              DO solver_row_idx=1,SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
-                                & INTERFACE_TO_SOLVER_MATRIX_MAPS_IM(interface_matrix_idx)%INTERFACE_ROW_TO_SOLVER_ROWS_MAP( &
-                                 interface_row_number)%NUMBER_OF_SOLVER_ROWS
-                                solver_row_number=SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
-                                  & INTERFACE_TO_SOLVER_MATRIX_MAPS_IM(interface_matrix_idx)%INTERFACE_ROW_TO_SOLVER_ROWS_MAP( &
-                                  & interface_row_number)%SOLVER_ROW
+                              DO solver_row_idx=1,SOLVER_MAPPING%interfaceConditionToSolverMap(interface_condition_idx)% &
+                                & interfaceToSolverMatrixMapsIm(interface_matrix_idx)%interfaceRowToSolverRowsMap( &
+                                 interface_row_number)%numberOfSolverRows
+                                solver_row_number=SOLVER_MAPPING%interfaceConditionToSolverMap(interface_condition_idx)% &
+                                  & interfaceToSolverMatrixMapsIm(interface_matrix_idx)%interfaceRowToSolverRowsMap( &
+                                  & interface_row_number)%solverRow
                                 !Loop over the columns of the interface matrix
                                 DO interface_column_number=1,INTERFACE_MATRICES%TOTAL_NUMBER_OF_COLUMNS
                                   !Loop over the solver columns this interface column is mapped to
-                                  DO solver_column_idx=1,SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP( &
-                                    & interface_condition_idx)%INTERFACE_TO_SOLVER_MATRIX_MAPS_SM(solver_matrix_idx)% &
-                                    & INTERFACE_COL_TO_SOLVER_COLS_MAP(interface_column_number)%NUMBER_OF_SOLVER_COLS
-                                    solver_column_number=SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP( &
-                                      & interface_condition_idx)%INTERFACE_TO_SOLVER_MATRIX_MAPS_SM(solver_matrix_idx)% &
-                                      & INTERFACE_COL_TO_SOLVER_COLS_MAP(interface_column_number)%SOLVER_COLS(solver_column_idx)
+                                  DO solver_column_idx=1,SOLVER_MAPPING%interfaceConditionToSolverMap( &
+                                    & interface_condition_idx)%interfaceToSolverMatrixMapsSm(solver_matrix_idx)% &
+                                    & interfaceColToSolverColsMap(interface_column_number)%numberOfSolverCols
+                                    solver_column_number=SOLVER_MAPPING%interfaceConditionToSolverMap( &
+                                      & interface_condition_idx)%interfaceToSolverMatrixMapsSm(solver_matrix_idx)% &
+                                      & interfaceColToSolverColsMap(interface_column_number)%solverCols(solver_column_idx)
                                     CALL LIST_ITEM_ADD(COLUMN_INDICES_LISTS(solver_row_number)%PTR,solver_column_number, &
                                       & ERR,ERROR,*999)
                                   ENDDO !solver_column_idx
@@ -2055,20 +2057,20 @@ CONTAINS
                             !Loop over the rows of the interface matrix
                             DO interface_row_number=1,INTERFACE_MATRIX%NUMBER_OF_ROWS
                               !Loop over the solver rows this interface column is mapped to
-                              DO solver_row_idx=1,SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
-                                & INTERFACE_TO_SOLVER_MATRIX_MAPS_IM(interface_matrix_idx)%INTERFACE_ROW_TO_SOLVER_ROWS_MAP( &
-                                 interface_row_number)%NUMBER_OF_SOLVER_ROWS
-                                solver_row_number=SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
-                                  & INTERFACE_TO_SOLVER_MATRIX_MAPS_IM(interface_matrix_idx)%INTERFACE_ROW_TO_SOLVER_ROWS_MAP( &
-                                  & interface_row_number)%SOLVER_ROW
+                              DO solver_row_idx=1,SOLVER_MAPPING%interfaceConditionToSolverMap(interface_condition_idx)% &
+                                & interfaceToSolverMatrixMapsIm(interface_matrix_idx)%interfaceRowToSolverRowsMap( &
+                                 interface_row_number)%numberOfSolverRows
+                                solver_row_number=SOLVER_MAPPING%interfaceConditionToSolverMap(interface_condition_idx)% &
+                                  & interfaceToSolverMatrixMapsIm(interface_matrix_idx)%interfaceRowToSolverRowsMap( &
+                                  & interface_row_number)%solverRow
                                 interface_column_number=interface_row_number
                                 !Loop over the solver columns this interface column is mapped to
-                                DO solver_column_idx=1,SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP( &
-                                  & interface_condition_idx)%INTERFACE_TO_SOLVER_MATRIX_MAPS_SM(solver_matrix_idx)% &
-                                  & INTERFACE_COL_TO_SOLVER_COLS_MAP(interface_column_number)%NUMBER_OF_SOLVER_COLS
-                                  solver_column_number=SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP( &
-                                    & interface_condition_idx)%INTERFACE_TO_SOLVER_MATRIX_MAPS_SM(solver_matrix_idx)% &
-                                    & INTERFACE_COL_TO_SOLVER_COLS_MAP(interface_column_number)%SOLVER_COLS(solver_column_idx)
+                                DO solver_column_idx=1,SOLVER_MAPPING%interfaceConditionToSolverMap( &
+                                  & interface_condition_idx)%interfaceToSolverMatrixMapsSm(solver_matrix_idx)% &
+                                  & interfaceColToSolverColsMap(interface_column_number)%numberOfSolverCols
+                                  solver_column_number=SOLVER_MAPPING%interfaceConditionToSolverMap( &
+                                    & interface_condition_idx)%interfaceToSolverMatrixMapsSm(solver_matrix_idx)% &
+                                    & interfaceColToSolverColsMap(interface_column_number)%solverCols(solver_column_idx)
                                   CALL LIST_ITEM_ADD(COLUMN_INDICES_LISTS(solver_row_number)%PTR,solver_column_number, &
                                     & ERR,ERROR,*999)
                                 ENDDO !solver_column_idx
@@ -2084,23 +2086,23 @@ CONTAINS
                             !Loop over the rows of the interface matrix
                             DO interface_row_number=1,INTERFACE_MATRIX%NUMBER_OF_ROWS
                               !Loop over the solver rows this interface column is mapped to
-                              DO solver_row_idx=1,SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
-                                & INTERFACE_TO_SOLVER_MATRIX_MAPS_IM(interface_matrix_idx)%INTERFACE_ROW_TO_SOLVER_ROWS_MAP( &
-                                 interface_row_number)%NUMBER_OF_SOLVER_ROWS
-                                solver_row_number=SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
-                                  & INTERFACE_TO_SOLVER_MATRIX_MAPS_IM(interface_matrix_idx)%INTERFACE_ROW_TO_SOLVER_ROWS_MAP( &
-                                  & interface_row_number)%SOLVER_ROW
+                              DO solver_row_idx=1,SOLVER_MAPPING%interfaceConditionToSolverMap(interface_condition_idx)% &
+                                & interfaceToSolverMatrixMapsIm(interface_matrix_idx)%interfaceRowToSolverRowsMap( &
+                                 interface_row_number)%numberOfSolverRows
+                                solver_row_number=SOLVER_MAPPING%interfaceConditionToSolverMap(interface_condition_idx)% &
+                                  & interfaceToSolverMatrixMapsIm(interface_matrix_idx)%interfaceRowToSolverRowsMap( &
+                                  & interface_row_number)%solverRow
                                 !Loop over the columns of the interface matrix
                                 DO interface_column_idx=INTERFACE_ROW_INDICES(interface_row_number), &
                                   & INTERFACE_ROW_INDICES(interface_row_number+1)-1
                                   interface_column_number=INTERFACE_COLUMN_INDICES(interface_column_idx)
                                   !Loop over the solver columns this interface column is mapped to
-                                  DO solver_column_idx=1,SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP( &
-                                    & interface_condition_idx)%INTERFACE_TO_SOLVER_MATRIX_MAPS_SM(solver_matrix_idx)% &
-                                    & INTERFACE_COL_TO_SOLVER_COLS_MAP(interface_column_number)%NUMBER_OF_SOLVER_COLS
-                                    solver_column_number=SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP( &
-                                      & interface_condition_idx)%INTERFACE_TO_SOLVER_MATRIX_MAPS_SM(solver_matrix_idx)% &
-                                      & INTERFACE_COL_TO_SOLVER_COLS_MAP(interface_column_number)%SOLVER_COLS(solver_column_idx)
+                                  DO solver_column_idx=1,SOLVER_MAPPING%interfaceConditionToSolverMap( &
+                                    & interface_condition_idx)%interfaceToSolverMatrixMapsSm(solver_matrix_idx)% &
+                                    & interfaceColToSolverColsMap(interface_column_number)%numberOfSolverCols
+                                    solver_column_number=SOLVER_MAPPING%interfaceConditionToSolverMap( &
+                                      & interface_condition_idx)%interfaceToSolverMatrixMapsSm(solver_matrix_idx)% &
+                                      & interfaceColToSolverColsMap(interface_column_number)%solverCols(solver_column_idx)
                                     CALL LIST_ITEM_ADD(COLUMN_INDICES_LISTS(solver_row_number)%PTR,solver_column_number, &
                                       & ERR,ERROR,*999)
                                   ENDDO !solver_column_idx
@@ -2125,17 +2127,17 @@ CONTAINS
                               !Loop over the columns of the interface matrix
                               DO interface_column_number=1,INTERFACE_MATRICES%NUMBER_OF_COLUMNS
                                 !Loop over the solver rows this interface column is mapped to
-                                DO solver_row_idx=1,SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
-                                  & INTERFACE_COLUMN_TO_SOLVER_ROWS_MAPS(interface_column_number)%NUMBER_OF_SOLVER_ROWS
-                                  solver_row_number=SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
-                                    & INTERFACE_COLUMN_TO_SOLVER_ROWS_MAPS(interface_column_number)%SOLVER_ROW
+                                DO solver_row_idx=1,SOLVER_MAPPING%interfaceConditionToSolverMap(interface_condition_idx)% &
+                                  & interfaceColumnToSolverRowsMaps(interface_column_number)%numberOfSolverRows
+                                  solver_row_number=SOLVER_MAPPING%interfaceConditionToSolverMap(interface_condition_idx)% &
+                                    & interfaceColumnToSolverRowsMaps(interface_column_number)%solverRow
                                   !Loop over the rows of the interface matrix
                                   DO interface_row_number=1,INTERFACE_MATRIX%TOTAL_NUMBER_OF_ROWS
                                     !Loop over the solver columns this interface row is mapped to
-                                    DO solver_column_idx=1,INTERFACE_TO_SOLVER_MAP%INTERFACE_ROW_TO_SOLVER_COLS_MAP( &
-                                      & interface_row_number)%NUMBER_OF_SOLVER_COLS
-                                      solver_column_number=INTERFACE_TO_SOLVER_MAP%INTERFACE_ROW_TO_SOLVER_COLS_MAP( &
-                                        & interface_row_number)%SOLVER_COLS(solver_column_idx)
+                                    DO solver_column_idx=1,INTERFACE_TO_SOLVER_MAP%interfaceRowToSolverColsMap( &
+                                      & interface_row_number)%numberOfSolverCols
+                                      solver_column_number=INTERFACE_TO_SOLVER_MAP%interfaceRowToSolverColsMap( &
+                                        & interface_row_number)%solverCols(solver_column_idx)
                                       CALL LIST_ITEM_ADD(COLUMN_INDICES_LISTS(solver_row_number)%PTR,solver_column_number, &
                                         & ERR,ERROR,*999)
                                     ENDDO !solver_column_idx
@@ -2146,16 +2148,16 @@ CONTAINS
                               !Loop over the columns of the interface matrix
                               DO interface_column_number=1,INTERFACE_MATRICES%NUMBER_OF_COLUMNS
                                 !Loop over the solver rows this interface column is mapped to
-                                DO solver_row_idx=1,SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
-                                  & INTERFACE_COLUMN_TO_SOLVER_ROWS_MAPS(interface_column_number)%NUMBER_OF_SOLVER_ROWS
-                                  solver_row_number=SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
-                                    & INTERFACE_COLUMN_TO_SOLVER_ROWS_MAPS(interface_column_number)%SOLVER_ROW
+                                DO solver_row_idx=1,SOLVER_MAPPING%interfaceConditionToSolverMap(interface_condition_idx)% &
+                                  & interfaceColumnToSolverRowsMaps(interface_column_number)%numberOfSolverRows
+                                  solver_row_number=SOLVER_MAPPING%interfaceConditionToSolverMap(interface_condition_idx)% &
+                                    & interfaceColumnToSolverRowsMaps(interface_column_number)%solverRow
                                   interface_row_number=interface_column_number
                                   !Loop over the solver columns this interface row is mapped to
-                                  DO solver_column_idx=1,INTERFACE_TO_SOLVER_MAP%INTERFACE_ROW_TO_SOLVER_COLS_MAP( &
-                                    & interface_row_number)%NUMBER_OF_SOLVER_COLS
-                                    solver_column_number=INTERFACE_TO_SOLVER_MAP%INTERFACE_ROW_TO_SOLVER_COLS_MAP( &
-                                      & interface_row_number)%SOLVER_COLS(solver_column_idx)
+                                  DO solver_column_idx=1,INTERFACE_TO_SOLVER_MAP%interfaceRowToSolverColsMap( &
+                                    & interface_row_number)%numberOfSolverCols
+                                    solver_column_number=INTERFACE_TO_SOLVER_MAP%interfaceRowToSolverColsMap( &
+                                      & interface_row_number)%solverCols(solver_column_idx)
                                     CALL LIST_ITEM_ADD(COLUMN_INDICES_LISTS(solver_row_number)%PTR,solver_column_number, &
                                       & ERR,ERROR,*999)
                                   ENDDO !solver_column_idx
@@ -2171,19 +2173,19 @@ CONTAINS
                               !Loop over the columns of the interface matrix
                               DO interface_column_number=1,INTERFACE_MATRICES%NUMBER_OF_COLUMNS
                                 !Loop over the solver rows this interface column is mapped to
-                                DO solver_row_idx=1,SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
-                                  & INTERFACE_COLUMN_TO_SOLVER_ROWS_MAPS(interface_column_number)%NUMBER_OF_SOLVER_ROWS
-                                  solver_row_number=SOLVER_MAPPING%INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx)% &
-                                    & INTERFACE_COLUMN_TO_SOLVER_ROWS_MAPS(interface_column_number)%SOLVER_ROW
+                                DO solver_row_idx=1,SOLVER_MAPPING%interfaceConditionToSolverMap(interface_condition_idx)% &
+                                  & interfaceColumnToSolverRowsMaps(interface_column_number)%numberOfSolverRows
+                                  solver_row_number=SOLVER_MAPPING%interfaceConditionToSolverMap(interface_condition_idx)% &
+                                    & interfaceColumnToSolverRowsMaps(interface_column_number)%solverRow
                                   !Loop over the rows of the interface matrix
                                   DO interface_row_idx=INTERFACE_ROW_INDICES(interface_column_number), &
                                     & INTERFACE_ROW_INDICES(interface_column_number+1)-1
                                     interface_row_number=INTERFACE_COLUMN_INDICES(interface_row_idx)
                                     !Loop over the solver columns this interface row is mapped to
-                                    DO solver_column_idx=1,INTERFACE_TO_SOLVER_MAP%INTERFACE_ROW_TO_SOLVER_COLS_MAP( &
-                                      & interface_row_number)%NUMBER_OF_SOLVER_COLS
-                                      solver_column_number=INTERFACE_TO_SOLVER_MAP%INTERFACE_ROW_TO_SOLVER_COLS_MAP( &
-                                        & interface_row_number)%SOLVER_COLS(solver_column_idx)
+                                    DO solver_column_idx=1,INTERFACE_TO_SOLVER_MAP%interfaceRowToSolverColsMap( &
+                                      & interface_row_number)%numberOfSolverCols
+                                      solver_column_number=INTERFACE_TO_SOLVER_MAP%interfaceRowToSolverColsMap( &
+                                        & interface_row_number)%solverCols(solver_column_idx)
                                       CALL LIST_ITEM_ADD(COLUMN_INDICES_LISTS(solver_row_number)%PTR,solver_column_number, &
                                         & ERR,ERROR,*999)
                                     ENDDO !solver_column_idx
@@ -2215,7 +2217,7 @@ CONTAINS
                       END SELECT                        
                     ENDDO !interface_condition_idx
                     !Loop over the rows to calculate the number of non-zeros and setup the row indicces
-                    DO solver_row_number=1,SOLVER_MAPPING%NUMBER_OF_ROWS
+                    DO solver_row_number=1,SOLVER_MAPPING%numberOfRows
                       CALL LIST_REMOVE_DUPLICATES(COLUMN_INDICES_LISTS(solver_row_number)%PTR,ERR,ERROR,*999)
                       CALL LIST_NUMBER_OF_ITEMS_GET(COLUMN_INDICES_LISTS(solver_row_number)%PTR,NUMBER_OF_COLUMNS,ERR,ERROR,*999)
                       NUMBER_OF_NON_ZEROS=NUMBER_OF_NON_ZEROS+NUMBER_OF_COLUMNS
@@ -2224,7 +2226,7 @@ CONTAINS
                     !Allocate and setup the column locations
                     ALLOCATE(COLUMN_INDICES(NUMBER_OF_NON_ZEROS),STAT=ERR)
                     IF(ERR/=0) CALL FLAG_ERROR("Could not allocate column indices.",ERR,ERROR,*999)
-                    DO solver_row_number=1,SOLVER_MAPPING%NUMBER_OF_ROWS
+                    DO solver_row_number=1,SOLVER_MAPPING%numberOfRows
                       CALL LIST_DETACH_AND_DESTROY(COLUMN_INDICES_LISTS(solver_row_number)%PTR,NUMBER_OF_COLUMNS,COLUMNS, &
                         & ERR,ERROR,*999)
                       DO solver_column_idx=1,NUMBER_OF_COLUMNS
@@ -2289,7 +2291,7 @@ CONTAINS
     IF(ASSOCIATED(COLUMN_INDICES)) DEALLOCATE(COLUMN_INDICES)
     IF(ALLOCATED(COLUMNS)) DEALLOCATE(COLUMNS)
     IF(ALLOCATED(COLUMN_INDICES_LISTS)) THEN
-      DO solver_row_number=1,SOLVER_MAPPING%NUMBER_OF_ROWS
+      DO solver_row_number=1,SOLVER_MAPPING%numberOfRows
         IF(ASSOCIATED(COLUMN_INDICES_LISTS(solver_row_number)%PTR)) &
           & CALL LIST_DESTROY(COLUMN_INDICES_LISTS(solver_row_number)%PTR,DUMMY_ERR,DUMMY_ERROR,*998)
       ENDDO !solver_row_number
@@ -2359,7 +2361,7 @@ CONTAINS
    
   END SUBROUTINE SOLVER_MATRIX_FORM
         
-    !
+  !
   !================================================================================================================================
   !
 
@@ -2373,7 +2375,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     INTEGER(INTG) :: DUMMY_ERR
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING
     TYPE(SOLVER_MATRIX_TYPE), POINTER :: SOLVER_MATRIX
     TYPE(VARYING_STRING) :: DUMMY_ERROR,LOCAL_ERROR
     
@@ -2393,8 +2395,8 @@ CONTAINS
             SOLVER_MATRIX%SOLVER_MATRICES=>SOLVER_MATRICES
             SOLVER_MATRIX%STORAGE_TYPE=MATRIX_BLOCK_STORAGE_TYPE
             SOLVER_MATRIX%UPDATE_MATRIX=.TRUE.
-            SOLVER_MATRIX%NUMBER_OF_COLUMNS=SOLVER_MAPPING%SOLVER_COL_TO_EQUATIONS_COLS_MAP(MATRIX_NUMBER)%NUMBER_OF_COLUMNS
-            SOLVER_MAPPING%SOLVER_COL_TO_EQUATIONS_COLS_MAP(MATRIX_NUMBER)%SOLVER_MATRIX=>SOLVER_MATRIX
+            SOLVER_MATRIX%NUMBER_OF_COLUMNS=SOLVER_MAPPING%solverColToEquationsColsMap(MATRIX_NUMBER)%numberOfColumns
+            SOLVER_MAPPING%solverColToEquationsColsMap(MATRIX_NUMBER)%solverMatrix=>SOLVER_MATRIX
             NULLIFY(SOLVER_MATRIX%SOLVER_VECTOR)
             NULLIFY(SOLVER_MATRIX%MATRIX)
           ENDIF
@@ -2421,6 +2423,68 @@ CONTAINS
   END SUBROUTINE SOLVER_MATRIX_INITIALISE
         
   !
+  !================================================================================================================================
+  !
+
+  !>Adds a number of equations vectors into a solver vector
+  SUBROUTINE SolverVector_EquationsVectorsAdd(solverVector,numberOfEquationsVectors,equationsVectors,equationsVectorsCoefficients, &
+    & equationsRowToSolverRowsMap,err,error,*)
+
+    !Argument variables
+    TYPE(DISTRIBUTED_VECTOR_TYPE), POINTER :: solverVector !<A pointer to the solver vector to add the equations vector to
+    INTEGER(INTG), INTENT(IN) :: numberOfEquationsVectors !<The number of equations vectors to add
+    TYPE(DISTRIBUTED_VECTOR_PTR_TYPE), INTENT(IN) :: equationsVectors(:) !<equationsVectors(equationsVectorIdx). equationsVectors(EquationsVectorIdx)%ptr is the ptr to the equationsVectorIdx'th equations vector to add
+    REAL(DP), INTENT(IN) :: equationsVectorsCoefficients(:) !<equationsVectorsCoefficients(equationsVectorIdx) is the multiplicative coefficient for the equationsVectorIdx'th equations vector to add.
+    TYPE(EquationsRowToSolverRowsMapType), INTENT(IN) :: equationsRowToSolverRowsMap(:) !<equationsRowToSolverRowsMap(equationsRowIdx) is mapping from the equationsRowIdx'th equations row to the solver rows
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+    INTEGER(INTG) :: equationsRowNumber,equationsVectorIdx,solverRowIdx,solverRowNumber
+    REAL(DP) :: rowCouplingCoefficient,VALUE,valueSum
+    TYPE(VARYING_STRING) :: localError
+    
+    CALL ENTERS("SolverVector_EquationsVectorsAdd",err,error,*999)
+
+    IF(ASSOCIATED(solverVector)) THEN
+      DO equationsVectorIdx=1,numberOfEquationsVectors
+        IF(.NOT.ASSOCIATED(equationsVectors(equationsVectorIdx)%ptr)) THEN
+          localError="The equations vector is not associated for equations vector index "// &
+            & TRIM(NumberToVString(equationsVectorIdx,"*",err,error))//"."
+          CALL FlagError(localError,err,error,*999)
+        ENDIF
+      ENDDO !equationsVectorIdx
+      DO equationsRowNumber=1,SIZE(equationsRowToSolverRowsMap)
+        IF(equationsRowToSolverRowsMap(equationsRowNumber)%numberOfSolverRows>0) THEN
+          valueSum=0.0_DP
+          DO equationsVectorIdx=1,numberOfEquationsVectors
+            CALL DistributedVector_ValuesGet(equationsVectors(equationsVectorIdx)%ptr,equationsRowNumber,value,err,error,*999)
+            valueSum=valueSum+equationsVectorsCoefficients(equationsVectorIdx)*value
+          ENDDO !equationsVectorIdx
+          IF(ABS(valueSum)>ZERO_TOLERANCE) THEN
+            !Loop over the solver rows associated with this equations set residual row
+            DO solverRowIdx=1,equationsRowToSolverRowsMap(equationsRowNumber)%numberOfSolverRows
+              solverRowNumber=equationsRowToSolverRowsMap(equationsRowNumber)%solverRows(SolverRowIdx)
+              rowCouplingCoefficient=equationsRowToSolverRowsMap(equationsRowNumber)%couplingCoefficients(solverRowIdx)
+              value=valueSum*rowCouplingCoefficient
+              !Add in value to the solver vector
+              CALL DistributedVector_ValuesAdd(solverVector,solverRowNumber,value,err,error,*999)
+            ENDDO !solverRowIdx
+          ENDIF
+        ENDIF
+      ENDDO !equationsRowNumber
+    ELSE
+      CALL FLAG_ERROR("Solver vector is not associated.",err,error,*999)
+    ENDIF
+    
+    CALL EXITS("SolverVector_EquationsVectorsAdd")
+    RETURN
+999 CALL ERRORS("SolverVector_EquationsVectorsAdd",err,error)    
+    CALL EXITS("SolverVector_EquationsVectorsAdd")
+    RETURN 1
+   
+  END SUBROUTINE SolverVector_EquationsVectorsAdd
+        
+    !
   !================================================================================================================================
   !
 

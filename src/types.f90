@@ -741,6 +741,11 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     TYPE(DISTRIBUTED_VECTOR_PETSC_TYPE), POINTER :: PETSC !<A pointer to the PETSc distributed vector information
   END TYPE DISTRIBUTED_VECTOR_TYPE
 
+  !Buffer type to allow an array of pointers to distributed vectors
+  TYPE DISTRIBUTED_VECTOR_PTR_TYPE
+    TYPE(DISTRIBUTED_VECTOR_TYPE), POINTER :: PTR !<The pointer to the distributed vector
+  END TYPE DISTRIBUTED_VECTOR_PTR_TYPE
+
   !>Contains information for a CMISS distributed matrix
   TYPE DISTRIBUTED_MATRIX_CMISS_TYPE
     TYPE(DISTRIBUTED_MATRIX_TYPE), POINTER :: DISTRIBUTED_MATRIX !<A pointer to the distributed matrix
@@ -1407,7 +1412,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     TYPE(EQUATIONS_TYPE), POINTER :: EQUATIONS !<A pointer back to the equations
     LOGICAL :: EQUATIONS_MATRICES_FINISHED !<Is .TRUE. if the equations matrices have finished being created, .FALSE. if not.
     TYPE(EQUATIONS_MAPPING_TYPE), POINTER :: EQUATIONS_MAPPING !<A pointer to the equations mapping for the equations matrices.
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING !<A pointer to the solver mapping for the equations matrices
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING !<A pointer to the solver mapping for the equations matrices
     INTEGER(INTG) :: NUMBER_OF_ROWS !<The number of local rows (excluding ghost rows) in the distributed equations matrices and vectors
     INTEGER(INTG) :: TOTAL_NUMBER_OF_ROWS !<The number of local rows (including ghost rows) in the distributed equations matrices and vectors
     INTEGER(INTG) :: NUMBER_OF_GLOBAL_ROWS !<The number of global rows in the distributed equations matrices and vectors
@@ -1523,7 +1528,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     TYPE(FIELD_VARIABLE_PTR_TYPE), ALLOCATABLE :: RESIDUAL_VARIABLES(:) !<RESIDUAL_VARIABLES(variable_idx). The variable_idx'th residual variable.
     TYPE(VAR_TO_EQUATIONS_JACOBIAN_MAP_TYPE), ALLOCATABLE :: VAR_TO_JACOBIAN_MAP(:) !<VAR_TO_JACOBIAN_MAP(variable_idx). The mapping from the residual variable to the Jacobain matrix for the variable_idx'th residual variable.
     TYPE(EQUATIONS_JACOBIAN_TO_VAR_MAP_TYPE), ALLOCATABLE :: JACOBIAN_TO_VAR_MAP(:) !<JACOBIAN_TO_VAR_MAP(jacobian_idx). The mapping from the Jacobian matrix to the residual variables for the jacobian_idx'th Jacobian.
-    REAL(DP) :: RESIDUAL_COEFFICIENT !<The multiplicative coefficient applied to the residual vector
+    REAL(DP), ALLOCATABLE :: RESIDUAL_COEFFICIENTS(:) !<RESIDUAL_COEFFICIENTS(variableIdx). The multiplicative coefficient applied to the variableIdx'th residual vector.
     INTEGER(INTG), ALLOCATABLE :: EQUATIONS_ROW_TO_RESIDUAL_DOF_MAP(:) !<EQUATIONS_ROW_TO_RESIDUAL_DOF_MAP(row_idx). The mapping from the row_idx'th row of the equations to the source dof.
   END TYPE EQUATIONS_MAPPING_NONLINEAR_TYPE
 
@@ -1565,8 +1570,8 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     INTEGER(INTG), ALLOCATABLE :: LINEAR_MATRIX_VARIABLE_TYPES(:) !<LINEAR_MATRIX_VARIABLE_TYPES(matrix_idx). The dependent variable type mapped to the matrix_idx'th linear equations matrix.
     REAL(DP), ALLOCATABLE :: LINEAR_MATRIX_COEFFICIENTS(:) !<LINEAR_MATRIX_COEFFICIENTS(matrix_idx). The coefficient of the matrix_idx'th linear matrix in the equations set.
     INTEGER(INTG) :: NUMBER_OF_RESIDUAL_VARIABLES !<The number of residual variables for the nonlinear equations.
-    INTEGER(INTG), ALLOCATABLE :: RESIDUAL_VARIABLE_TYPES(:) !<RESIDUAL_VARIABLE_TYPES(jacobian_idx). The type of the jacobian_idx'th Jacobian.
-    REAL(DP) :: RESIDUAL_COEFFICIENT !<The coefficient multiplying the residual vector.
+    INTEGER(INTG), ALLOCATABLE :: RESIDUAL_VARIABLE_TYPES(:) !<RESIDUAL_VARIABLE_TYPES(residualVariableIdx). The varible type of the residualVariableIdx'th residual.
+    REAL(DP), ALLOCATABLE :: RESIDUAL_COEFFICIENTS(:) !< RESIDUAL_COEFFICIENTS(residualVariableIdx). The coefficient multiplying the residualVariableIdx'th residual vector.
     INTEGER(INTG) :: lhsVariableType !<The dependent variable type mapped to the LHS rows.
     INTEGER(INTG) :: RHS_VARIABLE_TYPE !<The dependent variable type mapped to the rhs vector.
     REAL(DP) :: RHS_COEFFICIENT !<The coefficient multiplying the RHS vector.
@@ -1888,7 +1893,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     TYPE(INTERFACE_EQUATIONS_TYPE), POINTER :: INTERFACE_EQUATIONS !<A pointer back to the interface equations
     LOGICAL :: INTERFACE_MATRICES_FINISHED !<Is .TRUE. if the interface  matrices have finished being created, .FALSE. if not.
     TYPE(INTERFACE_MAPPING_TYPE), POINTER :: INTERFACE_MAPPING !<A pointer to the interface equations mapping for the interface equations matrices.
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING !<A pointer to the solver mapping for the interface equations matrices
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING !<A pointer to the solver mapping for the interface equations matrices
     INTEGER(INTG) :: NUMBER_OF_COLUMNS !<The number of local columns in the interface matrices
     INTEGER(INTG) :: TOTAL_NUMBER_OF_COLUMNS !<The total number of local columns in the interface matrices
     INTEGER(INTG) :: NUMBER_OF_GLOBAL_COLUMNS !<The number of global columns in the interface matrices
@@ -2246,7 +2251,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
   TYPE SOLVER_MATRICES_TYPE
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: SOLVER_EQUATIONS !<A pointer to the solver
     LOGICAL :: SOLVER_MATRICES_FINISHED !<Is .TRUE. if the solver matrices have finished being created, .FALSE. if not.
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING !<A pointer to the solver mapping for these solver matrices
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING !<A pointer to the solver mapping for these solver matrices
     INTEGER(INTG) :: NUMBER_OF_ROWS !<The number of (local) rows in the distributed solution matrix for this computational node
     INTEGER(INTG) :: NUMBER_OF_GLOBAL_ROWS !<The number of global rows in the distributed solution matrix
     INTEGER(INTG) :: LIBRARY_TYPE !<The library type for the solver matrices
@@ -2277,7 +2282,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
 
     INTEGER(INTG) :: SPARSITY_TYPE !<The type of sparsity to use in the solver matrices \see SOLVER_ROTUINES_SparsityTypes,SOLVER_ROUTINES
 
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING !<A pointer to the solver mapping
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING !<A pointer to the solver mapping
     TYPE(SOLVER_MATRICES_TYPE), POINTER :: SOLVER_MATRICES !<A pointer to the solver matrices for the problem
 
     TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: BOUNDARY_CONDITIONS !<A pointer to the boundary condition information for the solver equations.
@@ -2558,293 +2563,305 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
   !
   ! Solver mapping types
   !
-  
-  TYPE EQUATIONS_COL_TO_SOLVER_COLS_MAP_TYPE
-    INTEGER(INTG) :: NUMBER_OF_SOLVER_COLS !<The number of solver cols this equations column is mapped to
-    INTEGER(INTG), ALLOCATABLE :: SOLVER_COLS(:) !<SOLVER_COLS(i). The solver column number for the i'th solver column that this column is mapped to
-    REAL(DP), ALLOCATABLE :: COUPLING_COEFFICIENTS(:) !<COUPLING_COEFFICIENTS(i). The coupling coefficients for the i'th solver column that this column is mapped to.
-  END TYPE EQUATIONS_COL_TO_SOLVER_COLS_MAP_TYPE
 
-  TYPE EQUATIONS_TO_SOLVER_MAPS_TYPE
-    INTEGER(INTG) :: EQUATIONS_MATRIX_TYPE !<The type of equations matrix \see SOLVER_MAPPING_EquationsMatrixTypes,SOLVER_MAPPING
-    INTEGER(INTG) :: EQUATIONS_MATRIX_NUMBER !<The equations matrix number being mapped.
-    INTEGER(INTG) :: SOLVER_MATRIX_NUMBER !<The solver matrix number being mapped.
-    TYPE(EQUATIONS_MATRIX_TYPE), POINTER :: EQUATIONS_MATRIX !<A pointer to the equations matrix being mapped.
-    TYPE(SOLVER_MATRIX_TYPE), POINTER :: SOLVER_MATRIX !<A pointer to the solver matrix being mapped.
-    TYPE(EQUATIONS_COL_TO_SOLVER_COLS_MAP_TYPE), ALLOCATABLE :: EQUATIONS_COL_TO_SOLVER_COLS_MAP(:) !<EQUATIONS_COL_TO_SOLVER_COL_MAP(column_idx). The mapping from the column_idx'th column of this equations matrix to the solver matrix columns. Note for interface matrices this will actually be for the transposed interface matrix i.e., for the interface matrix rows.
-  END TYPE EQUATIONS_TO_SOLVER_MAPS_TYPE
+  !>Contains information on how equations columns are mapped to solver columns.
+  TYPE EquationsColToSolverColsMapType
+    INTEGER(INTG) :: numberOfSolverCols !<The number of solver cols this equations column is mapped to
+    INTEGER(INTG), ALLOCATABLE :: solverCols(:) !<solverCols(i). The solver column number for the i'th solver column that this column is mapped to
+    REAL(DP), ALLOCATABLE :: couplingCoefficients(:) !<couplingCoefficients(i). The coupling coefficients for the i'th solver column that this column is mapped to.
+  END TYPE EquationsColToSolverColsMapType
 
-  !>A buffer type to allow for an array of pointers to a EQUATIONS_TO_SOLVER_MAPS_TYPE \see TYPES::EQUATIONS_TO_SOLVER_MAPS_TYPE
-  TYPE EQUATIONS_TO_SOLVER_MAPS_PTR_TYPE
-    TYPE(EQUATIONS_TO_SOLVER_MAPS_TYPE), POINTER :: PTR !<A pointer to the equations to solver maps
-  END TYPE EQUATIONS_TO_SOLVER_MAPS_PTR_TYPE
-  
-  TYPE INTERFACE_TO_SOLVER_MAPS_TYPE
-    INTEGER(INTG) :: INTERFACE_MATRIX_NUMBER !<The interface matrix number being mapped.
-    INTEGER(INTG) :: SOLVER_MATRIX_NUMBER !<The solver matrix number being mapped.
-    TYPE(INTERFACE_MATRIX_TYPE), POINTER :: INTERFACE_MATRIX !<A pointer to the interface matrix being mapped.
-    TYPE(SOLVER_MATRIX_TYPE), POINTER :: SOLVER_MATRIX !<A pointer to the solver matrix being mapped.
-    TYPE(EQUATIONS_COL_TO_SOLVER_COLS_MAP_TYPE), ALLOCATABLE :: INTERFACE_ROW_TO_SOLVER_COLS_MAP(:) !<INTERFACE_ROW_TO_SOLVER_COL_MAP(column_idx). The mapping from the row_idx'th row of this interface matrix to the solver matrix columns.
-  END TYPE INTERFACE_TO_SOLVER_MAPS_TYPE
+  !>Contains information of the mapping of an equations matrix to a solver matrix
+  TYPE EquationsToSolverMapsType
+    INTEGER(INTG) :: equationsMatrixType !<The type of equations matrix \see SolverMapping_EquationsMatrixTypes,SolverMapping
+    INTEGER(INTG) :: equationsMatrixNumber !<The equations matrix number being mapped.
+    INTEGER(INTG) :: solverMatrixNumber !<The solver matrix number being mapped.
+    TYPE(EQUATIONS_MATRIX_TYPE), POINTER :: equationsMatrix !<A pointer to the equations matrix being mapped.
+    TYPE(SOLVER_MATRIX_TYPE), POINTER :: solverMatrix !<A pointer to the solver matrix being mapped.
+    TYPE(EquationsColToSolverColsMapType), ALLOCATABLE :: equationsColToSolverColsMap(:) !<equationsColToSolverColsMap(columnIdx). The mapping from the columnIdx'th column of this equations matrix to the solver matrix columns. Note for interface matrices this will actually be for the transposed interface matrix i.e., for the interface matrix rows.
+  END TYPE EquationsToSolverMapsType
 
-  !>A buffer type to allow for an array of pointers to a INTERFACE_TO_SOLVER_MAPS_TYPE \see TYPES::INTERFACE_TO_SOLVER_MAPS_TYPE
-  TYPE INTERFACE_TO_SOLVER_MAPS_PTR_TYPE
-    TYPE(INTERFACE_TO_SOLVER_MAPS_TYPE), POINTER :: PTR !<A pointer to the interface to solver maps
-  END TYPE INTERFACE_TO_SOLVER_MAPS_PTR_TYPE
-  
-  TYPE JACOBIAN_COL_TO_SOLVER_COLS_MAP_TYPE
-    INTEGER(INTG) :: NUMBER_OF_SOLVER_COLS !<The number of solver cols this Jacobian column is mapped to
-    INTEGER(INTG), ALLOCATABLE :: SOLVER_COLS(:) !<SOLVER_COLS(i). The solver column number for the i'th solver column that this column is mapped to
-    REAL(DP), ALLOCATABLE :: COUPLING_COEFFICIENTS(:) !<COUPLING_COEFFICIENTS(i). The coupling coefficients for the i'th solver column that this column is mapped to.
-  END TYPE JACOBIAN_COL_TO_SOLVER_COLS_MAP_TYPE
+  !>A buffer type to allow for an array of pointers to a EquationsToSolverMapsType \see TYPES::EquationsToSolverMapsType
+  TYPE EquationsToSolverMapsPtrType
+    TYPE(EquationsToSolverMapsType), POINTER :: ptr !<A pointer to the equations to solver maps
+  END TYPE EquationsToSolverMapsPtrType
 
-  TYPE JACOBIAN_TO_SOLVER_MAP_TYPE
-    INTEGER(INTG) :: SOLVER_MATRIX_NUMBER !<The solver matrix number being mapped.
-    TYPE(EQUATIONS_JACOBIAN_TYPE), POINTER :: JACOBIAN_MATRIX !<A pointer to the Jacobian matrix being mapped.
-    TYPE(SOLVER_MATRIX_TYPE), POINTER :: SOLVER_MATRIX !<A pointer to the solver matrix being mapped.
-    TYPE(JACOBIAN_COL_TO_SOLVER_COLS_MAP_TYPE), ALLOCATABLE :: JACOBIAN_COL_TO_SOLVER_COLS_MAP(:) !<JACOBIAN_COL_TO_SOLVER_COL_MAP(column_idx). The mapping from the column_idx'th column of the Jacobian matrix to the solver matrix columns.
-  END TYPE JACOBIAN_TO_SOLVER_MAP_TYPE
+  !>Contains information of the mapping of an interface matrix to a solver matrix
+  TYPE InterfaceToSolverMapsType
+    INTEGER(INTG) :: interfaceMatrixNumber !<The interface matrix number being mapped.
+    INTEGER(INTG) :: solverMatrixNumber !<The solver matrix number being mapped.
+    TYPE(INTERFACE_MATRIX_TYPE), POINTER :: interfaceMatrix !<A pointer to the interface matrix being mapped.
+    TYPE(SOLVER_MATRIX_TYPE), POINTER :: solverMatrix !<A pointer to the solver matrix being mapped.
+    TYPE(EquationsColToSolverColsMapType), ALLOCATABLE :: interfaceRowToSolverColsMap(:) !<interfaceRowToSolverColsMap(columnIdx). The mapping from the columnIdx'th row of this interface matrix to the solver matrix columns.
+  END TYPE InterfaceToSolverMapsType
 
-  TYPE JACOBIAN_TO_SOLVER_MAP_PTR_TYPE
-    TYPE(JACOBIAN_TO_SOLVER_MAP_TYPE), POINTER :: PTR !<A pointer to the Jacobian to solver map
-  END TYPE JACOBIAN_TO_SOLVER_MAP_PTR_TYPE
+  !>A buffer type to allow for an array of pointers to a InterfaceToSolverMapsType \see TYPES::InterfaceToSolverMapsType
+  TYPE InterfaceToSolverMapsPtrType
+    TYPE(InterfaceToSolverMapsType), POINTER :: ptr !<A pointer to the interface to solver maps
+  END TYPE InterfaceToSolverMapsPtrType
+
+  !>Contains information on the mapping between columns in a Jacobian matrix to columns in a solver matrix.
+  TYPE JacobianColToSolverColsMapType
+    INTEGER(INTG) :: numberOfSolverCols !<The number of solver cols this Jacobian column is mapped to
+    INTEGER(INTG), ALLOCATABLE :: solverCols(:) !<solverCols(i). The solver column number for the i'th solver column that this column is mapped to
+    REAL(DP), ALLOCATABLE :: couplingCoefficients(:) !<couplingCoefficients(i). The coupling coefficients for the i'th solver column that this column is mapped to.
+  END TYPE JacobianColToSolverColsMapType
+
+  !>Contains information on the mapping of a Jacobian matrix onto a solver matrix
+  TYPE JacobianToSolverMapType
+    INTEGER(INTG) :: solverMatrixNumber !<The solver matrix number being mapped.
+    TYPE(EQUATIONS_JACOBIAN_TYPE), POINTER :: jacobianMatrix !<A pointer to the Jacobian matrix being mapped.
+    TYPE(SOLVER_MATRIX_TYPE), POINTER :: solverMatrix !<A pointer to the solver matrix being mapped.
+    TYPE(JacobianColToSolverColsMapType), ALLOCATABLE :: jacobianColToSolverColsMap(:) !<jacobianColToSolverColsMap(columnIdx). The mapping from the columnIdx'th column of the Jacobian matrix to the solver matrix columns.
+  END TYPE JacobianToSolverMapType
+
+  !>A buffer type to allow for an array of pointers to a JacobianToSolverMapType \see TYPES::JacobianToSolverMapType
+  TYPE JacobianToSolverMapPtrType
+    TYPE(JacobianToSolverMapType), POINTER :: ptr !<A pointer to the Jacobian to solver map
+  END TYPE JacobianToSolverMapPtrType
 
   !>Contains information on the mappings between field variable dofs inequations and the solver matrix columns (solver dofs) \todo rename solver col to be solver dof here???
-  TYPE VARIABLE_TO_SOLVER_COL_MAP_TYPE
-    INTEGER(INTG), ALLOCATABLE :: COLUMN_NUMBERS(:) !<COLUMN_NUMBERS(variable_dof_idx). The solver column number (solver dof) that the variable_dof_idx'th variable dof is mapped to.
-    REAL(DP), ALLOCATABLE :: COUPLING_COEFFICIENTS(:) !<COUPLING_COEFFICIENTS(variable_dof_idx). The multiplicative constant for the mapping between the variable_dof_idx'th variable dof and the solver dof.
-    REAL(DP), ALLOCATABLE :: ADDITIVE_CONSTANTS(:) !<ADDITIVE_CONSTANTS(variable_dof_idx). The additive constant for the mapping between the variable_dof_idx'th variable dof and the solver dof.
-  END TYPE VARIABLE_TO_SOLVER_COL_MAP_TYPE
+  TYPE VariableToSolverColMapType
+    INTEGER(INTG), ALLOCATABLE :: columnNumbers(:) !<columnNumbers(variableDofIdx). The solver column number (solver DOF) that the variableDofIdx'th variable DOF is mapped to.
+    REAL(DP), ALLOCATABLE :: couplingCoefficients(:) !<couplingCoefficients(variableDofIdx). The multiplicative constant for the mapping between the variableDofIdx'th variable DOF and the solver DOF.
+    REAL(DP), ALLOCATABLE :: additiveConstants(:) !<additiveConstants(variableDofIdx). The additive constant for the mapping between the variableDofIdx'th variable DOF and the solver DOF.
+  END TYPE VariableToSolverColMapType
 
-  TYPE EQUATIONS_TO_SOLVER_MATRIX_MAPS_INTERFACE_TYPE
-    INTEGER(INTG) :: INTERFACE_CONDITION_INDEX
-    TYPE(INTERFACE_CONDITION_TYPE), POINTER :: INTERFACE_CONDITION
-    INTEGER(INTG) :: INTERFACE_MATRIX_NUMBER
-  END TYPE EQUATIONS_TO_SOLVER_MATRIX_MAPS_INTERFACE_TYPE
+  !>Contains information on what interface matrices are part of equations mapped to a solver matrix
+  TYPE EquationsToSolverMatrixMapsInterfaceType
+    INTEGER(INTG) :: interfaceConditionIndex !<The interface condition index in the solver mappings
+    TYPE(INTERFACE_CONDITION_TYPE), POINTER :: interfaceCondition !<A pointer to the interface condition
+    INTEGER(INTG) :: interfaceMatrixNumber !<The interface matrix number in the equations.
+  END TYPE EquationsToSolverMatrixMapsInterfaceType
   
   !>Contains information on the equations to solver matrix mappings when indexing by solver matrix number
-  TYPE EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM_TYPE
-    INTEGER(INTG) :: SOLVER_MATRIX_NUMBER !<The number of the solver matrix for these mappings
+  TYPE EquationsToSolverMatrixMapsSmType
+    INTEGER(INTG) :: solverMatrixNumber !<The number of the solver matrix for these mappings
 
-    INTEGER(INTG) :: NUMBER_OF_VARIABLES !<The number of variables mapped to this solver matrix
-    INTEGER(INTG), ALLOCATABLE :: VARIABLE_TYPES(:) !<VARIABLE_TYPES(variable_idx). The variable type for the variable_idx'th variable that is mapped to the solver matrix.
-    TYPE(FIELD_VARIABLE_PTR_TYPE), ALLOCATABLE :: VARIABLES(:) !<VARIABLES(variable_idx). VARIABLES(variable_idx)%PTR points to the variable_idx'th variable that is mapped to the solver matrix.
-    TYPE(VARIABLE_TO_SOLVER_COL_MAP_TYPE), ALLOCATABLE :: VARIABLE_TO_SOLVER_COL_MAPS(:) !<VARIABLE_TO_SOLVER_COL_MAPS(variable_idx). The mappings from the variable dofs to the solver dofs for the variable_idx'th variable in the equations set that is mapped to the solver matrix.
-    INTEGER(INTG) :: NUMBER_OF_DYNAMIC_EQUATIONS_MATRICES !<The number of dynamic equations matrices mapped to this solver matrix
-    TYPE(EQUATIONS_TO_SOLVER_MAPS_PTR_TYPE), ALLOCATABLE :: DYNAMIC_EQUATIONS_TO_SOLVER_MATRIX_MAPS(:) !<DYNAMIC_EQUATIONS_TO_SOLVER_MATRIX_MAPS(equations_matrix_idx). The maps from the equations_idx'th linear equations matrix to solver matrix
-    INTEGER(INTG) :: NUMBER_OF_LINEAR_EQUATIONS_MATRICES !<The number of linear equations matrices mapped to this solver matrix
-    TYPE(EQUATIONS_TO_SOLVER_MAPS_PTR_TYPE), ALLOCATABLE :: LINEAR_EQUATIONS_TO_SOLVER_MATRIX_MAPS(:) !<LINEAR_EQUATIONS_TO_SOLVER_MATRIX_MAPS(equations_matrix_idx). The maps from the equations_idx'th linear equations matrix to solver matrix
-    INTEGER(INTG) :: NUMBER_OF_EQUATIONS_JACOBIANS !<The number of nonlinear equations Jacobian matrices mapped to this solver matrix
-    TYPE(JACOBIAN_TO_SOLVER_MAP_PTR_TYPE), ALLOCATABLE :: JACOBIAN_TO_SOLVER_MATRIX_MAPS(:) !<JACOBIAN_TO_SOLVER_MATRIX_MAPS(equations_matrix_idx). The map from the equations_matrix_idx'th Jacobian matrix to the solver matrix
-  END TYPE EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM_TYPE
+    INTEGER(INTG) :: numberOfVariables !<The number of variables mapped to this solver matrix
+    INTEGER(INTG), ALLOCATABLE :: variableTypes(:) !<variableTypes(variableIdx). The variable type for the variableIdx'th variable that is mapped to the solver matrix.
+    TYPE(FIELD_VARIABLE_PTR_TYPE), ALLOCATABLE :: variables(:) !<variables(variableIdx). variables(variableIdx)%ptr points to the variableIdx'th variable that is mapped to the solver matrix.
+    TYPE(VariableToSolverColMapType), ALLOCATABLE :: variableToSolverColMaps(:) !<variableToSolverColMaps(variable_idx). The mappings from the variable dofs to the solver dofs for the variable_idx'th variable in the equations set that is mapped to the solver matrix.
+    INTEGER(INTG) :: numberOfDynamicEquationsMatrices !<The number of dynamic equations matrices mapped to this solver matrix
+    TYPE(EquationsToSolverMapsPtrType), ALLOCATABLE :: dynamicEquationsToSolverMatrixMaps(:) !<dynamicEquationsToSolverMatrixMaps(equationsMatrixIdx). The maps from the equationsMatrixIdx'th dynamic equations matrix to the solver matrix.
+    INTEGER(INTG) :: numberOfLinearEquationsMatrices !<The number of linear equations matrices mapped to this solver matrix
+    TYPE(EquationsToSolverMapsPtrType), ALLOCATABLE :: linearEquationsToSolverMatrixMaps(:) !<linearEquationsToSolverMatrixMaps(equationsMatrixIdx). The maps from the equationsMatrixIdx'th linear equations matrix to the solver matrix.
+    INTEGER(INTG) :: numberOfEquationsJacobians !<The number of nonlinear equations Jacobian matrices mapped to this solver matrix
+    TYPE(JacobianToSolverMapPtrType), ALLOCATABLE :: jacobianToSolverMatrixMaps(:) !<jacobianToSolverMatrixMaps(equationsMatrixIdx). The map from the equationsMatrixIdx'th Jacobian matrix to the solver matrix.
+  END TYPE EquationsToSolverMatrixMapsSmType
 
   !>Contains information on the equations to solver matrix mappings when indexing by equations matrix number
-  TYPE EQUATIONS_TO_SOLVER_MATRIX_MAPS_EM_TYPE
-    INTEGER(INTG) :: EQUATIONS_MATRIX_NUMBER !<The number of the equations matrix for these mappings
-    INTEGER(INTG) :: NUMBER_OF_SOLVER_MATRICES !<The number of solver matrices mapped to this equations matrix
-    TYPE(EQUATIONS_TO_SOLVER_MAPS_PTR_TYPE), ALLOCATABLE :: EQUATIONS_TO_SOLVER_MATRIX_MAPS(:) !<EQUATIONS_TO_SOLVER_MATRIX_MAPS(solver_matrix_idx). The maps from the equation matrix to the solver_matrix_idx'th solver matrix
-  END TYPE EQUATIONS_TO_SOLVER_MATRIX_MAPS_EM_TYPE
+  TYPE EquationsToSolverMatrixMapsEmType
+    INTEGER(INTG) :: equationsMatrixNumber !<The number of the equations matrix for these mappings
+    INTEGER(INTG) :: numberOfSolverMatrices !<The number of solver matrices mapped to this equations matrix
+    TYPE(EquationsToSolverMapsPtrType), ALLOCATABLE :: equationsToSolverMatrixMaps(:) !<equationsToSolverMatrixMaps(solver_matrix_idx). The maps from the equation matrix to the solver_matrix_idx'th solver matrix
+  END TYPE EquationsToSolverMatrixMapsEmType
 
   !>Contains information on the mapping from the equations rows in an equations set to the solver rows 
-  TYPE EQUATIONS_ROW_TO_SOLVER_ROWS_MAP_TYPE
-    INTEGER(INTG) :: NUMBER_OF_SOLVER_ROWS !<The number of solver rows this equations row is mapped to
-    INTEGER(INTG), ALLOCATABLE :: SOLVER_ROWS(:) !<SOLVER_ROWS(i). The solver row number for the i'th solver row that this row is mapped to
-    REAL(DP), ALLOCATABLE :: COUPLING_COEFFICIENTS(:) !<COUPLING_COEFFICIENTS(i). The coupling coefficients for the i'th solver row that this row is mapped to.
-  END TYPE EQUATIONS_ROW_TO_SOLVER_ROWS_MAP_TYPE
+  TYPE EquationsRowToSolverRowsMapType
+    INTEGER(INTG) :: numberOfSolverRows !<The number of solver rows this equations row is mapped to
+    INTEGER(INTG), ALLOCATABLE :: solverRows(:) !<solverRows(i). The solver row number for the i'th solver row that this row is mapped to
+    REAL(DP), ALLOCATABLE :: couplingCoefficients(:) !<couplingCoefficients(i). The coupling coefficients for the i'th solver row that this row is mapped to.
+  END TYPE EquationsRowToSolverRowsMapType
   
   !>Contains information on the mappings from an equations set to the solver matrices
-  TYPE EQUATIONS_SET_TO_SOLVER_MAP_TYPE
-    INTEGER(INTG) :: EQUATIONS_SET_INDEX !<The index of the equations set for these mappings
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING !<A pointer to the solver mappings
-    TYPE(EQUATIONS_TYPE), POINTER :: EQUATIONS !<A pointer to the equations in this equations set
-    INTEGER(INTG) :: NUMBER_OF_INTERFACE_CONDITIONS !<The number of interface conditions affecting this equations set.
-    TYPE(EQUATIONS_TO_SOLVER_MATRIX_MAPS_INTERFACE_TYPE), ALLOCATABLE :: EQUATIONS_TO_SOLVER_MATRIX_MAPS_INTERFACE(:) !<EQUATIONS_TO_SOLVER_MATRIX_MAPS_INTERFACE(interface_condition_idx). Information on the interface_condition_idx'th interface condition affecting this equations set
-    TYPE(EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM_TYPE), ALLOCATABLE :: EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM(:) !<EQUATIONS_TO_SOLVER_MATRIX_MAPS_SM(solver_matrix_idx). The mappings from the equations matrices in this equation set to the solver_matrix_idx'th solver_matrix
-    TYPE(EQUATIONS_TO_SOLVER_MATRIX_MAPS_EM_TYPE), ALLOCATABLE :: EQUATIONS_TO_SOLVER_MATRIX_MAPS_EM(:) !<EQUATIONS_TO_SOLVER_MATRIX_MAPS_EM(equations_matrix_idx). The mappings from the equation_matrix_idx'th equations matrix in this equation set to the solver_matrices.
-    TYPE(JACOBIAN_TO_SOLVER_MAP_PTR_TYPE), ALLOCATABLE :: EQUATIONS_TO_SOLVER_MATRIX_MAPS_JM(:) !<EQUATIONS_TO_SOLVER_MATRIX_MAPS_JM(jacobian_idx). The mappings from the jacobian_idx'th Jacobian matrix in this equation set to the solver_matrices.
-    TYPE(EQUATIONS_ROW_TO_SOLVER_ROWS_MAP_TYPE), ALLOCATABLE :: EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(:) !<EQUATIONS_ROW_TO_SOLVER_ROWS_MAPS(equations_row_idx). The mappings from the equations_row_idx'th equations row to the solver matrices rows.
-  END TYPE EQUATIONS_SET_TO_SOLVER_MAP_TYPE
+  TYPE EquationsSetToSolverMapType
+    INTEGER(INTG) :: equationsSetIndex !<The index of the equations set for these mappings
+    TYPE(SolverMappingType), POINTER :: SolverMapping !<A pointer to the solver mappings
+    TYPE(EQUATIONS_TYPE), POINTER :: equations !<A pointer to the equations in this equations set
+    INTEGER(INTG) :: numberOfInterfaceConditions !<The number of interface conditions affecting this equations set.
+    TYPE(EquationsToSolverMatrixMapsInterfaceType), ALLOCATABLE :: equationsToSolverMatrixMapsInterface(:) !<equationsToSolverMatrixMapsInterface(interfaceConditionIdx). Information on the interfaceConditionIdx'th interface condition affecting this equations set
+    TYPE(EquationsToSolverMatrixMapsSmType), ALLOCATABLE :: equationsToSolverMatrixMapsSm(:) !<equationsToSolverMatrixMapsSm(solverMatrixIdx). The mappings from the equations matrices in this equation set to the solverMatrixIdx'th solver matrix.
+    TYPE(EquationsToSolverMatrixMapsEmType), ALLOCATABLE :: equationsToSolverMatrixMapsEm(:) !<equationsToSolverMatrixMapsEm(equationsMatrixIdx). The mappings from the equationMatrixIdx'th equations matrix in this equation set to the solver matrices.
+    TYPE(JacobianToSolverMapPtrType), ALLOCATABLE :: equationsToSolverMatrixMapsJm(:) !<equationsToSolverMatrixMapsJm(jacobianMatrixIdx). The mappings from the jacobianMatrixIdx'th Jacobian matrix in this equation set to the solver matrices.
+    TYPE(EquationsRowToSolverRowsMapType), ALLOCATABLE :: equationsRowToSolverRowsMaps(:) !<equationsRowToSolverRowsMaps(equationsRowIdx). The mappings from the equationsRowIdx'th equations row to the solver matrices rows.
+  END TYPE EquationsSetToSolverMapType
 
   !>Contains information on the interface to solver matrix mappings when indexing by solver matrix number
-  TYPE INTERFACE_TO_SOLVER_MATRIX_MAPS_SM_TYPE
-    INTEGER(INTG) :: SOLVER_MATRIX_NUMBER !<The number of the solver matrix for these mappings
+  TYPE InterfaceToSolverMatrixMapsSmType
+    INTEGER(INTG) :: solverMatrixNumber !<The number of the solver matrix for these mappings
 
-    INTEGER(INTG) :: LAGRANGE_VARIABLE_TYPE !<LThe variable type for the Lagrange variable that is mapped to the solver matrix.
-    TYPE(FIELD_VARIABLE_TYPE), POINTER :: LAGRANGE_VARIABLE !<A pointer to the Lagrange variable that is mapped to the solver matrix.
-    TYPE(VARIABLE_TO_SOLVER_COL_MAP_TYPE) :: LAGRANGE_VARIABLE_TO_SOLVER_COL_MAP !<The mappings from the Lagrange variable dofs to the solver dofs.
-    INTEGER(INTG) :: NUMBER_OF_DEPENDENT_VARIABLES !<The number of dependent variables mapped to this solver matrix
-    INTEGER(INTG), ALLOCATABLE :: DEPENDENT_VARIABLE_TYPES(:) !<DEPENDENT_VARIABLE_TYPES(variable_idx). The variable type for the variable_idx'th dependent variable that is mapped to the solver matrix.
-    TYPE(FIELD_VARIABLE_PTR_TYPE), ALLOCATABLE :: DEPENDENT_VARIABLES(:) !<DEPENDENT_VARIABLES(variable_idx). DEPENDENT_VARIABLES(variable_idx)%PTR points to the variable_idx'th dependent variable that is mapped to the solver matrix.
-    TYPE(VARIABLE_TO_SOLVER_COL_MAP_TYPE), ALLOCATABLE :: DEPENDENT_VARIABLE_TO_SOLVER_COL_MAPS(:) !<DEPENDENT_VARIABLE_TO_SOLVER_COL_MAPS(interface_matrix_idx). The mappings from the dependent variable dofs to the solver dofs for the interface_matrix_idx'th interface matrix dependent variable in the interface condition that is mapped to the solver matrix.
-    INTEGER(INTG) :: NUMBER_OF_INTERFACE_MATRICES !<The number of interface matrices mapped to this solver matrix
-    TYPE(INTERFACE_TO_SOLVER_MAPS_PTR_TYPE), ALLOCATABLE :: INTERFACE_EQUATIONS_TO_SOLVER_MATRIX_MAPS(:) !<INTERFACE_EQUATIONS_TO_SOLVER_MATRIX_MAPS(interface_matrix_idx). The maps from the interface)matrix_idx'th interface matrix to solver matrix
-    TYPE(EQUATIONS_COL_TO_SOLVER_COLS_MAP_TYPE), ALLOCATABLE :: INTERFACE_COL_TO_SOLVER_COLS_MAP(:) !<EQUATIONS_COL_SOLVER_COL_MAP(column_idx). The mapping from the column_idx'th column of this interface matrix to the solver matrix columns.
-  END TYPE INTERFACE_TO_SOLVER_MATRIX_MAPS_SM_TYPE
+    INTEGER(INTG) :: lagrangeVariableType !<LThe variable type for the Lagrange variable that is mapped to the solver matrix.
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: lagrangeVariable !<A pointer to the Lagrange variable that is mapped to the solver matrix.
+    TYPE(VariableToSolverColMapType) :: lagrangeVariableToSolverColMap !<The mappings from the Lagrange variable dofs to the solver dofs.
+    INTEGER(INTG) :: numberOfDependentVariables !<The number of dependent variables mapped to this solver matrix
+    INTEGER(INTG), ALLOCATABLE :: dependentVariableTypes(:) !<dependentVariableTypes(variableIdx). The variable type for the variableIdx'th dependent variable that is mapped to the solver matrix.
+    TYPE(FIELD_VARIABLE_PTR_TYPE), ALLOCATABLE :: dependentVariables(:) !<dependentVariables(variableIdx). dependentVariables(variableIdx)%ptr points to the variableIdx'th dependent variable that is mapped to the solver matrix.
+    TYPE(VariableToSolverColMapType), ALLOCATABLE :: dependentVariableToSolverColMaps(:) !<dependentVariableToSolverColMaps(interfaceMatrixIdx). The mappings from the dependent variable dofs to the solver dofs for the interfaceMatrixIdx'th interface matrix dependent variable in the interface condition that is mapped to the solver matrix.
+    INTEGER(INTG) :: numberOfInterfaceMatrices !<The number of interface matrices mapped to this solver matrix
+    TYPE(InterfaceToSolverMapsPtrType), ALLOCATABLE :: interfaceEquationsToSolverMatrixMaps(:) !<interfaceEquationsToSolverMatrixMaps(interfaceMatrixIdx). The maps from the interfaceMatrixIdx'th interface matrix to solver matrix
+    TYPE(EquationsColToSolverColsMapType), ALLOCATABLE :: interfaceColToSolverColsMap(:) !<interfaceColToSolverColsMap(columnIdx). The mapping from the columnIdx'th column of this interface matrix to the solver matrix columns.
+  END TYPE InterfaceToSolverMatrixMapsSmType
 
   !>Contains information on the mapping from an interface condition column to a solver row.
-  TYPE INTERFACE_ROW_TO_SOLVER_ROWS_MAP_TYPE
-    INTEGER(INTG) :: NUMBER_OF_SOLVER_ROWS !<The number of solver rows that the interface condition row in mapped to (can be either 0 or 1 at he moment.)
-    INTEGER(INTG) :: SOLVER_ROW !<The solver row that the interface condition row is mapped to
-    REAL(DP) :: COUPLING_COEFFICIENT !<The coupling coefficient for the mapping.
-  END TYPE INTERFACE_ROW_TO_SOLVER_ROWS_MAP_TYPE
+  TYPE InterfaceRowToSolverRowsMapType
+    INTEGER(INTG) :: numberOfSolverRows !<The number of solver rows that the interface condition row in mapped to (can be either 0 or 1 at he moment.)
+    INTEGER(INTG) :: solverRow !<The solver row that the interface condition row is mapped to
+    REAL(DP) :: couplingCoefficient !<The coupling coefficient for the mapping.
+  END TYPE InterfaceRowToSolverRowsMapType
   
   !>Contains information on the interface to solver matrix mappings when indexing by interface matrix number
-  TYPE INTERFACE_TO_SOLVER_MATRIX_MAPS_IM_TYPE
-    INTEGER(INTG) :: INTERFACE_MATRIX_NUMBER !<The number of the interface  matrix for these mappings
-    INTEGER(INTG) :: NUMBER_OF_SOLVER_MATRICES !<The number of solver matrices mapped to this interface matrix
-    TYPE(INTERFACE_TO_SOLVER_MAPS_PTR_TYPE), ALLOCATABLE :: INTERFACE_TO_SOLVER_MATRIX_MAPS(:) !<EQUATIONS_TO_SOLVER_MATRIX_MAPS(solver_matrix_idx). The maps from the equation matrix to the solver_matrix_idx'th solver matrix
-    TYPE(INTERFACE_ROW_TO_SOLVER_ROWS_MAP_TYPE), ALLOCATABLE :: INTERFACE_ROW_TO_SOLVER_ROWS_MAP(:) !<INTERFACE_ROW_TO_SOLVER_ROW_MAP(interface_row_idx). The mapping from the interface_row_idx'th interface matrix to a solver row.
-  END TYPE INTERFACE_TO_SOLVER_MATRIX_MAPS_IM_TYPE
+  TYPE InterfaceToSolverMatrixMapsImType
+    INTEGER(INTG) :: interfaceMatrixNumber !<The number of the interface  matrix for these mappings
+    INTEGER(INTG) :: numberOfSolverMatrices !<The number of solver matrices mapped to this interface matrix
+    TYPE(InterfaceToSolverMapsPtrType), ALLOCATABLE :: interfaceToSolverMatrixMaps(:) !<interfaceToSolverMatrixMaps(solverMatrixIdx). The maps from the equation matrix to the solverMatrixIdx'th solver matrix
+    TYPE(InterfaceRowToSolverRowsMapType), ALLOCATABLE :: interfaceRowToSolverRowsMap(:) !<interfaceRowToSolverRowsMap(interfaceRowIdx). The mapping from the interfaceRowIdx'th interface matrix to a solver row.
+  END TYPE InterfaceToSolverMatrixMapsImType
 
-  TYPE INTERFACE_TO_SOLVER_MATRIX_MAPS_EQUATIONS_TYPE
-    INTEGER(INTG) :: EQUATIONS_SET_INDEX
-    TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET
-    INTEGER(INTG) :: INTERFACE_MATRIX_INDEX
-  END TYPE INTERFACE_TO_SOLVER_MATRIX_MAPS_EQUATIONS_TYPE
+  !>Contains information on the mapping of interface matrices to equations sets for a particular solver matrix
+  TYPE interfaceToSolverMatrixMapsEquationsType
+    INTEGER(INTG) :: equationsSetIndex
+    TYPE(EQUATIONS_SET_TYPE), POINTER :: equationsSet
+    INTEGER(INTG) :: interfaceMatrixIndex
+  END TYPE interfaceToSolverMatrixMapsEquationsType
   
   !>Contains information on the mapping from an interface condition column to a solver row.
-  TYPE INTERFACE_COLUMN_TO_SOLVER_ROWS_MAP_TYPE
-    INTEGER(INTG) :: NUMBER_OF_SOLVER_ROWS !<The number of solver rows that the interface condition column in mapped to (can be either 0 or 1 at he moment.)
-    INTEGER(INTG) :: SOLVER_ROW !<The solver row that the interface condition column is mapped to
-    REAL(DP) :: COUPLING_COEFFICIENT !<The coupling coefficient for the mapping.
-  END TYPE INTERFACE_COLUMN_TO_SOLVER_ROWS_MAP_TYPE
+  TYPE InterfaceColumnToSolverRowsMapType
+    INTEGER(INTG) :: numberOfSolverRows !<The number of solver rows that the interface condition column in mapped to (can be either 0 or 1 at he moment.)
+    INTEGER(INTG) :: solverRow !<The solver row that the interface condition column is mapped to
+    REAL(DP) :: couplingCoefficient !<The coupling coefficient for the mapping.
+  END TYPE InterfaceColumnToSolverRowsMapType
   
   !>Contains information on the mappings from an interface condition to the solver matrices
-  TYPE INTERFACE_CONDITION_TO_SOLVER_MAP_TYPE
-    INTEGER(INTG) :: INTERFACE_CONDITION_INDEX !<The index of the interface condition for these mappings
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING !<A pointer to the solver mappings
-    TYPE(INTERFACE_EQUATIONS_TYPE), POINTER :: INTERFACE_EQUATIONS !<A pointer to the interface equations in this interface condition
-    INTEGER(INTG) :: NUMBER_OF_EQUATIONS_SETS !<The number of equations sets that the interface condition affects
-    TYPE(INTERFACE_TO_SOLVER_MATRIX_MAPS_EQUATIONS_TYPE), ALLOCATABLE :: INTERFACE_TO_SOLVER_MATRIX_MAPS_EQUATIONS(:) !<INTERFACE_TO_SOLVER_MATRIX_MAPS_EQUATIONS(equations_set_idx). The equations set information of the equations_set_idx'th equations set that the interface condition affects.
-    TYPE(INTERFACE_TO_SOLVER_MATRIX_MAPS_SM_TYPE), ALLOCATABLE :: INTERFACE_TO_SOLVER_MATRIX_MAPS_SM(:) !<INTERFACE_TO_SOLVER_MATRIX_MAPS_SM(solver_matrix_idx). The mappings from the interface matrices in this interface condition to the solver_matrix_idx'th solver_matrix
-    TYPE(INTERFACE_TO_SOLVER_MATRIX_MAPS_IM_TYPE), ALLOCATABLE :: INTERFACE_TO_SOLVER_MATRIX_MAPS_IM(:) !<INTERFACE_TO_SOLVER_MATRIX_MAPS_IM(interface_matrix_idx). The mappings from the interface_matrix_idx'th interface matrix in this interface condition to the solver_matrices.
-    TYPE(INTERFACE_COLUMN_TO_SOLVER_ROWS_MAP_TYPE), ALLOCATABLE :: INTERFACE_COLUMN_TO_SOLVER_ROWS_MAPS(:) !<INTERFACE_COLUMN_TO_SOLVER_ROW_MAP(interface_column_idx). The mapping from the interface_column_idx'th interface column to a solver row.
-  END TYPE INTERFACE_CONDITION_TO_SOLVER_MAP_TYPE
+  TYPE interfaceConditionToSolverMapType
+    INTEGER(INTG) :: interfaceConditionIndex !<The index of the interface condition for these mappings
+    TYPE(SolverMappingType), POINTER :: solverMapping !<A pointer to the solver mappings
+    TYPE(INTERFACE_EQUATIONS_TYPE), POINTER :: interfaceEquations !<A pointer to the interface equations in this interface condition
+    INTEGER(INTG) :: numberOfEquationsSets !<The number of equations sets that the interface condition affects
+    TYPE(interfaceToSolverMatrixMapsEquationsType), ALLOCATABLE :: interfaceToSolverMatrixMapsEquations(:) !<interfaceToSolverMatrixMapsEquations(equationsSetIdx). The equations set information of the equationsSetIdx'th equations set that the interface condition affects.
+    TYPE(InterfaceToSolverMatrixMapsSmType), ALLOCATABLE :: interfaceToSolverMatrixMapsSm(:) !<interfaceToSolverMatrixMapsSm(solverMatrixIdx). The mappings from the interface matrices in this interface condition to the solverMatrixIdx'th solver matrix
+    TYPE(InterfaceToSolverMatrixMapsImType), ALLOCATABLE :: interfaceToSolverMatrixMapsIm(:) !<interfaceToSolverMatrixMapsIm(interfaceMatrixIdx). The mappings from the interfaceMatrixIdx'th interface matrix in this interface condition to the solver matrices.
+    TYPE(InterfaceColumnToSolverRowsMapType), ALLOCATABLE :: interfaceColumnToSolverRowsMaps(:) !<interfaceColumnToSolverRowsMaps(interfaceColumnIdx). The mapping from the interfaceColumnIdx'th interface column to a solver row.
+  END TYPE interfaceConditionToSolverMapType
   
  !>Contains information about the mapping from a solver matrix column to dynamic equations matrices and variables
-  TYPE SOLVER_COL_TO_DYNAMIC_EQUATIONS_MAP_TYPE
-    INTEGER(INTG) :: NUMBER_OF_DYNAMIC_EQUATIONS_MATRICES !<The number of dynamic equations matrices the solver column is mapped to in this equations set
-    INTEGER(INTG), ALLOCATABLE :: EQUATIONS_MATRIX_NUMBERS(:) !<EQUATIONS_MATRIX_NUMBERS(i). The i'th equations matrix number in theequations that the solver column is mapped to
-    INTEGER(INTG), ALLOCATABLE :: EQUATIONS_COL_NUMBERS(:) !<EQUATIONS_COL_NUMBERS(i). The i'th equations column number in the equation set the solver column is mapped to.
-    REAL(DP), ALLOCATABLE :: COUPLING_COEFFICIENTS(:) !<COUPLING_COEFFICIENTS(i). The i'th coupling coefficient for solver column mapping
-  END TYPE SOLVER_COL_TO_DYNAMIC_EQUATIONS_MAP_TYPE
+  TYPE SolverColToDynamicEquationsMapType
+    INTEGER(INTG) :: numberOfDynamicEquationsMatrices !<The number of dynamic equations matrices the solver column is mapped to in this equations set
+    INTEGER(INTG), ALLOCATABLE :: equationsMatrixNumbers(:) !<equationsMatrixNumbers(i). The i'th equations matrix number in theequations that the solver column is mapped to
+    INTEGER(INTG), ALLOCATABLE :: equationsColNumbers(:) !<equationsColNumbers(i). The i'th equations column number in the equation set the solver column is mapped to.
+    REAL(DP), ALLOCATABLE :: couplingCoefficients(:) !<couplingCoefficients(i). The i'th coupling coefficient for solver column mapping
+  END TYPE SolverColToDynamicEquationsMapType
 
   !>Contains information about the mapping from a solver matrix column to static equations matrices and variables
-  TYPE SOLVER_COL_TO_STATIC_EQUATIONS_MAP_TYPE
-    INTEGER(INTG) :: NUMBER_OF_LINEAR_EQUATIONS_MATRICES !<The number of linear equations matrices the solver column is mapped to in this equations set
-    INTEGER(INTG), ALLOCATABLE :: EQUATIONS_MATRIX_NUMBERS(:) !<EQUATIONS_MATRIX_NUMBERS(i). The i'th equations matrix number in theequations that the solver column is mapped to
-    INTEGER(INTG), ALLOCATABLE :: EQUATIONS_COL_NUMBERS(:) !<EQUATIONS_COL_NUMBERS(i). The i'th equations column number in the equation set the solver column is mapped to.
-    REAL(DP), ALLOCATABLE :: COUPLING_COEFFICIENTS(:) !<COUPLING_COEFFICIENTS(i). The i'th coupling coefficient for solver column mapping
+  TYPE SolverColToStaticEquationsMapType
+    INTEGER(INTG) :: numberOfLinearEquationsMatrices !<The number of linear equations matrices the solver column is mapped to in this equations set
+    INTEGER(INTG), ALLOCATABLE :: equationsMatrixNumbers(:) !<equationsMatrixNumbers(i). The i'th equations matrix number in theequations that the solver column is mapped to
+    INTEGER(INTG), ALLOCATABLE :: equationsColNumbers(:) !<equationsColNumbers(i). The i'th equations column number in the equation set the solver column is mapped to.
+    REAL(DP), ALLOCATABLE :: couplingCoefficients(:) !<couplingCoefficients(i). The i'th coupling coefficient for solver column mapping
 !!TODO: Maybe split this into a linear and a nonlinear part? The only problem is that would probably use about the same memory???
-    INTEGER(INTG) :: JACOBIAN_COL_NUMBER !<The Jacbian column number in the equations set that the solver column is mapped to.
-    REAL(DP) :: JACOBIAN_COUPLING_COEFFICIENT !<The coupling coefficient for the solver column to Jacobian column mapping.
-  END TYPE SOLVER_COL_TO_STATIC_EQUATIONS_MAP_TYPE
+    INTEGER(INTG) :: jacobianColNumber !<The Jacbian column number in the equations set that the solver column is mapped to.
+    REAL(DP) :: jacobianCouplingCoefficient !<The coupling coefficient for the solver column to Jacobian column mapping.
+  END TYPE SolverColToStaticEquationsMapType
 
   !>Contains information about mapping the solver dof to the field variable dofs in the equations set.
-  TYPE SOLVER_DOF_TO_VARIABLE_MAP_TYPE
-    INTEGER(INTG) :: NUMBER_OF_EQUATIONS !<The number of equations this solver dof is mapped to
-    INTEGER(INTG), ALLOCATABLE :: EQUATIONS_TYPES(:) !<EQUATION_TYPES(equation_idx). The type of equation of the equation_idx'th dof that the solver dof is mapped to.
-    INTEGER(INTG), ALLOCATABLE :: EQUATIONS_INDICES(:) !<EQUATIONS_INDICES(equation_idx). The index of either the equations set or interface condition of the equation_idx'th dof that this solver dof is mapped to.
-    TYPE(FIELD_VARIABLE_PTR_TYPE), ALLOCATABLE :: VARIABLE(:) !<VARIABLE(equation_idx)%PTR is a pointer to the field variable that the solver dof is mapped to in the equation_idx'th equation
-    INTEGER(INTG), ALLOCATABLE :: VARIABLE_DOF(:) !<VARIABLE_DOF(equation_idx). The variable dof number that the solver dof is mapped to in the equation_idx'th equation
-    REAL(DP), ALLOCATABLE :: VARIABLE_COEFFICIENT(:) !<VARIABLE_COEFFICIENT(equation_idx). The mulitplicative coefficient for the mapping to the equation_idx'th equations
-    REAL(DP), ALLOCATABLE :: ADDITIVE_CONSTANT(:) !<ADDITIVE_CONSTANT(equation_idx). The additive constant for the mapping to the equation_idx'th equations
-  END TYPE SOLVER_DOF_TO_VARIABLE_MAP_TYPE
+  TYPE SolverDofToVariableMapType
+    INTEGER(INTG) :: numberOfEquations !<The number of equations this solver dof is mapped to
+    INTEGER(INTG), ALLOCATABLE :: equationsTypes(:) !<equationsTypes(equationIdx). The type of equation of the equationIdx'th dof that the solver dof is mapped to.
+    INTEGER(INTG), ALLOCATABLE :: equationsIndices(:) !<equationsIndices(equationIdx). The index of either the equations set or interface condition of the equationIdx'th dof that this solver dof is mapped to.
+    TYPE(FIELD_VARIABLE_PTR_TYPE), ALLOCATABLE :: variable(:) !<variable(equationIdx)%ptr is a pointer to the field variable that the solver dof is mapped to in the equationIdx'th equation
+    INTEGER(INTG), ALLOCATABLE :: variableDof(:) !<variableDof(equationIdx). The variable dof number that the solver dof is mapped to in the equationIdx'th equation
+    REAL(DP), ALLOCATABLE :: variableCoefficient(:) !<variableCoefficient(equationIdx). The mulitplicative coefficient for the mapping to the equationIdx'th equations
+    REAL(DP), ALLOCATABLE :: additiveConstant(:) !<additiveConstant(equationIdx). The additive constant for the mapping to the equationIdx'th equations
+  END TYPE SolverDofToVariableMapType
   
   !>Contains information about the mappings from a solver matrix to the equations in an equations set
-  TYPE SOLVER_COL_TO_EQUATIONS_SET_MAP_TYPE
-    TYPE(EQUATIONS_TYPE), POINTER :: EQUATIONS !<A pointer to the equations in the equations set that these columns map to.
-    LOGICAL :: HAVE_DYNAMIC !<Is .TRUE. if there are any dynamic equations in the map.
-    LOGICAL :: HAVE_STATIC !<Is .TRUE. if there are any static equations in the map.
-    TYPE(SOLVER_COL_TO_DYNAMIC_EQUATIONS_MAP_TYPE), ALLOCATABLE :: SOLVER_COL_TO_DYNAMIC_EQUATIONS_MAPS(:) !<SOLVER_COL_TO_DYNAMIC_EQUATIONS_MAPS(col_idx). The mappings from the col_idx'th column of the solver matrix to the dynamic equations in the equations set.
-    TYPE(SOLVER_COL_TO_STATIC_EQUATIONS_MAP_TYPE), ALLOCATABLE :: SOLVER_COL_TO_STATIC_EQUATIONS_MAPS(:) !<SOLVER_COL_TO_STATIC_EQUATIONS_MAPS(col_idx). The mappings from the col_idx'th column of the solver matrix to the static equations in the equations set.
-  END TYPE SOLVER_COL_TO_EQUATIONS_SET_MAP_TYPE
+  TYPE SolverColToEquationsSetMapType
+    TYPE(EQUATIONS_TYPE), POINTER :: equations !<A pointer to the equations in the equations set that these columns map to.
+    LOGICAL :: haveDynamic !<Is .TRUE. if there are any dynamic equations in the map.
+    LOGICAL :: haveStatic !<Is .TRUE. if there are any static equations in the map.
+    TYPE(SolverColToDynamicEquationsMapType), ALLOCATABLE :: solverColToDynamicEquationsMaps(:) !<solverColToDynamicEquationsMaps(colIdx). The mappings from the colIdx'th column of the solver matrix to the dynamic equations in the equations set.
+    TYPE(SolverColToStaticEquationsMapType), ALLOCATABLE :: SolverColToStaticEquationsMaps(:) !<SolverColToStaticEquationsMaps(colIdx). The mappings from the colIdx'th column of the solver matrix to the static equations in the equations set.
+  END TYPE SolverColToEquationsSetMapType
   
   !>Contains information about the mapping from a solver matrix column to interface equations matrices and variables
-  TYPE SOLVER_COL_TO_INTERFACE_EQUATIONS_MAP_TYPE
-    INTEGER(INTG) :: NUMBER_OF_INTERFACE_MATRICES !<The number of interface matrices the solver column is mapped to in this interface condition
-    INTEGER(INTG), ALLOCATABLE :: INTERFACE_MATRIX_NUMBERS(:) !<INTERFACE_MATRIX_NUMBERS(i). The i'th interface matrix number in the interface equations that the solver column is mapped to
-    INTEGER(INTG), ALLOCATABLE :: INTERFACE_COL_NUMBERS(:) !<INTERFACE_COL_NUMBERS(i). The i'th interface interface column number in the interface condition the solver column is mapped to.
-    REAL(DP), ALLOCATABLE :: COUPLING_COEFFICIENTS(:) !<COUPLING_COEFFICIENTS(i). The i'th coupling coefficient for solver column mapping
-  END TYPE SOLVER_COL_TO_INTERFACE_EQUATIONS_MAP_TYPE
+  TYPE SolverColToInterfaceEquationsMapType
+    INTEGER(INTG) :: numberOfInterfaceMatrices !<The number of interface matrices the solver column is mapped to in this interface condition
+    INTEGER(INTG), ALLOCATABLE :: interfaceMatrixNumbers(:) !<interfaceMatrixNumbers(i). The i'th interface matrix number in the interface equations that the solver column is mapped to
+    INTEGER(INTG), ALLOCATABLE :: interfaceColNumbers(:) !<interfaceColNumbers(i). The i'th interface interface column number in the interface condition the solver column is mapped to.
+    REAL(DP), ALLOCATABLE :: couplingCoefficients(:) !<couplingCoefficients(i). The i'th coupling coefficient for solver column mapping
+  END TYPE SolverColToInterfaceEquationsMapType
 
   !>Contains information about the mappings from a solver matrix to the equations in an equations set
-  TYPE SOLVER_COL_TO_INTERFACE_MAP_TYPE
-    TYPE(EQUATIONS_TYPE), POINTER :: INTERFACE_EQUATIONS !<A pointer to the interface equations in the interface conditionthat these columns map to.
-    TYPE(SOLVER_COL_TO_INTERFACE_EQUATIONS_MAP_TYPE), ALLOCATABLE :: SOLVER_COL_TO_INTERFACE_EQUATIONS_MAPS(:) !<SOLVER_COL_TO_INTERFACE_EQUATIONS_MAPS(col_idx). The mappings from the col_idx'th column of the solver matrix to the interface equations in the interface condition.
-  END TYPE SOLVER_COL_TO_INTERFACE_MAP_TYPE
+  TYPE SolverColToInterfaceMapType
+    TYPE(EQUATIONS_TYPE), POINTER :: interfaceEquations !<A pointer to the interface equations in the interface conditionthat these columns map to.
+    TYPE(SolverColToInterfaceEquationsMapType), ALLOCATABLE :: solverColToInterfaceEquationsMaps(:) !<solverColToInterfaceEquationsMaps(colIdx). The mappings from the colIdx'th column of the solver matrix to the interface equations in the interface condition.
+  END TYPE SolverColToInterfaceMapType
   
   !>Contains information on the mappings from a solver matrix to equations sets
-  TYPE SOLVER_COL_TO_EQUATIONS_MAPS_TYPE
-    INTEGER(INTG) :: SOLVER_MATRIX_NUMBER !<The number of this solver matrix
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING !<A pointer to the solver mapping for this solver matrix mapping
-    TYPE(SOLVER_MATRIX_TYPE), POINTER :: SOLVER_MATRIX !<A pointer to the solver matrix being mappind
-    INTEGER(INTG) :: NUMBER_OF_COLUMNS !<The number of columns in this distributed solver matrix
-    TYPE(SOLVER_COL_TO_EQUATIONS_SET_MAP_TYPE), ALLOCATABLE :: SOLVER_COL_TO_EQUATIONS_SET_MAPS(:) !<SOLVER_TO_EQUATIONS_SET_MAP(equations_set_idx). The solver columns to equations matrix maps for the equations_set_idx'th equations set.
-    TYPE(SOLVER_COL_TO_INTERFACE_MAP_TYPE), ALLOCATABLE :: SOLVER_COL_TO_INTERFACE_MAPS(:) !<SOLVER_COL_TO_INTERFACE_MAPS(interface_condition_idx). The solver columns to interface matrix maps for the interface_condition_idx'th interface condition.
-    INTEGER(INTG) :: NUMBER_OF_DOFS !<The number of local dofs (excluding ghost values) in the solver vector associated with this solver matrix
-    INTEGER(INTG) :: TOTAL_NUMBER_OF_DOFS !<The number of local dofs (including ghost values) in the solver vector associated with this solver matrix
-    INTEGER(INTG) :: NUMBER_OF_GLOBAL_DOFS !<The number of global dofs in the solver vector associated with this solver matrix.
+  TYPE SolverColToEquationsMapsType
+    INTEGER(INTG) :: solverMatrixNumber !<The number of this solver matrix
+    TYPE(SolverMappingType), POINTER :: solverMapping !<A pointer to the solver mapping for this solver matrix mapping
+    TYPE(SOLVER_MATRIX_TYPE), POINTER :: solverMatrix !<A pointer to the solver matrix being mappind
+    INTEGER(INTG) :: numberOfColumns !<The number of columns in this distributed solver matrix
+    TYPE(SolverColToEquationsSetMapType), ALLOCATABLE :: solverColToEquationsSetMaps(:) !<solverColToEquationsSetMaps(equationsSetIdx). The solver columns to equations matrix maps for the equationsSetIdx'th equations set.
+    TYPE(SolverColToInterfaceMapType), ALLOCATABLE :: solverColToInterfaceMaps(:) !<solverColToInterfaceMaps(interfaceConditionIdx). The solver columns to interface matrix maps for the interfaceConditionIdx'th interface condition.
+    INTEGER(INTG) :: numberOfDofs !<The number of local dofs (excluding ghost values) in the solver vector associated with this solver matrix
+    INTEGER(INTG) :: totalNumberOfDofs !<The number of local dofs (including ghost values) in the solver vector associated with this solver matrix
+    INTEGER(INTG) :: numberOfGlobalDofs !<The number of global dofs in the solver vector associated with this solver matrix.
 !!TODO: should this be index by solver dof rather than column???
-    TYPE(SOLVER_DOF_TO_VARIABLE_MAP_TYPE), ALLOCATABLE :: SOLVER_DOF_TO_VARIABLE_MAPS(:) !<SOLVER_DOF_TO_EQUATIONS_MAPS(dof_idx). The mappings from the dof_idx'th solver dof to the field variables in the equations set.
-    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: COLUMN_DOFS_MAPPING !<The domain mapping for solver matrix column dofs
-  END TYPE SOLVER_COL_TO_EQUATIONS_MAPS_TYPE
+    TYPE(SolverDofToVariableMapType), ALLOCATABLE :: solverDofToVariableMaps(:) !<solverDofToVariableMaps(dofIdx). The mappings from the dofIdx'th solver DOF to the field variables in the equations set.
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: columnDofsMapping !<The domain mapping for solver matrix column dofs
+  END TYPE SolverColToEquationsMapsType
 
   !>Contains information on the mappings from a solver row to the equations.
-  TYPE SOLVER_ROW_TO_EQUATIONS_MAPS_TYPE
-    INTEGER(INTG) :: NUMBER_OF_EQUATIONS_SETS !<The number of equations sets the solver row is mapped to. If the rows are interface rows then this will be zero.
-    INTEGER(INTG) :: INTERFACE_CONDITION_INDEX !<The interface condition index that the solver row is mapped to. If the rows are from an equations set then this will be zero.
-     INTEGER(INTG), ALLOCATABLE :: EQUATIONS_INDEX(:) !<EQUATIONS_INDEX(i). If the rows are equations set rows then this is the index of the equations set that the i'th equations set row that the solver row is mapped to. If the rows are interface rows this will not be allocated.
-    INTEGER(INTG), ALLOCATABLE :: ROWCOL_NUMBER(:) !<ROWCOL_NUMBER(i). If the row are equations set rows the i'th row number that the solver row is mapped to. If the rows are interface rows then the i'th column number that the solver row is mapped to.
-    REAL(DP), ALLOCATABLE :: COUPLING_COEFFICIENTS(:) !<COUPLING_COEFFICIENTS(i). The i'th coupling coefficient for the solver row to equations mapping
-  END TYPE SOLVER_ROW_TO_EQUATIONS_MAPS_TYPE
+  TYPE SolverRowToEquationsMapsType
+    INTEGER(INTG) :: numberOfEquationsSets !<The number of equations sets the solver row is mapped to. If the rows are interface rows then this will be zero.
+    INTEGER(INTG) :: interfaceConditionIndex !<The interface condition index that the solver row is mapped to. If the rows are from an equations set then this will be zero.
+     INTEGER(INTG), ALLOCATABLE :: equationsIndex(:) !<equationsIndex(i). If the rows are equations set rows then this is the index of the equations set that the i'th equations set row that the solver row is mapped to. If the rows are interface rows this will not be allocated.
+    INTEGER(INTG), ALLOCATABLE :: rowcolNumber(:) !<rowcolNumber(i). If the row are equations set rows the i'th row number that the solver row is mapped to. If the rows are interface rows then the i'th column number that the solver row is mapped to.
+    REAL(DP), ALLOCATABLE :: couplingCoefficients(:) !<couplingCoefficients(i). The i'th coupling coefficient for the solver row to equations mapping
+  END TYPE SolverRowToEquationsMapsType
   
   !>Contains information about the cached create values for a solver mapping
-  TYPE SOLVER_MAPPING_CREATE_VALUES_CACHE_TYPE
-    TYPE(LIST_PTR_TYPE), POINTER :: EQUATIONS_VARIABLE_LIST(:) !<EQUATIONS_VARIABLES_LIST(solver_matrix_idx). The list of equations set variables in the solver mapping.
-    INTEGER, ALLOCATABLE :: DYNAMIC_VARIABLE_TYPE(:) !<DYNAMIC_VARIABLE_TYPE(equations_set_idx). The variable type that is mapped to the dynamic matrices for the equations_set_idx'th equations set.
-    INTEGER(INTG), ALLOCATABLE :: MATRIX_VARIABLE_TYPES(:,:,:) !<MATRIX_VARIABLE_TYPES(0:..,equations_set_idx,matrix_idx). The list of matrix variable types in the equations_set_idx'th equations set for the matrix_idx'th solver matrix. MATRIX_VARIABLE_TYPES(0,equations_set_idx,matrix_idx) is the number of variable types in the equations_set_idx'th equations set mapped to the matrix_idx'th solver matrix and MATRIX_VARIABLE_TYPES(1..,equations_set_idx,matrix_idx) is the list of the variable types in the equations set.
-    INTEGER(INTG), ALLOCATABLE :: RESIDUAL_VARIABLE_TYPES(:,:) !<RESIDUAL_VARIABLE_TYPES(0:..,equations_set_idx). The list of residual variable types in the equations_set_idx'th equations set. RESIDUAL_VARIABLE_TYPES(0,equations_set_idx) is the number of variable types in the equations_set_idx'th equations set and RESIDUAL_VARIABLE_TYPES(1..,equations_set_idx) is the list of the variable types in the equations set.
-    INTEGER(INTG), ALLOCATABLE :: RHS_VARIABLE_TYPE(:) !<RHS_VARIABLE_TYPE(equations_set_idx). The variable type that is mapped to the solution RHS for the equations_set_idx'th equations set
-    INTEGER, ALLOCATABLE :: SOURCE_VARIABLE_TYPE(:) !<SOURCE_VARIABLE_TYPE(equations_set_idx). The source variable type that is mapped to the RHS for the equations_set_idx'th equations set.
-    TYPE(LIST_PTR_TYPE), POINTER :: INTERFACE_VARIABLE_LIST(:) !<INTERFACE_VARIABLES_LIST(solver_matrix_idx). The list of interface condition variables in the solver mapping for the solver_matrix idx'th solver matrix.
-    TYPE(LIST_PTR_TYPE), POINTER :: INTERFACE_INDICES(:) !<INTERFACE_INDICES(equations_set_idx). The list of interface condition indices in the equations_set_idx'th equations set.
-  END TYPE SOLVER_MAPPING_CREATE_VALUES_CACHE_TYPE
+  TYPE SolverMapping_CreateValuesCacheType
+    TYPE(LIST_TYPE), POINTER :: equationsRowVariablesList !<The list of equations variables in the solver mapping rows.
+    TYPE(LIST_PTR_TYPE), POINTER :: equationsColVariablesList(:) !<equationsColVariablesList(solverMatrixIdx). The list of equations variables in the solver mapping columns  for the solverMatrixIdx'th solver matrix.
+    TYPE(LIST_TYPE), POINTER :: interfaceRowVariablesList !<The list of interface variables in the solver mapping rows.
+    TYPE(LIST_PTR_TYPE), POINTER :: interfaceColVariablesList(:) !<interfaceColVariablesList(solverMatrixIdx). The list of interface condition variables in the solver mapping columns for the solverMatrixIdx'th solver matrix.
+    TYPE(LIST_PTR_TYPE), POINTER :: interfaceIndices(:) !<interfaceIndices(equationsSetIdx). The list of interface condition indices in the equationsSetIdx'th equations set.
+    INTEGER, ALLOCATABLE :: dynamicVariableType(:) !<dynamicVariableType(equationsSetIdx). The variable type that is mapped to the dynamic matrices for the equationsSetIdx'th equations set.
+    INTEGER(INTG), ALLOCATABLE :: matrixVariableTypes(:,:,:) !<matrixVariableTypes(0:..,equationsSetIdx,matrixIdx). The list of matrix variable types in the equationsSetIdx'th equations set for the matrixIdx'th solver matrix. matrixVariableTypes(0,equationsSetIdx,matrixIdx) is the number of variable types in the equationsSetIdx'th equations set mapped to the matrixIdx'th solver matrix and matrixVariableTypes(1..,equationsSetIdx,matrixIdx) is the list of the variable types in the equations set.
+    INTEGER(INTG), ALLOCATABLE :: residualVariableTypes(:,:) !<residualVariableTypes(0:..,equationsSetIdx). The list of residual variable types in the equationsSetIdx'th equations set. residualVariableTypes(0,equationsSetIdx) is the number of variable types in the equationsSetIdx'th equations set and residualVariableTypes(1..,equationsSetIdx) is the list of the variable types in the equations set.
+    INTEGER(INTG), ALLOCATABLE :: lhsVariableType(:) !<lhsVariableType(equationsSetIdx). The variable type that is mapped to the solution LHS for the equations_set_idx'th equations set.
+    INTEGER(INTG), ALLOCATABLE :: rhsVariableType(:) !<rhsVariableType(equationsSetIdx). The variable type that is mapped to the solution RHS for the equationsSetIdx'th equations set
+    INTEGER, ALLOCATABLE :: sourceVariableType(:) !<sourceVariableType(equationsSetIdx). The source variable type that is mapped to the source vector for the equationsSetIdx'th equations set.
+  END TYPE SolverMapping_CreateValuesCacheType
 
-  TYPE SOLVER_MAPPING_VARIABLE_TYPE
-    TYPE(FIELD_VARIABLE_TYPE), POINTER :: VARIABLE
-    INTEGER(INTG) :: VARIABLE_TYPE
-    INTEGER(INTG) :: NUMBER_OF_EQUATIONS
-    INTEGER(INTG), ALLOCATABLE :: EQUATION_TYPES(:)
-    INTEGER(INTG), ALLOCATABLE :: EQUATION_INDICES(:)
-  END TYPE SOLVER_MAPPING_VARIABLE_TYPE
+  !>Contains information on a variable involved in a solver matrix
+  TYPE SolverMapping_VariableType
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: variable !<A pointer to the field variable in question
+    INTEGER(INTG) :: variableType !<The variable type of the variable.
+    INTEGER(INTG) :: numberOfEquations !<The number of equations that involve the variable.
+    INTEGER(INTG), ALLOCATABLE :: equationTypes(:) !<equationTypes(equationIdx). The type of equation (equation set or interface condition) of the equationIdx'th equation that the variable is involved with. \see SolverMapping_EquationsTypes,SolverMapping
+    INTEGER(INTG), ALLOCATABLE :: equationIndices(:) !<equationIndicies(equationIdx). Either the solver mapping equation set index or the interface condition index for the equationIdx'th equation that the variable is involved with.
+  END TYPE SolverMapping_VariableType
 
   !>Contains information on the variables involved in a solver matrix
-  TYPE SOLVER_MAPPING_VARIABLES_TYPE
-    INTEGER(INTG) :: NUMBER_OF_VARIABLES !<The number of variables involved in the solver matrix.
-    TYPE(SOLVER_MAPPING_VARIABLE_TYPE), ALLOCATABLE :: VARIABLES(:) !<VARIABLES(variable_idx). The variable information for the variable_idx'th variable involved in the solver matrix.
-  END TYPE SOLVER_MAPPING_VARIABLES_TYPE
+  TYPE SolverMapping_VariablesType
+    INTEGER(INTG) :: numberOfVariables !<The number of variables involved in the solver matrix.
+    TYPE(SolverMapping_VariableType), ALLOCATABLE :: variables(:) !<variables(variableIdx). The variable information for the variableIdx'th variable involved in the solver matrix.
+  END TYPE SolverMapping_VariablesType
   
   !>Contains information on the solver mapping between the global equation sets and the solver matrices.
-  TYPE SOLVER_MAPPING_TYPE
-    TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: SOLVER_EQUATIONS !<A pointer to the solver equations for this mapping.
-    LOGICAL :: SOLVER_MAPPING_FINISHED !<Is .TRUE. if the solution mapping has finished being created, .FALSE. if not.
-    INTEGER(INTG) :: NUMBER_OF_SOLVER_MATRICES !<The number of solution matrices in this mapping.
-    INTEGER(INTG) :: NUMBER_OF_ROWS !<The number of (local) rows in the solver matrices
-    INTEGER(INTG) :: NUMBER_OF_GLOBAL_ROWS !<The number of global rows in the solver matrices
-    INTEGER(INTG) :: NUMBER_OF_EQUATIONS_SETS !<The number of equations sets in the solution mapping.
-    TYPE(EQUATIONS_SET_PTR_TYPE), ALLOCATABLE :: EQUATIONS_SETS(:) !<The list of equations sets that are in this solution mapping
-    TYPE(EQUATIONS_SET_TO_SOLVER_MAP_TYPE), ALLOCATABLE :: EQUATIONS_SET_TO_SOLVER_MAP(:) !<EQUATIONS_SET_TO_SOLVER_MAP(equations_set_idx). The mapping from the equations_set_idx'th equations set to the solver matrices.
-    INTEGER(INTG) :: NUMBER_OF_INTERFACE_CONDITIONS !<The number of interface conditions in the solution mapping.
-    TYPE(INTERFACE_CONDITION_PTR_TYPE), ALLOCATABLE :: INTERFACE_CONDITIONS(:) !<The list of interface conditions that are in this
-    TYPE(INTERFACE_CONDITION_TO_SOLVER_MAP_TYPE), ALLOCATABLE :: INTERFACE_CONDITION_TO_SOLVER_MAP(:) !<INTERFACE_CONDITION_TO_SOLVER_MAP(interface_condition_idx). The mapping from the interface_condition_idx'th interface condition to the solver matrices.
-    TYPE(SOLVER_MAPPING_VARIABLES_TYPE), ALLOCATABLE :: VARIABLES_LIST(:) !<VARIABLES_LIST(solver_matrix_idx). The list of variable for the solver_matrix_idx'th solver matrix.
-    TYPE(SOLVER_COL_TO_EQUATIONS_MAPS_TYPE), ALLOCATABLE :: SOLVER_COL_TO_EQUATIONS_COLS_MAP(:) !<SOLVER_TO_EQUATIONS_SET_MAP(solver_matrix_idx). The mapping from the solver_matrix_idx'th solver matrix to the equations set. 
-    TYPE(SOLVER_ROW_TO_EQUATIONS_MAPS_TYPE), ALLOCATABLE :: SOLVER_ROW_TO_EQUATIONS_ROWS_MAP(:) !<SOLVER_ROW_TO_EQUATIONS_SET_MAPS(local_row_idx). The mappings from the local_row_idx'th solver row to the equations set rows.
-    !LOGICAL :: HAVE_JACOBIAN !<Is .TRUE. if the Jacobian exists for nonlinear problems.
-    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: ROW_DOFS_MAPPING !<The domain mapping for the solver rows.
-    TYPE(SOlVER_MAPPING_CREATE_VALUES_CACHE_TYPE), POINTER :: CREATE_VALUES_CACHE !<The create values cache for the solver mapping
-  END TYPE SOLVER_MAPPING_TYPE
+  TYPE SolverMappingType
+    TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: solverEquations !<A pointer to the solver equations for this mapping.
+    LOGICAL :: solverMappingFinished !<Is .TRUE. if the solution mapping has finished being created, .FALSE. if not.
+    INTEGER(INTG) :: numberOfSolverMatrices !<The number of solution matrices in this mapping.
+    INTEGER(INTG) :: numberOfRows !<The number of (local) rows in the solver matrices
+    INTEGER(INTG) :: numberOfGlobalRows !<The number of global rows in the solver matrices
+    INTEGER(INTG) :: numberOfEquationsSets !<The number of equations sets in the solution mapping.
+    TYPE(EQUATIONS_SET_PTR_TYPE), ALLOCATABLE :: equationsSets(:) !<equationsSets(equationsSetIdx). A pointer to the equationsSetIdx'th equations set that is in this solution mapping.
+    TYPE(EquationsSetToSolverMapType), ALLOCATABLE :: equationsSetToSolverMap(:) !<equationsSetToSolverMap(equationsSetIdx). The mapping from the equationsSetIdx'th equations set to the solver matrices.
+    INTEGER(INTG) :: numberOfInterfaceConditions !<The number of interface conditions in the solution mapping.
+    TYPE(INTERFACE_CONDITION_PTR_TYPE), ALLOCATABLE :: interfaceConditions(:) !<interfaceConditions(interfaceConditionIdx). A pointer to the interfaceConditionIdx'th interface condition that is in this solution mapping.
+    TYPE(interfaceConditionToSolverMapType), ALLOCATABLE :: interfaceConditionToSolverMap(:) !<interfaceConditionToSolverMap(interfaceConditionIdx). The mapping from the interfaceConditionIdx'th interface condition to the solver matrices.
+    TYPE(SolverMapping_VariablesType) :: rowVariablesList !<The list of row variables for the solver matrices
+    TYPE(SolverMapping_VariablesType), ALLOCATABLE :: columnVariablesList(:) !<columnVariablesList(solverMatrixIdx). The list of column variables for the solverMatrixIdx'th solver matrix.
+    TYPE(SolverColToEquationsMapsType), ALLOCATABLE :: solverColToEquationsColsMap(:) !<solverColToEquationsColsMap(solverMatrixIdx). The mapping from the solverMatrixIdx'th solver matrix to the equations set. 
+    TYPE(SolverRowToEquationsMapsType), ALLOCATABLE :: solverRowToEquationsRowsMap(:) !<solverRowToEquationsRowsMap(localRowIdx). The mappings from the localRowIdx'th solver row to the equations set rows.
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: rowDofsMapping !<The domain mapping for the solver rows.
+    TYPE(SolverMapping_CreateValuesCacheType), POINTER :: createValuesCache !<The create values cache for the solver mapping
+  END TYPE SolverMappingType
 
   !
   !================================================================================================================================

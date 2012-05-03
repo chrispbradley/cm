@@ -5035,7 +5035,7 @@ CONTAINS
           CASE(PROBLEM_QUASISTATIC_FINITE_ELASTICITY_SUBTYPE)
             ! how to check eqn subtype? assume active contraction 
             INDEPENDENT_FIELD => SOLVER%SOLVERS%SOLVERS(1)%PTR%SOLVER_EQUATIONS%SOLVER_MAPPING% &
-                                   & EQUATIONS_SETS(1)%PTR%INDEPENDENT%INDEPENDENT_FIELD
+                                   & equationsSets(1)%PTR%INDEPENDENT%INDEPENDENT_FIELD
             ! store lambda Q (7-10) in prev lambda Q (3-6)
             DO I=1,4
               CALL FIELD_PARAMETERS_TO_FIELD_PARAMETERS_COMPONENT_COPY(INDEPENDENT_FIELD,&
@@ -5081,7 +5081,7 @@ CONTAINS
     !Local Variables
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: SOLVER_EQUATIONS  !<A pointer to the solver equations
     TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET !<A pointer to the equations set
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING !<A pointer to the solver mapping
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING !<A pointer to the solver mapping
     TYPE(CONTROL_LOOP_TYPE), POINTER :: TIME_LOOP !<A pointer to the control time loop.
     TYPE(CONTROL_LOOP_TYPE), POINTER :: WHILE_LOOP !<A pointer to the subiteration loop.
     TYPE(VARYING_STRING) :: LOCAL_ERROR
@@ -5105,8 +5105,8 @@ CONTAINS
                   SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
                   IF(ASSOCIATED(SOLVER_MAPPING)) THEN
                     !Make sure the equations sets are up to date
-                    DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
-                      EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+                    DO equations_set_idx=1,SOLVER_MAPPING%numberOfEquationsSets
+                      EQUATIONS_SET=>SOLVER_MAPPING%equationsSets(equations_set_idx)%ptr
                       METHOD="FORTRAN"
                       EXPORT_FIELD=.TRUE.
                       IF(EXPORT_FIELD) THEN          
@@ -5128,8 +5128,8 @@ CONTAINS
                 SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
                 IF(ASSOCIATED(SOLVER_MAPPING)) THEN
                   !Make sure the equations sets are up to date
-                  DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
-                    EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+                  DO equations_set_idx=1,SOLVER_MAPPING%numberOfEquationsSets
+                    EQUATIONS_SET=>SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
                     IF(EQUATIONS_SET%TYPE==EQUATIONS_SET_FINITE_ELASTICITY_TYPE) THEN
                       TIME_LOOP=>CONTROL_LOOP !Initialise time loop (load increment loop on first)
                       !Move up to find outer time loop
@@ -5242,7 +5242,7 @@ CONTAINS
             CONTROL_LOOP_SOLID=>CONTROL_LOOP
             CALL SOLVERS_SOLVER_GET(CONTROL_LOOP_SOLID%SOLVERS,1,SOLVER_SOLID,ERR,ERROR,*999)
             INDEPENDENT_FIELD=>SOLVER_SOLID%SOLVER_EQUATIONS%SOLVER_MAPPING% &
-                                   & EQUATIONS_SETS(1)%PTR%INDEPENDENT%INDEPENDENT_FIELD !?
+                                   & equationsSets(1)%PTR%INDEPENDENT%INDEPENDENT_FIELD !?
             ! set component 1 to dt
             CALL FIELD_COMPONENT_VALUES_INITIALISE(INDEPENDENT_FIELD,FIELD_U_VARIABLE_TYPE, &
                  & FIELD_VALUES_SET_TYPE,1,CONTROL_LOOP%TIME_LOOP%TIME_INCREMENT,ERR,ERROR,*999)
@@ -5298,7 +5298,7 @@ CONTAINS
 
     !Local Variables
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: SOLVER_EQUATIONS  !<A pointer to the solver equations
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING !<A pointer to the solver mapping
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING !<A pointer to the solver mapping
     TYPE(SOLVER_MATRICES_TYPE), POINTER :: SOLVER_MATRICES
     TYPE(SOLVER_MATRIX_TYPE), POINTER :: SOLVER_MATRIX
     TYPE(VARYING_STRING) :: LOCAL_ERROR
@@ -5322,8 +5322,8 @@ CONTAINS
                 SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
                 IF(ASSOCIATED(SOLVER_MAPPING)) THEN
                   VALID_SUBTYPE=.FALSE.
-                  DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
-                    EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+                  DO equations_set_idx=1,SOLVER_MAPPING%numberOfEquationsSets
+                    EQUATIONS_SET=>SOLVER_MAPPING%equationsSets(equations_set_idx)%ptr
                     IF(EQUATIONS_SET%SUBTYPE==EQUATIONS_SET_CONSTITUTIVE_LAW_IN_CELLML_EVALUATE_SUBTYPE) THEN
                       VALID_SUBTYPE=.TRUE.
                       !compute the strain field
@@ -5369,7 +5369,7 @@ CONTAINS
                 IF(ASSOCIATED(SOLVER_MAPPING)) THEN
                   SOLVER_MATRICES=>SOLVER_EQUATIONS%SOLVER_MATRICES
                   IF(ASSOCIATED(SOLVER_MATRICES)) THEN
-                    DO solver_matrix_idx=1,SOLVER_MAPPING%NUMBER_OF_SOLVER_MATRICES
+                    DO solver_matrix_idx=1,SOLVER_MAPPING%numberOfSolverMatrices
                       SOLVER_MATRIX=>SOLVER_MATRICES%MATRICES(solver_matrix_idx)%PTR
                       IF(ASSOCIATED(SOLVER_MATRIX)) THEN
                         SOLVER_MATRIX%UPDATE_MATRIX=.TRUE.
@@ -5425,7 +5425,7 @@ CONTAINS
     TYPE(SOLVER_TYPE), POINTER :: SOLVER_FINITE_ELASTICITY  !<A pointer to the solvers
     TYPE(FIELD_TYPE), POINTER :: DEPENDENT_FIELD_FINITE_ELASTICITY
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: SOLVER_EQUATIONS_FINITE_ELASTICITY  !<A pointer to the solver equations
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING_FINITE_ELASTICITY !<A pointer to the solver mapping
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING_FINITE_ELASTICITY !<A pointer to the solver mapping
     TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET_FINITE_ELASTICITY !<A pointer to the equations set
     TYPE(VARYING_STRING) :: LOCAL_ERROR
     TYPE(CONTROL_LOOP_TYPE), POINTER :: CONTROL_TIME_LOOP
@@ -5476,7 +5476,7 @@ CONTAINS
                 IF(ASSOCIATED(SOLVER_EQUATIONS_FINITE_ELASTICITY)) THEN
                   SOLVER_MAPPING_FINITE_ELASTICITY=>SOLVER_EQUATIONS_FINITE_ELASTICITY%SOLVER_MAPPING
                   IF(ASSOCIATED(SOLVER_MAPPING_FINITE_ELASTICITY)) THEN
-                    EQUATIONS_SET_FINITE_ELASTICITY=>SOLVER_MAPPING_FINITE_ELASTICITY%EQUATIONS_SETS(1)%PTR
+                    EQUATIONS_SET_FINITE_ELASTICITY=>SOLVER_MAPPING_FINITE_ELASTICITY%equationsSets(1)%PTR
                     IF(ASSOCIATED(EQUATIONS_SET_FINITE_ELASTICITY)) THEN
                       DEPENDENT_FIELD_FINITE_ELASTICITY=>EQUATIONS_SET_FINITE_ELASTICITY%DEPENDENT%DEPENDENT_FIELD
                     ELSE
@@ -5552,7 +5552,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: SOLVER_EQUATIONS  !<A pointer to the solver equations
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING !<A pointer to the solver mapping
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING !<A pointer to the solver mapping
     TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET !<A pointer to the equations set
     TYPE(EQUATIONS_TYPE), POINTER :: EQUATIONS
     TYPE(EQUATIONS_MAPPING_TYPE), POINTER :: EQUATIONS_MAPPING
@@ -5606,7 +5606,7 @@ CONTAINS
                 IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
                   SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
                   IF(ASSOCIATED(SOLVER_MAPPING)) THEN
-                    EQUATIONS=>SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(1)%EQUATIONS
+                    EQUATIONS=>SOLVER_MAPPING%equationsSetToSolverMap(1)%EQUATIONS
                     IF(ASSOCIATED(EQUATIONS)) THEN
                       EQUATIONS_SET=>EQUATIONS%EQUATIONS_SET
                       IF(ASSOCIATED(EQUATIONS_SET)) THEN
@@ -5725,7 +5725,7 @@ CONTAINS
                 IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
                   SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
                   IF(ASSOCIATED(SOLVER_MAPPING)) THEN
-                    EQUATIONS=>SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(1)%EQUATIONS
+                    EQUATIONS=>SOLVER_MAPPING%equationsSetToSolverMap(1)%EQUATIONS
                     IF(ASSOCIATED(EQUATIONS)) THEN
                       EQUATIONS_SET=>EQUATIONS%EQUATIONS_SET
                       IF(ASSOCIATED(EQUATIONS_SET)) THEN

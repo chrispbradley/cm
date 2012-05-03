@@ -433,7 +433,7 @@ CONTAINS
 
     !Local Variables
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: SOLVER_EQUATIONS  !<A pointer to the solver equations
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING !<A pointer to the solver mapping
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING !<A pointer to the solver mapping
     TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET !<A pointer to the equations set
     TYPE(EQUATIONS_TYPE), POINTER :: EQUATIONS
     TYPE(VARYING_STRING) :: LOCAL_ERROR
@@ -449,7 +449,7 @@ CONTAINS
             SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
             IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
              SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
-             EQUATIONS=>SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(1)%EQUATIONS
+             EQUATIONS=>SOLVER_MAPPING%equationsSetToSolverMap(1)%EQUATIONS
              IF(ASSOCIATED(EQUATIONS)) THEN
               EQUATIONS_SET=>EQUATIONS%EQUATIONS_SET
               IF(ASSOCIATED(EQUATIONS_SET)) THEN
@@ -507,7 +507,7 @@ CONTAINS
 !    TYPE(FIELD_TYPE), POINTER :: FIELD !<A pointer to the field
     TYPE(FIELD_VARIABLE_TYPE), POINTER :: ANALYTIC_VARIABLE,FIELD_VARIABLE,GEOMETRIC_VARIABLE,MATERIALS_VARIABLE
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: SOLVER_EQUATIONS  !<A pointer to the solver equations
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING !<A pointer to the solver mapping
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING !<A pointer to the solver mapping
     TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET !<A pointer to the equations set
     TYPE(EQUATIONS_TYPE), POINTER :: EQUATIONS
     TYPE(DOMAIN_TYPE), POINTER :: DOMAIN
@@ -564,9 +564,9 @@ CONTAINS
                 IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
                 !loop over all the equation sets and set the appropriate field variable type BCs and
                 !the source field associated with each equation set
-                DO eqnset_idx=1,SOLVER_EQUATIONS%SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
+                DO eqnset_idx=1,SOLVER_EQUATIONS%SOLVER_MAPPING%numberOfEquationsSets
                   SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
-                  EQUATIONS=>SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(eqnset_idx)%EQUATIONS
+                  EQUATIONS=>SOLVER_MAPPING%equationsSetToSolverMap(eqnset_idx)%EQUATIONS
                   IF(ASSOCIATED(EQUATIONS)) THEN
                     EQUATIONS_SET=>EQUATIONS%EQUATIONS_SET
                     IF(ASSOCIATED(EQUATIONS_SET)) THEN
@@ -856,7 +856,7 @@ CONTAINS
 
     !Local Variables
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: SOLVER_EQUATIONS  !<A pointer to the solver equations
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING !<A pointer to the solver mapping
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING !<A pointer to the solver mapping
     TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET !<A pointer to the equations set
     TYPE(EQUATIONS_TYPE), POINTER :: EQUATIONS
     TYPE(VARYING_STRING) :: LOCAL_ERROR
@@ -878,7 +878,7 @@ CONTAINS
                    SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
                    IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
                     SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
-                    EQUATIONS=>SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(1)%EQUATIONS
+                    EQUATIONS=>SOLVER_MAPPING%equationsSetToSolverMap(1)%EQUATIONS
                     IF(ASSOCIATED(EQUATIONS)) THEN
                      EQUATIONS_SET=>EQUATIONS%EQUATIONS_SET
                      IF(ASSOCIATED(EQUATIONS_SET)) THEN

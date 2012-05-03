@@ -1403,7 +1403,7 @@ CONTAINS
     TYPE(FIELD_TYPE), POINTER :: ANALYTIC_FIELD,DEPENDENT_FIELD,GEOMETRIC_FIELD,MATERIALS_FIELD
     TYPE(FIELD_VARIABLE_TYPE), POINTER :: ANALYTIC_VARIABLE,FIELD_VARIABLE,GEOMETRIC_VARIABLE,MATERIALS_VARIABLE
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: SOLVER_EQUATIONS  !<A pointer to the solver equations
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING !<A pointer to the solver mapping
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING !<A pointer to the solver mapping
     TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET !<A pointer to the equations set
     TYPE(EQUATIONS_TYPE), POINTER :: EQUATIONS
     TYPE(DOMAIN_TYPE), POINTER :: DOMAIN
@@ -1432,9 +1432,9 @@ CONTAINS
             IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
               !Loop over all the equation sets and set the appropriate field variable type BCs and
               !the source field associated with each equation set
-              DO eqnset_idx=1,SOLVER_EQUATIONS%SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
+              DO eqnset_idx=1,SOLVER_EQUATIONS%SOLVER_MAPPING%numberOfEquationsSets
                 SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
-                EQUATIONS=>SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(eqnset_idx)%EQUATIONS
+                EQUATIONS=>SOLVER_MAPPING%equationsSetToSolverMap(eqnset_idx)%EQUATIONS
                 IF(ASSOCIATED(EQUATIONS)) THEN
                   EQUATIONS_SET=>EQUATIONS%EQUATIONS_SET
                   IF(ASSOCIATED(EQUATIONS_SET)) THEN
@@ -1699,7 +1699,7 @@ CONTAINS
     TYPE(CONTROL_LOOP_TYPE), POINTER :: CONTROL_LOOP 
     TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET !<A pointer to the equations set
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: SOLVER_EQUATIONS  !<A pointer to the solver equations
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING !<A pointer to the solver mapping
+    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING !<A pointer to the solver mapping
     TYPE(SOLVERS_TYPE), POINTER :: SOLVERS
     TYPE(VARYING_STRING) :: LOCAL_ERROR
 
@@ -1725,8 +1725,8 @@ CONTAINS
                 SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
                 IF(ASSOCIATED(SOLVER_MAPPING)) THEN
                   !Make sure the equations sets are up to date
-                  DO equations_set_idx=1,SOLVER_MAPPING%NUMBER_OF_EQUATIONS_SETS
-                    EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(equations_set_idx)%PTR
+                  DO equations_set_idx=1,SOLVER_MAPPING%numberOfEquationsSets
+                    EQUATIONS_SET=>SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
 
                     CURRENT_LOOP_ITERATION=CONTROL_LOOP%TIME_LOOP%ITERATION_NUMBER
                     OUTPUT_ITERATION_NUMBER=CONTROL_LOOP%TIME_LOOP%OUTPUT_NUMBER
