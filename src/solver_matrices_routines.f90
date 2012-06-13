@@ -520,8 +520,8 @@ CONTAINS
           DO matrix_idx=1,SOLVER_MATRICES%NUMBER_OF_MATRICES
             SOLVER_MATRIX=>SOLVER_MATRICES%MATRICES(matrix_idx)%PTR
             IF(ASSOCIATED(SOLVER_MATRIX)) THEN
-              CALL WRITE_STRING_VALUE(ID,"Solver matrix : ",matrix_idx,ERR,ERROR,*999) 
-              CALL DISTRIBUTED_MATRIX_OUTPUT(ID,SOLVER_MATRIX%MATRIX,ERR,ERROR,*999)    
+              CALL WRITE_STRING_VALUE(ID,"Solver matrix : ",matrix_idx,ERR,ERROR,*999)
+              CALL DISTRIBUTED_MATRIX_OUTPUT(ID,SOLVER_MATRIX%MATRIX,ERR,ERROR,*999)
             ELSE
               CALL FLAG_ERROR("Solver matrix is not associated.",ERR,ERROR,*999)
             ENDIF
@@ -711,6 +711,10 @@ CONTAINS
     
     CALL ENTERS("SOLVER_MATRIX_EQUATIONS_MATRIX_ADD",ERR,ERROR,*999)
 
+    NULLIFY(EQUATIONS_MATRIX_DATA)
+    NULLIFY(COLUMN_INDICES)
+    NULLIFY(ROW_INDICES)
+
     IF(ASSOCIATED(SOLVER_MATRIX)) THEN
       IF(ASSOCIATED(EQUATIONS_MATRIX)) THEN
         IF(ABS(ALPHA)>ZERO_TOLERANCE) THEN
@@ -804,7 +808,7 @@ CONTAINS
                                   ENDDO !solver_row_idx
                                 ENDDO !equations_row_number
                               CASE(DISTRIBUTED_MATRIX_COLUMN_MAJOR_STORAGE_TYPE)
-                                CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)                      
+                                CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                               CASE(DISTRIBUTED_MATRIX_ROW_MAJOR_STORAGE_TYPE)
                                 CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                               CASE(DISTRIBUTED_MATRIX_COMPRESSED_ROW_STORAGE_TYPE)
@@ -842,9 +846,9 @@ CONTAINS
                                   ENDDO !solution_row_idx
                                 ENDDO !equations_row_number
                               CASE(DISTRIBUTED_MATRIX_COMPRESSED_COLUMN_STORAGE_TYPE)
-                                CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)                        
+                                CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                               CASE(DISTRIBUTED_MATRIX_ROW_COLUMN_STORAGE_TYPE)
-                                CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)                      
+                                CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                               CASE DEFAULT
                                 LOCAL_ERROR="The equations matrix storage type of "// &
                                   & TRIM(NUMBER_TO_VSTRING(EQUATIONS_STORAGE_TYPE,"*",ERR,ERROR))//" is invalid."
@@ -929,6 +933,10 @@ CONTAINS
     TYPE(VARYING_STRING) :: LOCAL_ERROR
     
     CALL ENTERS("SOLVER_MATRIX_INTERFACE_MATRIX_ADD",ERR,ERROR,*999)
+
+    NULLIFY(INTERFACE_MATRIX_DATA)
+    NULLIFY(COLUMN_INDICES)
+    NULLIFY(ROW_INDICES)
 
     IF(ASSOCIATED(SOLVER_MATRIX)) THEN
       IF(ASSOCIATED(INTERFACE_MATRIX)) THEN
@@ -1028,7 +1036,7 @@ CONTAINS
                                 ENDDO !solver_row_idx
                               ENDDO !interface_row_number
                             CASE(DISTRIBUTED_MATRIX_COLUMN_MAJOR_STORAGE_TYPE)
-                              CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)                      
+                              CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                             CASE(DISTRIBUTED_MATRIX_ROW_MAJOR_STORAGE_TYPE)
                               CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                             CASE(DISTRIBUTED_MATRIX_COMPRESSED_ROW_STORAGE_TYPE)
@@ -1072,9 +1080,9 @@ CONTAINS
                                 ENDDO !solution_row_idx
                               ENDDO !interface_row_number
                             CASE(DISTRIBUTED_MATRIX_COMPRESSED_COLUMN_STORAGE_TYPE)
-                              CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)                        
+                              CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                             CASE(DISTRIBUTED_MATRIX_ROW_COLUMN_STORAGE_TYPE)
-                              CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)                      
+                              CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                             CASE DEFAULT
                               LOCAL_ERROR="The interface matrix storage type of "// &
                                 & TRIM(NUMBER_TO_VSTRING(INTERFACE_STORAGE_TYPE,"*",ERR,ERROR))//" is invalid."
@@ -1147,7 +1155,7 @@ CONTAINS
                                     ENDDO !solver_row_idx
                                   ENDDO !interface_column_number
                                 CASE(DISTRIBUTED_MATRIX_COLUMN_MAJOR_STORAGE_TYPE)
-                                  CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)                      
+                                  CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                                 CASE(DISTRIBUTED_MATRIX_ROW_MAJOR_STORAGE_TYPE)
                                   CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                                 CASE(DISTRIBUTED_MATRIX_COMPRESSED_ROW_STORAGE_TYPE)
@@ -1184,9 +1192,9 @@ CONTAINS
                                     ENDDO !solution_row_idx
                                   ENDDO !interface_column_number
                                 CASE(DISTRIBUTED_MATRIX_COMPRESSED_COLUMN_STORAGE_TYPE)
-                                  CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)                        
+                                  CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                                 CASE(DISTRIBUTED_MATRIX_ROW_COLUMN_STORAGE_TYPE)
-                                  CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)                      
+                                  CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                                 CASE DEFAULT
                                   LOCAL_ERROR="The interface matrix storage type of "// &
                                     & TRIM(NUMBER_TO_VSTRING(INTERFACE_STORAGE_TYPE,"*",ERR,ERROR))//" is invalid."
@@ -1312,7 +1320,7 @@ CONTAINS
                               CALL DISTRIBUTED_MATRIX_DATA_GET(JACOBIAN_DISTRIBUTED_MATRIX,JACOBIAN_MATRIX_DATA,ERR,ERROR,*999)
 
                               SELECT CASE(JACOBIAN_STORAGE_TYPE)
-                              CASE(DISTRIBUTED_MATRIX_BLOCK_STORAGE_TYPE)                                    
+                              CASE(DISTRIBUTED_MATRIX_BLOCK_STORAGE_TYPE)
                                 !Loop over the rows of the Jacobian matrix
                                 DO jacobian_row_number=1,EQUATIONS_MATRICES%NUMBER_OF_ROWS
                                   !Loop over the solution rows this Jacobian row is mapped to
@@ -1374,7 +1382,7 @@ CONTAINS
                                   ENDDO !solver_row_idx
                                 ENDDO !jacobian_row_number
                               CASE(DISTRIBUTED_MATRIX_COLUMN_MAJOR_STORAGE_TYPE)
-                                CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)                      
+                                CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                               CASE(DISTRIBUTED_MATRIX_ROW_MAJOR_STORAGE_TYPE)
                                 CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                               CASE(DISTRIBUTED_MATRIX_COMPRESSED_ROW_STORAGE_TYPE)
@@ -1407,15 +1415,15 @@ CONTAINS
                                         VALUE=ALPHA*JACOBIAN_MATRIX_DATA(jacobian_column_idx)*row_coupling_coefficient* &
                                           & column_coupling_coefficient
                                         CALL DISTRIBUTED_MATRIX_VALUES_ADD(SOLVER_DISTRIBUTED_MATRIX,solver_row_number, &
-                                          & solver_column_number,VALUE,ERR,ERROR,*999)                                    
+                                          & solver_column_number,VALUE,ERR,ERROR,*999)
                                       ENDDO !solution_column_idx
                                     ENDDO !jacobian_column_idx
                                   ENDDO !solution_row_idx
                                 ENDDO !jacobian_row_number
                               CASE(DISTRIBUTED_MATRIX_COMPRESSED_COLUMN_STORAGE_TYPE)
-                                CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)                        
+                                CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                               CASE(DISTRIBUTED_MATRIX_ROW_COLUMN_STORAGE_TYPE)
-                                CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)                      
+                                CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                               CASE DEFAULT
                                 LOCAL_ERROR="The Jacobian matrix storage type of "// &
                                   & TRIM(NUMBER_TO_VSTRING(JACOBIAN_STORAGE_TYPE,"*",ERR,ERROR))//" is invalid."
@@ -1523,19 +1531,19 @@ CONTAINS
           SOLVER_DISTRIBUTED_MATRIX=>SOLVER_MATRIX%MATRIX
           IF(ASSOCIATED(SOLVER_DISTRIBUTED_MATRIX)) THEN
             IF(SOLVER_DISTRIBUTED_MATRIX%MATRIX_FINISHED) THEN
-              CALL FLAG_ERROR("The solver distributed matrix has already been finished.",ERR,ERROR,*998)        
+              CALL FLAG_ERROR("The solver distributed matrix has already been finished.",ERR,ERROR,*998)
             ELSE
-              SOLVER_MATRICES=>SOLVER_MATRIX%SOLVER_MATRICES             
+              SOLVER_MATRICES=>SOLVER_MATRIX%SOLVER_MATRICES
               IF(ASSOCIATED(SOLVER_MATRICES)) THEN
                 SOLVER_MAPPING=>SOLVER_MATRICES%SOLVER_MAPPING
                 IF(ASSOCIATED(SOLVER_MAPPING)) THEN
                   SELECT CASE(SOLVER_MATRIX%STORAGE_TYPE)
-                  CASE(DISTRIBUTED_MATRIX_BLOCK_STORAGE_TYPE)                                    
+                  CASE(DISTRIBUTED_MATRIX_BLOCK_STORAGE_TYPE)
                     CALL FLAG_ERROR("Can not calcualte the structure for a block storage matrix.",ERR,ERROR,*999)
                   CASE(DISTRIBUTED_MATRIX_DIAGONAL_STORAGE_TYPE)
                     CALL FLAG_ERROR("Can not calcualte the structure for a diagonal matrix.",ERR,ERROR,*999)
                   CASE(DISTRIBUTED_MATRIX_COLUMN_MAJOR_STORAGE_TYPE)
-                    CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)                      
+                    CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                   CASE(DISTRIBUTED_MATRIX_ROW_MAJOR_STORAGE_TYPE)
                     CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                   CASE(DISTRIBUTED_MATRIX_COMPRESSED_ROW_STORAGE_TYPE)
@@ -1753,7 +1761,7 @@ CONTAINS
                                   ENDDO !solver_column_idx
                                 ENDDO !equations_column_number
                               ENDDO !solver_row_idx
-                            ENDDO !equations_row_number                          
+                            ENDDO !equations_row_number
                           CASE(DISTRIBUTED_MATRIX_DIAGONAL_STORAGE_TYPE)
                             !Loop over the rows of the equations matrix
                             DO equations_row_number=1,EQUATIONS_MATRICES%NUMBER_OF_ROWS
@@ -1773,9 +1781,9 @@ CONTAINS
                                     & ERR,ERROR,*999)
                                 ENDDO !solver_column_idx
                               ENDDO !solver_row_idx
-                            ENDDO !equations_row_number                          
+                            ENDDO !equations_row_number
                           CASE(DISTRIBUTED_MATRIX_COLUMN_MAJOR_STORAGE_TYPE)
-                            CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)                      
+                            CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                           CASE(DISTRIBUTED_MATRIX_ROW_MAJOR_STORAGE_TYPE)
                             CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                           CASE(DISTRIBUTED_MATRIX_COMPRESSED_ROW_STORAGE_TYPE)
@@ -1803,9 +1811,9 @@ CONTAINS
                                   ENDDO !solver_column_idx
                                 ENDDO !equations_column_idx
                               ENDDO !equations_row_idx
-                            ENDDO !equations_row_number                          
+                            ENDDO !equations_row_number
                           CASE(DISTRIBUTED_MATRIX_COMPRESSED_COLUMN_STORAGE_TYPE)
-                            CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)                        
+                            CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                           CASE(DISTRIBUTED_MATRIX_ROW_COLUMN_STORAGE_TYPE)
                             CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                           CASE DEFAULT
@@ -1849,7 +1857,7 @@ CONTAINS
                                   ENDDO !solver_column_idx
                                 ENDDO !equations_column_number
                               ENDDO !solver_row_idx
-                            ENDDO !equations_row_number                          
+                            ENDDO !equations_row_number
                           CASE(DISTRIBUTED_MATRIX_DIAGONAL_STORAGE_TYPE)
                             !Loop over the rows of the equations matrix
                             DO equations_row_number=1,EQUATIONS_MATRICES%NUMBER_OF_ROWS
@@ -1871,7 +1879,7 @@ CONTAINS
                               ENDDO !solver_row_idx
                             ENDDO !equations_row_number 
                           CASE(DISTRIBUTED_MATRIX_COLUMN_MAJOR_STORAGE_TYPE)
-                            CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)                      
+                            CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                           CASE(DISTRIBUTED_MATRIX_ROW_MAJOR_STORAGE_TYPE)
                             CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                           CASE(DISTRIBUTED_MATRIX_COMPRESSED_ROW_STORAGE_TYPE)
@@ -1899,9 +1907,9 @@ CONTAINS
                                   ENDDO !solver_column_idx
                                 ENDDO !equations_column_idx
                               ENDDO !equations_row_idx
-                            ENDDO !equations_row_number                          
+                            ENDDO !equations_row_number
                           CASE(DISTRIBUTED_MATRIX_COMPRESSED_COLUMN_STORAGE_TYPE)
-                            CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)                        
+                            CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                           CASE(DISTRIBUTED_MATRIX_ROW_COLUMN_STORAGE_TYPE)
                             CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                           CASE DEFAULT
@@ -2052,7 +2060,7 @@ CONTAINS
                                   ENDDO !solver_column_idx
                                 ENDDO !interface_column_number
                               ENDDO !solver_row_idx
-                            ENDDO !interface_row_number                          
+                            ENDDO !interface_row_number
                           CASE(DISTRIBUTED_MATRIX_DIAGONAL_STORAGE_TYPE)
                             !Loop over the rows of the interface matrix
                             DO interface_row_number=1,INTERFACE_MATRIX%NUMBER_OF_ROWS
@@ -2077,7 +2085,7 @@ CONTAINS
                               ENDDO !solver_row_idx
                             ENDDO !interface_row_number 
                           CASE(DISTRIBUTED_MATRIX_COLUMN_MAJOR_STORAGE_TYPE)
-                            CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)                      
+                            CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                           CASE(DISTRIBUTED_MATRIX_ROW_MAJOR_STORAGE_TYPE)
                             CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                           CASE(DISTRIBUTED_MATRIX_COMPRESSED_ROW_STORAGE_TYPE)
@@ -2108,9 +2116,9 @@ CONTAINS
                                   ENDDO !solver_column_idx
                                 ENDDO !interface_column_idx
                               ENDDO !solver_row_idx
-                            ENDDO !interface_row_number                          
+                            ENDDO !interface_row_number
                           CASE(DISTRIBUTED_MATRIX_COMPRESSED_COLUMN_STORAGE_TYPE)
-                            CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)                        
+                            CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                           CASE(DISTRIBUTED_MATRIX_ROW_COLUMN_STORAGE_TYPE)
                             CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                           CASE DEFAULT
@@ -2143,7 +2151,7 @@ CONTAINS
                                     ENDDO !solver_column_idx
                                   ENDDO !interface_row_number
                                 ENDDO !solver_row_idx
-                              ENDDO !interface_column_number                          
+                              ENDDO !interface_column_number
                             CASE(DISTRIBUTED_MATRIX_DIAGONAL_STORAGE_TYPE)
                               !Loop over the columns of the interface matrix
                               DO interface_column_number=1,INTERFACE_MATRICES%NUMBER_OF_COLUMNS
@@ -2164,7 +2172,7 @@ CONTAINS
                                 ENDDO !solver_row_idx
                               ENDDO !interface_column_number 
                             CASE(DISTRIBUTED_MATRIX_COLUMN_MAJOR_STORAGE_TYPE)
-                              CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)                      
+                              CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                             CASE(DISTRIBUTED_MATRIX_ROW_MAJOR_STORAGE_TYPE)
                               CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                             CASE(DISTRIBUTED_MATRIX_COMPRESSED_ROW_STORAGE_TYPE)
@@ -2191,9 +2199,9 @@ CONTAINS
                                     ENDDO !solver_column_idx
                                   ENDDO !interface_row_idx
                                 ENDDO !solver_row_idx
-                              ENDDO !interface_col_number                          
+                              ENDDO !interface_col_number
                             CASE(DISTRIBUTED_MATRIX_COMPRESSED_COLUMN_STORAGE_TYPE)
-                              CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)                        
+                              CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                             CASE(DISTRIBUTED_MATRIX_ROW_COLUMN_STORAGE_TYPE)
                               CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                             CASE DEFAULT

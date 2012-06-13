@@ -713,9 +713,14 @@ CONTAINS
       IF(CMISS_MATRIX%DISTRIBUTED_MATRIX%ROW_DOMAIN_MAPPING%NUMBER_OF_DOMAINS==1) THEN
         DISTRIBUTED_DATA_ID=DISTRIBUTED_DATA_ID+1
       ELSE
-        DISTRIBUTED_DATA_ID=DISTRIBUTED_DATA_ID+ &
-          & CMISS_MATRIX%DISTRIBUTED_MATRIX%ROW_DOMAIN_MAPPING%ADJACENT_DOMAINS_LIST(CMISS_MATRIX%DISTRIBUTED_MATRIX% &
-          & ROW_DOMAIN_MAPPING%NUMBER_OF_DOMAINS)-1
+        !if a mesh consists of 2 disconnected parts, and the decomposition is set up in a way such that each part is assigned one domain, the adjacent_domains_list array will be empty... To avoid this problem:
+        IF(size(CMISS_MATRIX%DISTRIBUTED_MATRIX%ROW_DOMAIN_MAPPING%ADJACENT_DOMAINS_LIST)==0) THEN
+          DISTRIBUTED_DATA_ID=DISTRIBUTED_DATA_ID-1
+        ELSE
+          DISTRIBUTED_DATA_ID=DISTRIBUTED_DATA_ID+ &
+            & CMISS_MATRIX%DISTRIBUTED_MATRIX%ROW_DOMAIN_MAPPING%ADJACENT_DOMAINS_LIST(CMISS_MATRIX%DISTRIBUTED_MATRIX% &
+            & ROW_DOMAIN_MAPPING%NUMBER_OF_DOMAINS)-1
+        ENDIF
       ENDIF
       CALL MATRIX_CREATE_FINISH(CMISS_MATRIX%MATRIX,ERR,ERROR,*999)      
     ELSE
@@ -5053,7 +5058,7 @@ CONTAINS
     REAL(DP) :: SUM
     TYPE(DISTRIBUTED_MATRIX_CMISS_TYPE), POINTER :: CMISS_MATRIX
     TYPE(DISTRIBUTED_VECTOR_CMISS_TYPE), POINTER :: CMISS_VECTOR,CMISS_PRODUCT
-    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: DOMAIN_MAPPING
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: DOMAIN_MAPPING,MATRIX_COLUMN_DOMAIN_MAPPING,MATRIX_ROW_DOMAIN_MAPPING
     TYPE(MATRIX_TYPE), POINTER :: MATRIX
     TYPE(VARYING_STRING) :: LOCAL_ERROR
     
@@ -5068,10 +5073,11 @@ CONTAINS
                 IF(DISTRIBUTED_PRODUCT%VECTOR_FINISHED) THEN
                   IF(DISTRIBUTED_MATRIX%LIBRARY_TYPE==DISTRIBUTED_VECTOR%LIBRARY_TYPE) THEN
                     IF(DISTRIBUTED_MATRIX%LIBRARY_TYPE==DISTRIBUTED_PRODUCT%LIBRARY_TYPE) THEN
-                      DOMAIN_MAPPING=>DISTRIBUTED_MATRIX%COLUMN_DOMAIN_MAPPING
-                      IF(ASSOCIATED(DOMAIN_MAPPING)) THEN
-                        IF(ASSOCIATED(DOMAIN_MAPPING,DISTRIBUTED_VECTOR%DOMAIN_MAPPING)) THEN
-                          IF(ASSOCIATED(DOMAIN_MAPPING,DISTRIBUTED_PRODUCT%DOMAIN_MAPPING)) THEN
+                      MATRIX_COLUMN_DOMAIN_MAPPING=>DISTRIBUTED_MATRIX%COLUMN_DOMAIN_MAPPING
+                      MATRIX_ROW_DOMAIN_MAPPING=>DISTRIBUTED_MATRIX%ROW_DOMAIN_MAPPING
+                      IF(ASSOCIATED(MATRIX_COLUMN_DOMAIN_MAPPING).AND.ASSOCIATED(MATRIX_ROW_DOMAIN_MAPPING)) THEN
+                        IF(ASSOCIATED(MATRIX_COLUMN_DOMAIN_MAPPING,DISTRIBUTED_VECTOR%DOMAIN_MAPPING)) THEN
+                          IF(ASSOCIATED(MATRIX_ROW_DOMAIN_MAPPING,DISTRIBUTED_PRODUCT%DOMAIN_MAPPING)) THEN
                             SELECT CASE(DISTRIBUTED_MATRIX%LIBRARY_TYPE)
                             CASE(DISTRIBUTED_MATRIX_VECTOR_CMISS_TYPE)
                               CMISS_MATRIX=>DISTRIBUTED_MATRIX%CMISS
@@ -5084,9 +5090,9 @@ CONTAINS
                                     IF(ASSOCIATED(CMISS_PRODUCT)) THEN
                                       SELECT CASE(ROW_SELECTION_TYPE)
                                       CASE(DISTRIBUTED_MATRIX_VECTOR_INCLUDE_GHOSTS_TYPE)
-                                        NUMBER_OF_ROWS=DOMAIN_MAPPING%TOTAL_NUMBER_OF_LOCAL
+                                        NUMBER_OF_ROWS=MATRIX_ROW_DOMAIN_MAPPING%TOTAL_NUMBER_OF_LOCAL
                                       CASE(DISTRIBUTED_MATRIX_VECTOR_NO_GHOSTS_TYPE)
-                                        NUMBER_OF_ROWS=DOMAIN_MAPPING%NUMBER_OF_LOCAL
+                                        NUMBER_OF_ROWS=MATRIX_ROW_DOMAIN_MAPPING%NUMBER_OF_LOCAL
                                       CASE DEFAULT
                                         LOCAL_ERROR="The row selection type of "// &
                                           & TRIM(NUMBER_TO_VSTRING(ROW_SELECTION_TYPE,"*",ERR,ERROR))//" is invalid."
@@ -5104,50 +5110,51 @@ CONTAINS
                                             CASE(MATRIX_BLOCK_STORAGE_TYPE)
                                               DO row=1,NUMBER_OF_ROWS
                                                 SUM=0.0_DP
-                                                DO local_column=1,DOMAIN_MAPPING%TOTAL_NUMBER_OF_LOCAL
-                                                  global_column=DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_column)
+                                                DO local_column=1,MATRIX_COLUMN_DOMAIN_MAPPING%TOTAL_NUMBER_OF_LOCAL
+                                                  global_column=MATRIX_COLUMN_DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_column)
                                                   SUM=SUM+MATRIX%DATA_DP(row+(global_column-1)*MATRIX%M)* &
                                                     & CMISS_VECTOR%DATA_DP(local_column)
                                                 ENDDO !local_column
                                                 CMISS_PRODUCT%DATA_DP(row)=CMISS_PRODUCT%DATA_DP(row)+(ALPHA*SUM)
-                                              ENDDO !row                                
+                                              ENDDO !row
                                             CASE(MATRIX_DIAGONAL_STORAGE_TYPE)
                                               DO row=1,NUMBER_OF_ROWS
                                                 SUM=MATRIX%DATA_DP(row)*CMISS_VECTOR%DATA_DP(row)
                                                 CMISS_PRODUCT%DATA_DP(row)=CMISS_PRODUCT%DATA_DP(row)+(ALPHA*SUM)
-                                              ENDDO !row                                
+                                              ENDDO !row
                                             CASE(MATRIX_COLUMN_MAJOR_STORAGE_TYPE)
                                               DO row=1,NUMBER_OF_ROWS
                                                 SUM=0.0_DP
-                                                DO local_column=1,DOMAIN_MAPPING%TOTAL_NUMBER_OF_LOCAL
-                                                  global_column=DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_column)
+                                                DO local_column=1,MATRIX_COLUMN_DOMAIN_MAPPING%TOTAL_NUMBER_OF_LOCAL
+                                                  global_column=MATRIX_COLUMN_DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_column)
                                                   SUM=SUM+MATRIX%DATA_DP(row+(global_column-1)*MATRIX%MAX_M)* &
                                                     & CMISS_VECTOR%DATA_DP(local_column)
                                                 ENDDO !local_column
                                                 CMISS_PRODUCT%DATA_DP(row)=CMISS_PRODUCT%DATA_DP(row)+(ALPHA*SUM)
-                                              ENDDO !row                                
+                                              ENDDO !row
                                             CASE(MATRIX_ROW_MAJOR_STORAGE_TYPE)
                                               DO row=1,NUMBER_OF_ROWS
                                                 SUM=0.0_DP
-                                                DO local_column=1,DOMAIN_MAPPING%TOTAL_NUMBER_OF_LOCAL
-                                                  global_column=DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_column)
+                                                DO local_column=1,MATRIX_COLUMN_DOMAIN_MAPPING%TOTAL_NUMBER_OF_LOCAL
+                                                  global_column=MATRIX_COLUMN_DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_column)
                                                   SUM=SUM+MATRIX%DATA_DP((row-1)*MATRIX%MAX_N+global_column)* &
                                                     & CMISS_VECTOR%DATA_DP(local_column)
                                                 ENDDO !local_column
                                                 CMISS_PRODUCT%DATA_DP(row)=CMISS_PRODUCT%DATA_DP(row)+(ALPHA*SUM)
-                                              ENDDO !row                                
+                                              ENDDO !row
                                             CASE(MATRIX_COMPRESSED_ROW_STORAGE_TYPE)
                                               DO row=1,NUMBER_OF_ROWS
                                                 SUM=0.0_DP
                                                 DO column_idx=MATRIX%ROW_INDICES(row),MATRIX%ROW_INDICES(row+1)-1
                                                   global_column=MATRIX%COLUMN_INDICES(column_idx)
                                                   !This ranks global to local mappings are stored in the first position
-                                                  local_column=DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_column)%LOCAL_NUMBER(1)
+                                                  local_column=MATRIX_COLUMN_DOMAIN_MAPPING%GLOBAL_TO_LOCAL_MAP(global_column)% &
+                                                    & LOCAL_NUMBER(1)
                                                   SUM=SUM+MATRIX%DATA_DP(column_idx)* &
                                                     & CMISS_VECTOR%DATA_DP(local_column)
                                                 ENDDO !local_column
                                                 CMISS_PRODUCT%DATA_DP(row)=CMISS_PRODUCT%DATA_DP(row)+(ALPHA*SUM)
-                                              ENDDO !row                                
+                                              ENDDO !row
                                             CASE(MATRIX_COMPRESSED_COLUMN_STORAGE_TYPE)
                                               CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                                             CASE(MATRIX_ROW_COLUMN_STORAGE_TYPE)
@@ -5192,7 +5199,7 @@ CONTAINS
                                 CALL FLAG_ERROR("Distrubuted matrix CMISS is not associated.",ERR,ERROR,*999)
                               ENDIF
                             CASE(DISTRIBUTED_MATRIX_VECTOR_PETSC_TYPE)
-                              CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)          
+                              CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                             CASE DEFAULT
                               LOCAL_ERROR="The distributed matrix library type of "// &
                                 & TRIM(NUMBER_TO_VSTRING(DISTRIBUTED_MATRIX%LIBRARY_TYPE,"*",ERR,ERROR))//" is invalid"
@@ -5225,7 +5232,7 @@ CONTAINS
                   ENDIF
                 ELSE
                   CALL FLAG_ERROR("The distributed product vector has not been finished.",ERR,ERROR,*999)
-                ENDIF            
+                ENDIF
               ELSE
                 CALL FLAG_ERROR("The distributed product vector is not associated.",ERR,ERROR,*999)
               ENDIF
@@ -5233,7 +5240,7 @@ CONTAINS
               CALL FLAG_ERROR("Distributed vector has not been finished.",ERR,ERROR,*999)
             ENDIF
           ELSE
-            CALL FLAG_ERROR("Distrubuted vector is not associated.",ERR,ERROR,*999)          
+            CALL FLAG_ERROR("Distrubuted vector is not associated.",ERR,ERROR,*999)
           ENDIF
         ELSE
           CALL FLAG_ERROR("Distributed matrix has not been finished.",ERR,ERROR,*999)
@@ -5974,7 +5981,12 @@ CONTAINS
           IF(DOMAIN_MAPPING%NUMBER_OF_DOMAINS==1) THEN
             DISTRIBUTED_DATA_ID=DISTRIBUTED_DATA_ID+1
           ELSE
-            DISTRIBUTED_DATA_ID=DISTRIBUTED_DATA_ID+DOMAIN_MAPPING%ADJACENT_DOMAINS_LIST(DOMAIN_MAPPING%NUMBER_OF_DOMAINS)-1
+            !if a mesh consists of 2 disconnected parts, and the decomposition is set up in a way such that each part is assigned one domain, the adjacent_domains_list array will be empty... To avoid this problem:
+            IF(size(DOMAIN_MAPPING%ADJACENT_DOMAINS_LIST)==0) THEN
+              DISTRIBUTED_DATA_ID=DISTRIBUTED_DATA_ID-1
+            ELSE
+              DISTRIBUTED_DATA_ID=DISTRIBUTED_DATA_ID+DOMAIN_MAPPING%ADJACENT_DOMAINS_LIST(DOMAIN_MAPPING%NUMBER_OF_DOMAINS)-1
+            ENDIF
           ENDIF
           IF(DOMAIN_MAPPING%NUMBER_OF_ADJACENT_DOMAINS>0) THEN
             my_computational_node_number=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
@@ -8885,7 +8897,7 @@ CONTAINS
             CASE(DISTRIBUTED_MATRIX_VECTOR_CMISS_TYPE)
               IF(ASSOCIATED(DISTRIBUTED_VECTOR%CMISS)) THEN
                 DO i=1,SIZE(INDICES,1)
-                   IF(INDICES(i)>0.AND.INDICES(i)<=DISTRIBUTED_VECTOR%CMISS%DATA_SIZE) THEN
+                  IF(INDICES(i)>0.AND.INDICES(i)<=DISTRIBUTED_VECTOR%CMISS%DATA_SIZE) THEN
                     VALUES(i)=DISTRIBUTED_VECTOR%CMISS%DATA_DP(INDICES(i))
                   ELSE
                     LOCAL_ERROR="Index "//TRIM(NUMBER_TO_VSTRING(INDICES(i),"*",ERR,ERROR))// &

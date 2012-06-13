@@ -57,6 +57,7 @@ MODULE PROBLEM_ROUTINES
   USE FITTING_ROUTINES
   USE FLUID_MECHANICS_ROUTINES
   USE INPUT_OUTPUT
+  USE INTERFACE_CONDITIONS_CONSTANTS
   USE INTERFACE_CONDITIONS_ROUTINES
   USE ISO_VARYING_STRING
   USE KINDS
@@ -138,8 +139,6 @@ MODULE PROBLEM_ROUTINES
   
   PUBLIC PROBLEM_USER_NUMBER_FIND
   
-  PUBLIC PROBLEM_SOLVER_LOAD_INCREMENT_APPLY
-
 CONTAINS
 
   !
@@ -1285,7 +1284,7 @@ CONTAINS
               SOLVER_MATRICES=>SOLVER_EQUATIONS%SOLVER_MATRICES
               IF(ASSOCIATED(SOLVER_MATRICES)) THEN
                 CALL WRITE_STRING(GENERAL_OUTPUT_TYPE,"",ERR,ERROR,*999)
-                CALL WRITE_STRING(GENERAL_OUTPUT_TYPE,"Solver vector values:",ERR,ERROR,*999)                 
+                CALL WRITE_STRING(GENERAL_OUTPUT_TYPE,"Solver vector values:",ERR,ERROR,*999)
                 DO solver_matrix_idx=1,SOLVER_MATRICES%NUMBER_OF_MATRICES
                   SOLVER_MATRIX=>SOLVER_MATRICES%MATRICES(solver_matrix_idx)%PTR
                   IF(ASSOCIATED(SOLVER_MATRIX)) THEN
@@ -1333,7 +1332,7 @@ CONTAINS
                 CALL SolverMatrices_StaticAssemble(SOLVER,SOLVER_MATRICES_JACOBIAN_ONLY,ERR,ERROR,*999)          
               END IF       
             ELSE
-              CALL FLAG_ERROR("Solver equations solver type is not associated.",ERR,ERROR,*999)      
+              CALL FLAG_ERROR("Solver equations solver type is not associated.",ERR,ERROR,*999)
             END IF
           ELSE
             CALL FLAG_ERROR("Solver equations solver mapping is not associated.",ERR,ERROR,*999)
@@ -1367,8 +1366,9 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    INTEGER(INTG) :: equations_set_idx,solver_matrix_idx
+    INTEGER(INTG) :: equations_set_idx,interface_condition_idx,solver_matrix_idx
     TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET
+    TYPE(INTERFACE_CONDITION_TYPE), POINTER :: INTERFACE_CONDITION
     TYPE(SOLVER_TYPE), POINTER :: CELLML_SOLVER,LINKING_SOLVER
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: SOLVER_EQUATIONS
     TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING
@@ -1392,7 +1392,7 @@ CONTAINS
               SOLVER_MATRICES=>SOLVER_EQUATIONS%SOLVER_MATRICES
               IF(ASSOCIATED(SOLVER_MATRICES)) THEN
                 CALL WRITE_STRING(GENERAL_OUTPUT_TYPE,"",ERR,ERROR,*999)
-                CALL WRITE_STRING(GENERAL_OUTPUT_TYPE,"Solver vector values:",ERR,ERROR,*999)                 
+                CALL WRITE_STRING(GENERAL_OUTPUT_TYPE,"Solver vector values:",ERR,ERROR,*999)
                 DO solver_matrix_idx=1,SOLVER_MATRICES%NUMBER_OF_MATRICES
                   SOLVER_MATRIX=>SOLVER_MATRICES%MATRICES(solver_matrix_idx)%PTR
                   IF(ASSOCIATED(SOLVER_MATRIX)) THEN
@@ -1426,10 +1426,10 @@ CONTAINS
                   DO equations_set_idx=1,SOLVER_MAPPING%numberOfEquationsSets
                     EQUATIONS_SET=>SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
                     SELECT CASE(EQUATIONS_SET%EQUATIONS%LINEARITY)
-                    CASE(EQUATIONS_LINEAR)            
+                    CASE(EQUATIONS_LINEAR)
                       !Assemble the equations for linear equations
                       CALL EQUATIONS_SET_ASSEMBLE(EQUATIONS_SET,ERR,ERROR,*999)
-                    CASE(EQUATIONS_NONLINEAR)            
+                    CASE(EQUATIONS_NONLINEAR)
                       !Evaluate the residual for nonlinear equations
                       CALL EQUATIONS_SET_RESIDUAL_EVALUATE(EQUATIONS_SET,ERR,ERROR,*999)
                     END SELECT
@@ -1454,14 +1454,20 @@ CONTAINS
                 DO equations_set_idx=1,SOLVER_MAPPING%numberOfEquationsSets
                   EQUATIONS_SET=>SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
                   SELECT CASE(EQUATIONS_SET%EQUATIONS%LINEARITY)
-                  CASE(EQUATIONS_LINEAR)            
+                  CASE(EQUATIONS_LINEAR)
                     !Assemble the equations for linear equations
                     CALL EQUATIONS_SET_ASSEMBLE(EQUATIONS_SET,ERR,ERROR,*999)
-                  CASE(EQUATIONS_NONLINEAR)            
+                  CASE(EQUATIONS_NONLINEAR)
                     !Evaluate the residual for nonlinear equations
                     CALL EQUATIONS_SET_RESIDUAL_EVALUATE(EQUATIONS_SET,ERR,ERROR,*999)
                   END SELECT
                 ENDDO !equations_set_idx
+                !Note that the linear interface matrices are not required to be updated since these matrices do not change
+                !Make sure the interface conditions are up to date
+                DO interface_condition_idx=1,SOLVER_MAPPING%NUMBER_OF_INTERFACE_CONDITIONS
+                  INTERFACE_CONDITION=>SOLVER_MAPPING%INTERFACE_CONDITIONS(interface_condition_idx)%PTR
+                  !CALL INTERFACE_CONDITION_RESIDUAL_EVALUATE(INTERFACE_CONDITION,ERR,ERROR,*999)
+                ENDDO
                 !Assemble the solver matrices
                 CALL SolverMatrices_StaticAssemble(SOLVER,SOLVER_MATRICES_RHS_RESIDUAL_ONLY,ERR,ERROR,*999)
               END IF
@@ -1852,8 +1858,6 @@ CONTAINS
   !================================================================================================================================
   !
 
-!!TODO Should this be a public routine? Shouldn't the control loop apply the load increment???
-
   !> Apply the load increment for each equations_set associated with solver.
   SUBROUTINE PROBLEM_SOLVER_LOAD_INCREMENT_APPLY(SOLVER_EQUATIONS,ITERATION_NUMBER,MAXIMUM_NUMBER_OF_ITERATIONS,ERR,ERROR,*)
     
@@ -1866,19 +1870,31 @@ CONTAINS
     !Local variables
     TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING
     TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET
-    INTEGER(INTG) :: equations_set_idx
+    TYPE(INTERFACE_CONDITION_TYPE), POINTER :: INTERFACE_CONDITION
+    INTEGER(INTG) :: equations_set_idx,interface_condition_idx
 
     CALL ENTERS("PROBLEM_SOLVER_LOAD_INCREMENT_APPLY",ERR,ERROR,*999)
 
     IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
       SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
       IF(ASSOCIATED(SOLVER_MAPPING)) THEN
+        
         !Make sure the equations sets are up to date
         DO equations_set_idx=1,SOLVER_MAPPING%numberOfEquationsSets
           EQUATIONS_SET=>SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
           CALL EQUATIONS_SET_LOAD_INCREMENT_APPLY(EQUATIONS_SET,SOLVER_EQUATIONS%BOUNDARY_CONDITIONS,ITERATION_NUMBER, &
             & MAXIMUM_NUMBER_OF_ITERATIONS,ERR,ERROR,*999)
         ENDDO !equations_set_idx
+        
+        !Apply translation to frictionless contact problem and change boundary conditions accordingly.
+        DO interface_condition_idx=1,SOLVER_MAPPING%NUMBER_OF_INTERFACE_CONDITIONS
+          INTERFACE_CONDITION=>SOLVER_MAPPING%INTERFACE_CONDITIONS(interface_condition_idx)%PTR
+          IF(INTERFACE_CONDITION%OPERATOR==INTERFACE_CONDITION_FRICTIONLESS_CONTACT_OPERATOR) THEN
+            !IF()
+            CALL INTERFACE_CONDITION_TRANSLATION_INCREMENT_APPLY(INTERFACE_CONDITION,ITERATION_NUMBER, &
+              & MAXIMUM_NUMBER_OF_ITERATIONS,ERR,ERROR,*999)
+          ENDIF
+        ENDDO
       ELSE
         CALL FLAG_ERROR("Solver equations solver mapping is not associated.",ERR,ERROR,*999)
       ENDIF
@@ -2438,7 +2454,7 @@ CONTAINS
                 !CALL EQUATIONS_SET_FIXED_CONDITIONS_APPLY(EQUATIONS_SET,ERR,ERROR,*999)    
                 !Assemble the equations for linear problems
                 CALL EQUATIONS_SET_ASSEMBLE(EQUATIONS_SET,ERR,ERROR,*999)
-              ENDDO !equations_set_idx          
+              ENDDO !equations_set_idx
 !               !Get current control loop times
 !               CALL CONTROL_LOOP_CURRENT_TIMES_GET(CONTROL_LOOP,CURRENT_TIME,TIME_INCREMENT,ERR,ERROR,*999)
               !Solve for the current time
@@ -2507,7 +2523,7 @@ CONTAINS
                 !CALL EQUATIONS_SET_FIXED_CONDITIONS_APPLY(EQUATIONS_SET,ERR,ERROR,*999)    
                 !Assemble the equations for linear problems
                 CALL EQUATIONS_SET_ASSEMBLE(EQUATIONS_SET,ERR,ERROR,*999)
-              ENDDO !equations_set_idx          
+              ENDDO !equations_set_idx
               ! sander - this gives an error, and current time seems to be updated without it
               !Get current control loop times
               !CALL CONTROL_LOOP_CURRENT_TIMES_GET(CONTROL_LOOP,CURRENT_TIME,TIME_INCREMENT,ERR,ERROR,*999)
@@ -2583,7 +2599,7 @@ CONTAINS
 #ifdef TAUPROF
             CALL TAU_PHASE_STOP(PHASE)
 #endif
-          ENDDO !equations_set_idx          
+          ENDDO !equations_set_idx
           !Make sure the interface matrices are up to date
           DO interface_condition_idx=1,SOLVER_MAPPING%numberOfInterfaceConditions
 #ifdef TAUPROF
@@ -2665,7 +2681,7 @@ CONTAINS
             EQUATIONS_SET=>SOLVER_MAPPING%equationsSets(equations_set_idx)%PTR
             !Assemble the equations set
             CALL EQUATIONS_SET_ASSEMBLE(EQUATIONS_SET,ERR,ERROR,*999)
-          ENDDO !equations_set_idx          
+          ENDDO !equations_set_idx
           !Make sure the interface matrices are up to date
           DO interface_condition_idx=1,SOLVER_MAPPING%numberOfInterfaceConditions
 #ifdef TAUPROF
@@ -2733,46 +2749,50 @@ CONTAINS
     CALL ENTERS("PROBLEM_SOLVER_SOLVE",ERR,ERROR,*999)
     
     IF(ASSOCIATED(SOLVER)) THEN
+      IF(SOLVER%SOLVER_FINISHED) THEN
 
-      IF(SOLVER%OUTPUT_TYPE>=SOLVER_PROGRESS_OUTPUT) THEN
-        CALL WRITE_STRING(GENERAL_OUTPUT_TYPE,"",ERR,ERROR,*999)
-        CALL WRITE_STRING_VALUE(GENERAL_OUTPUT_TYPE,"Solver: ",SOLVER%LABEL,ERR,ERROR,*999)
-        CALL WRITE_STRING_VALUE(GENERAL_OUTPUT_TYPE,"  Solver index = ",SOLVER%GLOBAL_NUMBER,ERR,ERROR,*999)
-      ENDIF
-      
-#ifdef TAUPROF
-      CALL TAU_STATIC_PHASE_START('Pre solve')
-#endif
-     CALL PROBLEM_SOLVER_PRE_SOLVE(SOLVER,ERR,ERROR,*999)
-#ifdef TAUPROF
-      CALL TAU_STATIC_PHASE_STOP('Pre solve')
-      
-      CALL TAU_STATIC_PHASE_START('Solve')
-#endif
-      
-      IF(ASSOCIATED(SOLVER%SOLVER_EQUATIONS)) THEN
-        !A solver with solver equations.
-        CALL PROBLEM_SOLVER_EQUATIONS_SOLVE(SOLVER%SOLVER_EQUATIONS,ERR,ERROR,*999)
-      ELSE
-        !Check for other equations.
-        IF(ASSOCIATED(SOLVER%CELLML_EQUATIONS)) THEN
-          !A solver with CellML equations.
-          CALL PROBLEM_CELLML_EQUATIONS_SOLVE(SOLVER%CELLML_EQUATIONS,ERR,ERROR,*999)
-        ELSE
-          CALL FLAG_ERROR("Solver does not have any equations associated.",ERR,ERROR,*999)
+        IF(SOLVER%OUTPUT_TYPE>=SOLVER_PROGRESS_OUTPUT) THEN
+          CALL WRITE_STRING(GENERAL_OUTPUT_TYPE,"",ERR,ERROR,*999)
+          CALL WRITE_STRING_VALUE(GENERAL_OUTPUT_TYPE,"Solver: ",SOLVER%LABEL,ERR,ERROR,*999)
+          CALL WRITE_STRING_VALUE(GENERAL_OUTPUT_TYPE,"  Solver index = ",SOLVER%GLOBAL_NUMBER,ERR,ERROR,*999)
         ENDIF
-      ENDIF
 
 #ifdef TAUPROF
-      CALL TAU_STATIC_PHASE_STOP('Solve')
-      
-      CALL TAU_STATIC_PHASE_START('Post solve')
+        CALL TAU_STATIC_PHASE_START('Pre solve')
 #endif
-      CALL PROBLEM_SOLVER_POST_SOLVE(SOLVER,ERR,ERROR,*999)
+       CALL PROBLEM_SOLVER_PRE_SOLVE(SOLVER,ERR,ERROR,*999)
 #ifdef TAUPROF
-      CALL TAU_STATIC_PHASE_STOP('Post solve')
+        CALL TAU_STATIC_PHASE_STOP('Pre solve')
+
+        CALL TAU_STATIC_PHASE_START('Solve')
 #endif
-      
+
+        IF(ASSOCIATED(SOLVER%SOLVER_EQUATIONS)) THEN
+          !A solver with solver equations.
+          CALL PROBLEM_SOLVER_EQUATIONS_SOLVE(SOLVER%SOLVER_EQUATIONS,ERR,ERROR,*999)
+        ELSE
+          !Check for other equations.
+          IF(ASSOCIATED(SOLVER%CELLML_EQUATIONS)) THEN
+            !A solver with CellML equations.
+            CALL PROBLEM_CELLML_EQUATIONS_SOLVE(SOLVER%CELLML_EQUATIONS,ERR,ERROR,*999)
+          ELSE
+            CALL FLAG_ERROR("Solver does not have any equations associated.",ERR,ERROR,*999)
+          ENDIF
+        ENDIF
+
+#ifdef TAUPROF
+        CALL TAU_STATIC_PHASE_STOP('Solve')
+
+        CALL TAU_STATIC_PHASE_START('Post solve')
+#endif
+        CALL PROBLEM_SOLVER_POST_SOLVE(SOLVER,ERR,ERROR,*999)
+#ifdef TAUPROF
+        CALL TAU_STATIC_PHASE_STOP('Post solve')
+#endif
+
+      ELSE
+        CALL FLAG_ERROR("Solver has not been finished.",ERR,ERROR,*999)
+      ENDIF
     ELSE
       CALL FLAG_ERROR("Solver is not associated.",ERR,ERROR,*999)
     ENDIF

@@ -680,7 +680,7 @@ CONTAINS
             DO ni=1,METRICS%NUMBER_OF_XI_DIMENSIONS
               METRICS%GL(ni,ni)=1.0_DP
               METRICS%GU(ni,ni)=1.0_DP
-            ENDDO !i
+            ENDDO !ni
             METRICS%JACOBIAN=0.0_DP
             
             !Calculate the covariant metric tensor GL(i,j)
@@ -791,6 +791,7 @@ CONTAINS
               CALL INVERT(METRICS%DX_DXI,METRICS%DXI_DX,DET_DX_DXI,ERR,ERROR,*999)
             ELSE
               METRICS%DXI_DX=0.0_DP
+              !CALL FLAG_WARNING("DXI_DX has been set to zero.",ERR,ERROR,*999)
             ENDIF
             
             !Calculate the Jacobian

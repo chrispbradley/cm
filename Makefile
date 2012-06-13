@@ -389,6 +389,7 @@ $(OBJECT_DIR)/boundary_condition_routines.o  : $(SOURCE_DIR)/boundary_condition_
 	$(OBJECT_DIR)/coordinate_routines.o \
 	$(OBJECT_DIR)/distributed_matrix_vector.o \
 	$(OBJECT_DIR)/equations_set_constants.o \
+	$(OBJECT_DIR)/interface_conditions_constants.o \
 	$(OBJECT_DIR)/field_routines.o \
 	$(OBJECT_DIR)/input_output.o \
 	$(OBJECT_DIR)/iso_varying_string.o \
@@ -677,27 +678,29 @@ $(OBJECT_DIR)/bioelectric_finite_elasticity_routines.o	:	$(SOURCE_DIR)/bioelectr
 	$(OBJECT_DIR)/strings.o \
 	$(OBJECT_DIR)/types.o
 
-$(OBJECT_DIR)/data_point_routines.o	:	$(SOURCE_DIR)/data_point_routines.f90 \
-	$(OBJECT_DIR)/base_routines.o \
-	$(OBJECT_DIR)/computational_environment.o \
-	$(OBJECT_DIR)/data_projection_routines.o \
-	$(OBJECT_DIR)/input_output.o \
-	$(OBJECT_DIR)/iso_varying_string.o \
-	$(OBJECT_DIR)/kinds.o \
-	$(OBJECT_DIR)/strings.o \
-	$(OBJECT_DIR)/trees.o \
-	$(OBJECT_DIR)/types.o
-
 $(OBJECT_DIR)/data_projection_routines.o	:	$(SOURCE_DIR)/data_projection_routines.f90 \
 	$(OBJECT_DIR)/base_routines.o \
 	$(OBJECT_DIR)/cmiss_mpi.o \
 	$(OBJECT_DIR)/computational_environment.o \
+	$(OBJECT_DIR)/data_point_routines.o \
 	$(OBJECT_DIR)/domain_mappings.o \
 	$(OBJECT_DIR)/field_routines.o \
 	$(OBJECT_DIR)/input_output.o \
 	$(OBJECT_DIR)/iso_varying_string.o \
 	$(OBJECT_DIR)/kinds.o \
 	$(OBJECT_DIR)/sorting.o \
+	$(OBJECT_DIR)/strings.o \
+	$(OBJECT_DIR)/trees.o \
+	$(OBJECT_DIR)/types.o
+
+$(OBJECT_DIR)/data_point_routines.o	:	$(SOURCE_DIR)/data_point_routines.f90 \
+	$(OBJECT_DIR)/base_routines.o \
+	$(OBJECT_DIR)/computational_environment.o \
+	$(OBJECT_DIR)/coordinate_routines.o \
+	$(OBJECT_DIR)/field_routines.o \
+	$(OBJECT_DIR)/input_output.o \
+	$(OBJECT_DIR)/iso_varying_string.o \
+	$(OBJECT_DIR)/kinds.o \
 	$(OBJECT_DIR)/strings.o \
 	$(OBJECT_DIR)/trees.o \
 	$(OBJECT_DIR)/types.o
@@ -1135,6 +1138,9 @@ $(OBJECT_DIR)/interface_conditions_constants.o	:	$(SOURCE_DIR)/interface_conditi
 $(OBJECT_DIR)/interface_conditions_routines.o	:	$(SOURCE_DIR)/interface_conditions_routines.f90 \
 	$(OBJECT_DIR)/base_routines.o \
 	$(OBJECT_DIR)/basis_routines.o \
+	$(OBJECT_DIR)/boundary_condition_routines.o \
+	$(OBJECT_DIR)/data_point_routines.o \
+	$(OBJECT_DIR)/data_projection_routines.o \
 	$(OBJECT_DIR)/field_routines.o \
 	$(OBJECT_DIR)/input_output.o \
 	$(OBJECT_DIR)/interface_conditions_constants.o \
@@ -1536,6 +1542,7 @@ $(OBJECT_DIR)/problem_routines.o	:	$(SOURCE_DIR)/problem_routines.f90 \
 	$(OBJECT_DIR)/fitting_routines.o \
 	$(OBJECT_DIR)/fluid_mechanics_routines.o \
 	$(OBJECT_DIR)/input_output.o \
+	$(OBJECT_DIR)/interface_conditions_constants.o \
 	$(OBJECT_DIR)/interface_conditions_routines.o \
 	$(OBJECT_DIR)/iso_varying_string.o \
 	$(OBJECT_DIR)/kinds.o \

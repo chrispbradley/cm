@@ -556,22 +556,27 @@ CONTAINS
   !
 
   !>Calculate the positions in the equations matrices of the element matrix. Old CMISS name MELGE.
-  SUBROUTINE EQUATIONS_MATRICES_ELEMENT_MATRIX_CALCULATE(ELEMENT_MATRIX,UPDATE_MATRIX,ROW_ELEMENT_NUMBER,COLUMN_ELEMENT_NUMBER, &
-    & ROWS_FIELD_VARIABLE,COLS_FIELD_VARIABLE,ERR,ERROR,*)
+  !>Takes input of a row variable element number and a column variable element number
+  SUBROUTINE EQUATIONS_MATRICES_ELEMENT_MATRIX_CALCULATE(ELEMENT_MATRIX,UPDATE_MATRIX,ROW_ELEMENT_NUMBERS, &
+      & COL_ELEMENT_NUMBERS,ROWS_FIELD_VARIABLE,COLS_FIELD_VARIABLE,ERR,ERROR,*)
 
     !Argument variables
     TYPE(ELEMENT_MATRIX_TYPE) :: ELEMENT_MATRIX !<The element matrix to calculate
     LOGICAL :: UPDATE_MATRIX !<Is .TRUE. if the element matrix is to be updated, .FALSE. if not.
-    INTEGER(INTG), INTENT(IN) :: ROW_ELEMENT_NUMBER !<The row element number to calculate
-    INTEGER(INTG), INTENT(IN) :: COLUMN_ELEMENT_NUMBER !<The column element number to calculate
+    INTEGER(INTG), INTENT(IN) :: ROW_ELEMENT_NUMBERS(:) !<The row element number to calculate
+    INTEGER(INTG), INTENT(IN) :: COL_ELEMENT_NUMBERS(:) !<The column element number to calculate
     TYPE(FIELD_VARIABLE_TYPE), POINTER :: ROWS_FIELD_VARIABLE !<A pointer to the field variable associated with the rows
     TYPE(FIELD_VARIABLE_TYPE), POINTER :: COLS_FIELD_VARIABLE !<A pointer to the field variable associated with the columns
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    INTEGER(INTG) :: component_idx,derivative,derivative_idx,global_ny,local_ny,node,node_idx,version
+    INTEGER(INTG) :: component_idx,derivative,derivative_idx,global_ny,local_ny,node,node_idx,version,gauss_point_idx,xi_idx, &
+      & element_idx,data_point_idx
+    INTEGER(INTG) :: TOTAL_NUMBER_OF_GAUSS_POINTS,NUMBER_OF_ROW_ELEMENTS,NUMBER_OF_COL_ELEMENTS,ROW_ELEMENT_NUMBER, &
+      & COLUMN_ELEMENT_NUMBER,DATA_POINT_LOCAL_NUMBER
     TYPE(BASIS_TYPE), POINTER :: BASIS
     TYPE(DOMAIN_ELEMENTS_TYPE), POINTER :: ELEMENTS_TOPOLOGY
+    TYPE(DOMAIN_DATA_POINTS_TYPE), POINTER :: DATA_POINTS_TOPOLOGY
     TYPE(VARYING_STRING) :: LOCAL_ERROR
 
     CALL ENTERS("EQUATIONS_MATRICES_ELEMENT_MATRIX_CALCULATE",ERR,ERROR,*999)
@@ -585,6 +590,9 @@ CONTAINS
             !Row and columns variable is the same.
             DO component_idx=1,ROWS_FIELD_VARIABLE%NUMBER_OF_COMPONENTS
               ELEMENTS_TOPOLOGY=>ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%ELEMENTS
+              NUMBER_OF_ROW_ELEMENTS=SIZE(ROW_ELEMENT_NUMBERS,1)
+              DO element_idx=1,NUMBER_OF_ROW_ELEMENTS
+              ROW_ELEMENT_NUMBER=ROW_ELEMENT_NUMBERS(element_idx)
               IF(ROW_ELEMENT_NUMBER>=1.AND.ROW_ELEMENT_NUMBER<=ELEMENTS_TOPOLOGY%TOTAL_NUMBER_OF_ELEMENTS) THEN
                 SELECT CASE(ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%INTERPOLATION_TYPE)
                 CASE(FIELD_CONSTANT_INTERPOLATION)
@@ -622,6 +630,19 @@ CONTAINS
                   CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                 CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
                   CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
+                CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
+                  DATA_POINTS_TOPOLOGY=>COLS_FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%DATA_POINTS
+                  DO data_point_idx=1,DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(ROW_ELEMENT_NUMBER)%NUMBER_OF_PROJECTED_DATA
+                    DATA_POINT_LOCAL_NUMBER=DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(ROW_ELEMENT_NUMBER)% &
+                      & DATA_INDICES(data_point_idx)%LOCAL_NUMBER
+                    local_ny=COLS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%DATA_POINT_PARAM2DOF_MAP% &
+                      & DATA_POINTS(DATA_POINT_LOCAL_NUMBER)
+                    global_ny=COLS_FIELD_VARIABLE%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_ny)
+                    ELEMENT_MATRIX%NUMBER_OF_ROWS=ELEMENT_MATRIX%NUMBER_OF_ROWS+1
+                    ELEMENT_MATRIX%NUMBER_OF_COLUMNS=ELEMENT_MATRIX%NUMBER_OF_COLUMNS+1
+                    ELEMENT_MATRIX%ROW_DOFS(ELEMENT_MATRIX%NUMBER_OF_ROWS)=local_ny
+                    ELEMENT_MATRIX%COLUMN_DOFS(ELEMENT_MATRIX%NUMBER_OF_COLUMNS)=global_ny
+                  ENDDO !data_point_idx                  
                 CASE DEFAULT
                   LOCAL_ERROR="The interpolation type of "// &
                     & TRIM(NUMBER_TO_VSTRING(ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%INTERPOLATION_TYPE,"*",ERR,ERROR))// &
@@ -641,11 +662,15 @@ CONTAINS
                 CALL FLAG_ERROR(LOCAL_ERROR,ERR,ERROR,*999)
               ENDIF
             ENDDO !component_idx
+            ENDDO !element_idx
           ELSE
             !Row and column variables are different
             !Row mapping
             DO component_idx=1,ROWS_FIELD_VARIABLE%NUMBER_OF_COMPONENTS
               ELEMENTS_TOPOLOGY=>ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%ELEMENTS
+              NUMBER_OF_ROW_ELEMENTS=SIZE(ROW_ELEMENT_NUMBERS,1)
+              DO element_idx=1,NUMBER_OF_ROW_ELEMENTS
+              ROW_ELEMENT_NUMBER=ROW_ELEMENT_NUMBERS(element_idx)
               IF(ROW_ELEMENT_NUMBER>=1.AND.ROW_ELEMENT_NUMBER<=ELEMENTS_TOPOLOGY%TOTAL_NUMBER_OF_ELEMENTS) THEN
                 SELECT CASE(ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%INTERPOLATION_TYPE)
                 CASE(FIELD_CONSTANT_INTERPOLATION)
@@ -674,6 +699,16 @@ CONTAINS
                   CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                 CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
                   CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
+                CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
+                  DATA_POINTS_TOPOLOGY=>COLS_FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%DATA_POINTS
+                  DO data_point_idx=1,DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(ROW_ELEMENT_NUMBER)%NUMBER_OF_PROJECTED_DATA
+                    DATA_POINT_LOCAL_NUMBER=DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(ROW_ELEMENT_NUMBER)% &
+                      & DATA_INDICES(data_point_idx)%LOCAL_NUMBER
+                    local_ny=ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%DATA_POINT_PARAM2DOF_MAP% &
+                      & DATA_POINTS(DATA_POINT_LOCAL_NUMBER)
+                    ELEMENT_MATRIX%NUMBER_OF_COLUMNS=ELEMENT_MATRIX%NUMBER_OF_COLUMNS+1
+                    ELEMENT_MATRIX%COLUMN_DOFS(ELEMENT_MATRIX%NUMBER_OF_COLUMNS)=global_ny
+                  ENDDO !data_point_idx                  
                 CASE DEFAULT
                   LOCAL_ERROR="The interpolation type of "// &
                     & TRIM(NUMBER_TO_VSTRING(ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%INTERPOLATION_TYPE,"*",ERR,ERROR))// &
@@ -693,9 +728,13 @@ CONTAINS
                 CALL FLAG_ERROR(LOCAL_ERROR,ERR,ERROR,*999)
               ENDIF
             ENDDO !component_idx
+            ENDDO !element_idx
             !Column mapping
             DO component_idx=1,COLS_FIELD_VARIABLE%NUMBER_OF_COMPONENTS
               ELEMENTS_TOPOLOGY=>COLS_FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%ELEMENTS
+              NUMBER_OF_COL_ELEMENTS=SIZE(COL_ELEMENT_NUMBERS,1)
+              DO element_idx=1,NUMBER_OF_COL_ELEMENTS
+              COLUMN_ELEMENT_NUMBER=COL_ELEMENT_NUMBERS(element_idx)
               IF(COLUMN_ELEMENT_NUMBER>=1.AND.COLUMN_ELEMENT_NUMBER<=ELEMENTS_TOPOLOGY%TOTAL_NUMBER_OF_ELEMENTS) THEN
                 SELECT CASE(COLS_FIELD_VARIABLE%COMPONENTS(component_idx)%INTERPOLATION_TYPE)
                 CASE(FIELD_CONSTANT_INTERPOLATION)
@@ -726,7 +765,29 @@ CONTAINS
                 CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
                   CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                 CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
-                  CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
+                  BASIS=>COLS_FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%MESH%GENERATED_MESH%REGULAR_MESH%BASES(1)%PTR
+                  TOTAL_NUMBER_OF_GAUSS_POINTS=1
+                  DO xi_idx=1,BASIS%NUMBER_OF_XI
+                    TOTAL_NUMBER_OF_GAUSS_POINTS=TOTAL_NUMBER_OF_GAUSS_POINTS*BASIS%QUADRATURE%NUMBER_OF_GAUSS_XI(xi_idx)
+                  ENDDO
+                  DO gauss_point_idx=1,TOTAL_NUMBER_OF_GAUSS_POINTS
+                    local_ny=COLS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP% &
+                      & GAUSS_POINTS(gauss_point_idx,COLUMN_ELEMENT_NUMBER)
+                    global_ny=COLS_FIELD_VARIABLE%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_ny)
+                    ELEMENT_MATRIX%NUMBER_OF_COLUMNS=ELEMENT_MATRIX%NUMBER_OF_COLUMNS+1
+                    ELEMENT_MATRIX%COLUMN_DOFS(ELEMENT_MATRIX%NUMBER_OF_COLUMNS)=global_ny
+                  ENDDO       
+                CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
+                  DATA_POINTS_TOPOLOGY=>COLS_FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%DATA_POINTS
+                  DO data_point_idx=1,DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(COLUMN_ELEMENT_NUMBER)%NUMBER_OF_PROJECTED_DATA
+                    DATA_POINT_LOCAL_NUMBER=DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(COLUMN_ELEMENT_NUMBER)% &
+                      & DATA_INDICES(data_point_idx)%LOCAL_NUMBER
+                    local_ny=COLS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%DATA_POINT_PARAM2DOF_MAP% &
+                      & DATA_POINTS(DATA_POINT_LOCAL_NUMBER)
+                    global_ny=COLS_FIELD_VARIABLE%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_ny)
+                    ELEMENT_MATRIX%NUMBER_OF_COLUMNS=ELEMENT_MATRIX%NUMBER_OF_COLUMNS+1
+                    ELEMENT_MATRIX%COLUMN_DOFS(ELEMENT_MATRIX%NUMBER_OF_COLUMNS)=global_ny
+                  ENDDO !data_point_idx                  
                 CASE DEFAULT
                   LOCAL_ERROR="The interpolation type of "// &
                     & TRIM(NUMBER_TO_VSTRING(COLS_FIELD_VARIABLE%COMPONENTS(component_idx)%INTERPOLATION_TYPE,"*",ERR,ERROR))// &
@@ -746,6 +807,7 @@ CONTAINS
                 CALL FLAG_ERROR(LOCAL_ERROR,ERR,ERROR,*999)
               ENDIF
             ENDDO !component_idx
+            ENDDO !element_idx
           ENDIF
           ELEMENT_MATRIX%MATRIX=0.0_DP
         ENDIF
@@ -763,6 +825,7 @@ CONTAINS
     RETURN 1
     
   END SUBROUTINE EQUATIONS_MATRICES_ELEMENT_MATRIX_CALCULATE
+  
 
   !
   !================================================================================================================================
@@ -779,6 +842,8 @@ CONTAINS
     
     CALL ENTERS("EQUATIONS_MATRICES_ELEMENT_MATRIX_FINALISE",ERR,ERROR,*999)
 
+    ELEMENT_MATRIX%MAX_NUMBER_OF_ROWS=0
+    ELEMENT_MATRIX%MAX_NUMBER_OF_COLUMNS=0
     IF(ALLOCATED(ELEMENT_MATRIX%ROW_DOFS)) DEALLOCATE(ELEMENT_MATRIX%ROW_DOFS)
     IF(ALLOCATED(ELEMENT_MATRIX%COLUMN_DOFS)) DEALLOCATE(ELEMENT_MATRIX%COLUMN_DOFS)
     IF(ALLOCATED(ELEMENT_MATRIX%MATRIX)) DEALLOCATE(ELEMENT_MATRIX%MATRIX)
@@ -823,12 +888,14 @@ CONTAINS
   !
 
   !>Sets up the element matrix for the row and column field variables.
-  SUBROUTINE EQUATIONS_MATRICES_ELEMENT_MATRIX_SETUP(ELEMENT_MATRIX,ROWS_FIELD_VARIABLE,COLS_FIELD_VARIABLE,ERR,ERROR,*)
+  SUBROUTINE EQUATIONS_MATRICES_ELEMENT_MATRIX_SETUP(ELEMENT_MATRIX,ROWS_FIELD_VARIABLE,COLS_FIELD_VARIABLE, &
+      & ROWS_NUMBER_OF_ELEMENTS,COLS_NUMBER_OF_ELEMENTS,ERR,ERROR,*)
 
     !Argument variables
     TYPE(ELEMENT_MATRIX_TYPE) :: ELEMENT_MATRIX !<The element matrix to setup
     TYPE(FIELD_VARIABLE_TYPE), POINTER :: ROWS_FIELD_VARIABLE !<A pointer to the field variable associated with the rows
     TYPE(FIELD_VARIABLE_TYPE), POINTER :: COLS_FIELD_VARIABLE !<A pointer to the field variable associated with the columns
+    INTEGER(INTG) :: ROWS_NUMBER_OF_ELEMENTS,COLS_NUMBER_OF_ELEMENTS !Number of elements in the row and col variables whose dofs are present in this element matrix
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
@@ -840,9 +907,9 @@ CONTAINS
     IF(ASSOCIATED(ROWS_FIELD_VARIABLE)) THEN
       IF(ASSOCIATED(COLS_FIELD_VARIABLE)) THEN
         ELEMENT_MATRIX%MAX_NUMBER_OF_ROWS=ROWS_FIELD_VARIABLE%MAX_NUMBER_OF_INTERPOLATION_PARAMETERS* &
-          & ROWS_FIELD_VARIABLE%NUMBER_OF_COMPONENTS
+          & ROWS_FIELD_VARIABLE%NUMBER_OF_COMPONENTS*ROWS_NUMBER_OF_ELEMENTS
         ELEMENT_MATRIX%MAX_NUMBER_OF_COLUMNS=COLS_FIELD_VARIABLE%MAX_NUMBER_OF_INTERPOLATION_PARAMETERS* &
-          & COLS_FIELD_VARIABLE%NUMBER_OF_COMPONENTS
+          & COLS_FIELD_VARIABLE%NUMBER_OF_COMPONENTS*COLS_NUMBER_OF_ELEMENTS
         IF(ALLOCATED(ELEMENT_MATRIX%ROW_DOFS)) THEN
           CALL FLAG_ERROR("Element matrix row dofs already allocated.",ERR,ERROR,*999)
         ELSE
@@ -892,9 +959,11 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    INTEGER(INTG) :: component_idx,derivative,derivative_idx,local_ny,node,node_idx,version
+    INTEGER(INTG) :: component_idx,derivative,derivative_idx,local_ny,node,node_idx,version,xi_idx,gauss_point_idx,data_point_idx
+    INTEGER(INTG) :: TOTAL_NUMBER_OF_GAUSS_POINTS,DATA_POINT_LOCAL_NUMBER
     TYPE(BASIS_TYPE), POINTER :: BASIS
     TYPE(DOMAIN_ELEMENTS_TYPE), POINTER :: ELEMENTS_TOPOLOGY
+    TYPE(DOMAIN_DATA_POINTS_TYPE), POINTER :: DATA_POINTS_TOPOLOGY
     TYPE(VARYING_STRING) :: LOCAL_ERROR
     
     CALL ENTERS("EQUATIONS_MATRICES_ELEMENT_VECTOR_CALCULATE",ERR,ERROR,*999)
@@ -932,7 +1001,27 @@ CONTAINS
             CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
               CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
             CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
-              CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
+              BASIS=>ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%MESH%GENERATED_MESH%REGULAR_MESH%BASES(1)%PTR
+              TOTAL_NUMBER_OF_GAUSS_POINTS=1
+              DO xi_idx=1,BASIS%NUMBER_OF_XI
+                TOTAL_NUMBER_OF_GAUSS_POINTS=TOTAL_NUMBER_OF_GAUSS_POINTS*BASIS%QUADRATURE%NUMBER_OF_GAUSS_XI(xi_idx)
+              ENDDO
+              DO gauss_point_idx=1,TOTAL_NUMBER_OF_GAUSS_POINTS
+                local_ny=ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP% &
+                  & GAUSS_POINTS(gauss_point_idx,ELEMENT_NUMBER)
+                ELEMENT_VECTOR%NUMBER_OF_ROWS=ELEMENT_VECTOR%NUMBER_OF_ROWS+1
+                ELEMENT_VECTOR%ROW_DOFS(ELEMENT_VECTOR%NUMBER_OF_ROWS)=local_ny
+              ENDDO   
+            CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
+              DATA_POINTS_TOPOLOGY=>ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%DATA_POINTS
+              DO data_point_idx=1,DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(ELEMENT_NUMBER)%NUMBER_OF_PROJECTED_DATA
+                DATA_POINT_LOCAL_NUMBER=DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(ELEMENT_NUMBER)% &
+                  & DATA_INDICES(data_point_idx)%LOCAL_NUMBER
+                local_ny=ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%DATA_POINT_PARAM2DOF_MAP% &
+                  & DATA_POINTS(DATA_POINT_LOCAL_NUMBER)
+                ELEMENT_VECTOR%NUMBER_OF_ROWS=ELEMENT_VECTOR%NUMBER_OF_ROWS+1
+                ELEMENT_VECTOR%ROW_DOFS(ELEMENT_VECTOR%NUMBER_OF_ROWS)=local_ny
+              ENDDO !data_point_idx                         
             CASE DEFAULT
               LOCAL_ERROR="The interpolation type of "// &
                 & TRIM(NUMBER_TO_VSTRING(ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%INTERPOLATION_TYPE,"*",ERR,ERROR))// &
@@ -1038,13 +1127,13 @@ CONTAINS
       ELEMENT_VECTOR%MAX_NUMBER_OF_ROWS=ROWS_FIELD_VARIABLE%MAX_NUMBER_OF_INTERPOLATION_PARAMETERS* &
         & ROWS_FIELD_VARIABLE%NUMBER_OF_COMPONENTS
       IF(ALLOCATED(ELEMENT_VECTOR%ROW_DOFS)) THEN
-        CALL FLAG_ERROR("Element vector row dofs is already allocated.",ERR,ERROR,*999)        
+        CALL FLAG_ERROR("Element vector row dofs is already allocated.",ERR,ERROR,*999)
       ELSE
         ALLOCATE(ELEMENT_VECTOR%ROW_DOFS(ELEMENT_VECTOR%MAX_NUMBER_OF_ROWS),STAT=ERR)
         IF(ERR/=0) CALL FLAG_ERROR("Could not allocate element vector row dofs.",ERR,ERROR,*999)
       ENDIF
       IF(ALLOCATED(ELEMENT_VECTOR%VECTOR)) THEN
-        CALL FLAG_ERROR("Element vector vector already allocated.",ERR,ERROR,*999)        
+        CALL FLAG_ERROR("Element vector vector already allocated.",ERR,ERROR,*999)
       ELSE
         ALLOCATE(ELEMENT_VECTOR%VECTOR(ELEMENT_VECTOR%MAX_NUMBER_OF_ROWS),STAT=ERR)
         IF(ERR/=0) CALL FLAG_ERROR("Could not allocate element vector vector.",ERR,ERROR,*999)
@@ -1219,6 +1308,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     INTEGER(INTG) :: matrix_idx
+    INTEGER(INTG), ALLOCATABLE :: ELEMENT_NUMBERS(:)
     TYPE(EQUATIONS_JACOBIAN_TYPE), POINTER :: JACOBIAN_MATRIX
     TYPE(EQUATIONS_MAPPING_TYPE), POINTER :: EQUATIONS_MAPPING
     TYPE(EQUATIONS_MAPPING_DYNAMIC_TYPE), POINTER :: DYNAMIC_MAPPING
@@ -1251,9 +1341,11 @@ CONTAINS
             DO matrix_idx=1,DYNAMIC_MATRICES%NUMBER_OF_DYNAMIC_MATRICES
               EQUATIONS_MATRIX=>DYNAMIC_MATRICES%MATRICES(matrix_idx)%PTR
               IF(ASSOCIATED(EQUATIONS_MATRIX)) THEN
+                ALLOCATE(ELEMENT_NUMBERS(1),STAT=ERR)
+                ELEMENT_NUMBERS=ELEMENT_NUMBER
                 FIELD_VARIABLE=>DYNAMIC_MAPPING%EQUATIONS_MATRIX_TO_VAR_MAPS(matrix_idx)%VARIABLE
                 CALL EQUATIONS_MATRICES_ELEMENT_MATRIX_CALCULATE(EQUATIONS_MATRIX%ELEMENT_MATRIX,EQUATIONS_MATRIX%UPDATE_MATRIX, &
-                  & ELEMENT_NUMBER,ELEMENT_NUMBER,FIELD_VARIABLE,FIELD_VARIABLE,ERR,ERROR,*999)
+                  & ELEMENT_NUMBERS,ELEMENT_NUMBERS,FIELD_VARIABLE,FIELD_VARIABLE,ERR,ERROR,*999)
               ELSE
                 LOCAL_ERROR="Equations matrix for dynamic matrix number "//TRIM(NUMBER_TO_VSTRING(matrix_idx,"*",ERR,ERROR))// &
                   & " is not associated."
@@ -1272,9 +1364,11 @@ CONTAINS
             DO matrix_idx=1,LINEAR_MATRICES%NUMBER_OF_LINEAR_MATRICES
               EQUATIONS_MATRIX=>LINEAR_MATRICES%MATRICES(matrix_idx)%PTR
               IF(ASSOCIATED(EQUATIONS_MATRIX)) THEN
+                ALLOCATE(ELEMENT_NUMBERS(1),STAT=ERR)
+                ELEMENT_NUMBERS=ELEMENT_NUMBER
                 FIELD_VARIABLE=>LINEAR_MAPPING%EQUATIONS_MATRIX_TO_VAR_MAPS(matrix_idx)%VARIABLE
                 CALL EQUATIONS_MATRICES_ELEMENT_MATRIX_CALCULATE(EQUATIONS_MATRIX%ELEMENT_MATRIX,EQUATIONS_MATRIX%UPDATE_MATRIX, &
-                  & ELEMENT_NUMBER,ELEMENT_NUMBER,FIELD_VARIABLE,FIELD_VARIABLE,ERR,ERROR,*999)
+                  & ELEMENT_NUMBERS,ELEMENT_NUMBERS,FIELD_VARIABLE,FIELD_VARIABLE,ERR,ERROR,*999)
               ELSE
                 LOCAL_ERROR="Equations matrix for linear matrix number "//TRIM(NUMBER_TO_VSTRING(matrix_idx,"*",ERR,ERROR))// &
                   & " is not associated."
@@ -1294,9 +1388,11 @@ CONTAINS
             DO matrix_idx=1,NONLINEAR_MATRICES%NUMBER_OF_JACOBIANS
               JACOBIAN_MATRIX=>NONLINEAR_MATRICES%JACOBIANS(matrix_idx)%PTR
               IF(ASSOCIATED(JACOBIAN_MATRIX)) THEN
+                ALLOCATE(ELEMENT_NUMBERS(1),STAT=ERR)
+                ELEMENT_NUMBERS=ELEMENT_NUMBER
                 COL_FIELD_VARIABLE=>NONLINEAR_MAPPING%JACOBIAN_TO_VAR_MAP(matrix_idx)%VARIABLE
                 CALL EQUATIONS_MATRICES_ELEMENT_MATRIX_CALCULATE(JACOBIAN_MATRIX%ELEMENT_JACOBIAN,JACOBIAN_MATRIX%UPDATE_JACOBIAN, &
-                  & ELEMENT_NUMBER,ELEMENT_NUMBER,FIELD_VARIABLE,COL_FIELD_VARIABLE,ERR,ERROR,*999)
+                  & ELEMENT_NUMBERS,ELEMENT_NUMBERS,FIELD_VARIABLE,COL_FIELD_VARIABLE,ERR,ERROR,*999)
               ELSE
                 CALL FLAG_ERROR("Jacobian matrix is not associated.",ERR,ERROR,*999)
               ENDIF
@@ -1389,11 +1485,7 @@ CONTAINS
         DO matrix_idx=1,DYNAMIC_MATRICES%NUMBER_OF_DYNAMIC_MATRICES
           EQUATIONS_MATRIX=>DYNAMIC_MATRICES%MATRICES(matrix_idx)%PTR
           IF(ASSOCIATED(EQUATIONS_MATRIX)) THEN
-            EQUATIONS_MATRIX%ELEMENT_MATRIX%MAX_NUMBER_OF_ROWS=0
-            EQUATIONS_MATRIX%ELEMENT_MATRIX%MAX_NUMBER_OF_COLUMNS=0
-            IF(ALLOCATED(EQUATIONS_MATRIX%ELEMENT_MATRIX%ROW_DOFS)) DEALLOCATE(EQUATIONS_MATRIX%ELEMENT_MATRIX%ROW_DOFS)
-            IF(ALLOCATED(EQUATIONS_MATRIX%ELEMENT_MATRIX%COLUMN_DOFS)) DEALLOCATE(EQUATIONS_MATRIX%ELEMENT_MATRIX%COLUMN_DOFS)
-            IF(ALLOCATED(EQUATIONS_MATRIX%ELEMENT_MATRIX%MATRIX)) DEALLOCATE(EQUATIONS_MATRIX%ELEMENT_MATRIX%MATRIX)
+            CALL EQUATIONS_MATRICES_ELEMENT_MATRIX_FINALISE(EQUATIONS_MATRIX%ELEMENT_MATRIX,ERR,ERROR,*999)
           ELSE
             LOCAL_ERROR="Equations matrix for dynamic matrix number "//TRIM(NUMBER_TO_VSTRING(matrix_idx,"*",ERR,ERROR))// &
               & " is not associated."
@@ -1407,11 +1499,7 @@ CONTAINS
         DO matrix_idx=1,LINEAR_MATRICES%NUMBER_OF_LINEAR_MATRICES
           EQUATIONS_MATRIX=>LINEAR_MATRICES%MATRICES(matrix_idx)%PTR
           IF(ASSOCIATED(EQUATIONS_MATRIX)) THEN
-            EQUATIONS_MATRIX%ELEMENT_MATRIX%MAX_NUMBER_OF_ROWS=0
-            EQUATIONS_MATRIX%ELEMENT_MATRIX%MAX_NUMBER_OF_COLUMNS=0
-            IF(ALLOCATED(EQUATIONS_MATRIX%ELEMENT_MATRIX%ROW_DOFS)) DEALLOCATE(EQUATIONS_MATRIX%ELEMENT_MATRIX%ROW_DOFS)
-            IF(ALLOCATED(EQUATIONS_MATRIX%ELEMENT_MATRIX%COLUMN_DOFS)) DEALLOCATE(EQUATIONS_MATRIX%ELEMENT_MATRIX%COLUMN_DOFS)
-            IF(ALLOCATED(EQUATIONS_MATRIX%ELEMENT_MATRIX%MATRIX)) DEALLOCATE(EQUATIONS_MATRIX%ELEMENT_MATRIX%MATRIX)
+            CALL EQUATIONS_MATRICES_ELEMENT_MATRIX_FINALISE(EQUATIONS_MATRIX%ELEMENT_MATRIX,ERR,ERROR,*999)
           ELSE
             LOCAL_ERROR="Equations matrix for linear matrix number "//TRIM(NUMBER_TO_VSTRING(matrix_idx,"*",ERR,ERROR))// &
               & " is not associated."
@@ -1476,6 +1564,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     INTEGER(INTG) :: matrix_idx
+    INTEGER(INTG) :: ROWS_NUMBER_OF_ELEMENTS,COLS_NUMBER_OF_ELEMENTS !Number of elements in the row and col variables whose dofs are present in this element matrix
     TYPE(EQUATIONS_JACOBIAN_TYPE), POINTER :: JACOBIAN_MATRIX
     TYPE(EQUATIONS_MAPPING_TYPE), POINTER :: EQUATIONS_MAPPING
     TYPE(EQUATIONS_MAPPING_DYNAMIC_TYPE), POINTER :: DYNAMIC_MAPPING
@@ -1495,6 +1584,8 @@ CONTAINS
 
     IF(ASSOCIATED(EQUATIONS_MATRICES)) THEN
       EQUATIONS_MAPPING=>EQUATIONS_MATRICES%EQUATIONS_MAPPING
+      ROWS_NUMBER_OF_ELEMENTS=1
+      COLS_NUMBER_OF_ELEMENTS=1
       IF(ASSOCIATED(EQUATIONS_MAPPING)) THEN
         DYNAMIC_MATRICES=>EQUATIONS_MATRICES%DYNAMIC_MATRICES
         IF(ASSOCIATED(DYNAMIC_MATRICES)) THEN
@@ -1506,7 +1597,7 @@ CONTAINS
               IF(ASSOCIATED(EQUATIONS_MATRIX)) THEN
                 FIELD_VARIABLE=>DYNAMIC_MAPPING%EQUATIONS_MATRIX_TO_VAR_MAPS(matrix_idx)%VARIABLE
                 CALL EQUATIONS_MATRICES_ELEMENT_MATRIX_SETUP(EQUATIONS_MATRIX%ELEMENT_MATRIX,FIELD_VARIABLE,FIELD_VARIABLE, &
-                  & ERR,ERROR,*999)
+                  & ROWS_NUMBER_OF_ELEMENTS,COLS_NUMBER_OF_ELEMENTS,ERR,ERROR,*999)
               ELSE
                 LOCAL_ERROR="Equations dynamic matrix number "//TRIM(NUMBER_TO_VSTRING(matrix_idx,"*",ERR,ERROR))// &
                   & " is not associated."
@@ -1527,7 +1618,7 @@ CONTAINS
               IF(ASSOCIATED(EQUATIONS_MATRIX)) THEN
                 FIELD_VARIABLE=>LINEAR_MAPPING%EQUATIONS_MATRIX_TO_VAR_MAPS(matrix_idx)%VARIABLE
                 CALL EQUATIONS_MATRICES_ELEMENT_MATRIX_SETUP(EQUATIONS_MATRIX%ELEMENT_MATRIX,FIELD_VARIABLE,FIELD_VARIABLE, &
-                  & ERR,ERROR,*999)
+                  & ROWS_NUMBER_OF_ELEMENTS,COLS_NUMBER_OF_ELEMENTS,ERR,ERROR,*999)
               ELSE
                 LOCAL_ERROR="Equations linear matrix number "//TRIM(NUMBER_TO_VSTRING(matrix_idx,"*",ERR,ERROR))// &
                   & " is not associated."
@@ -1549,7 +1640,7 @@ CONTAINS
               IF(ASSOCIATED(JACOBIAN_MATRIX)) THEN
                 COL_FIELD_VARIABLE=>NONLINEAR_MAPPING%JACOBIAN_TO_VAR_MAP(matrix_idx)%VARIABLE
                 CALL EQUATIONS_MATRICES_ELEMENT_MATRIX_SETUP(JACOBIAN_MATRIX%ELEMENT_JACOBIAN,FIELD_VARIABLE,COL_FIELD_VARIABLE, &
-                  & ERR,ERROR,*999)
+                  & ROWS_NUMBER_OF_ELEMENTS,COLS_NUMBER_OF_ELEMENTS,ERR,ERROR,*999)
               ELSE
                 CALL FLAG_ERROR("Jacobian matrix is not associated.",ERR,ERROR,*999)
               ENDIF
@@ -3489,10 +3580,10 @@ CONTAINS
                                       & NUMBER_OF_NON_ZEROS,ERR,ERROR,*999)
                                     IF(DEPENDENT_DOFS_DOMAIN_MAPPING%TOTAL_NUMBER_OF_LOCAL* &
                                       & DEPENDENT_DOFS_DOMAIN_MAPPING%NUMBER_OF_GLOBAL/=0) THEN
-                                      SPARSITY=REAL(NUMBER_OF_NON_ZEROS,DP)/REAL(DEPENDENT_DOFS_DOMAIN_MAPPING% &
-                                        & TOTAL_NUMBER_OF_LOCAL*DEPENDENT_DOFS_DOMAIN_MAPPING%NUMBER_OF_GLOBAL,DP)*100.0_DP
-                                      CALL WRITE_STRING_FMT_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  Sparsity (%) = ",SPARSITY,"F6.2", &
-                                        & ERR,ERROR,*999)
+                                      SPARSITY=(1.0_DP-REAL(NUMBER_OF_NON_ZEROS,DP)/REAL(DEPENDENT_DOFS_DOMAIN_MAPPING% &
+                                        & TOTAL_NUMBER_OF_LOCAL*DEPENDENT_DOFS_DOMAIN_MAPPING%NUMBER_OF_GLOBAL,DP))*100.0_DP
+                                      CALL WRITE_STRING_FMT_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  Sparsity (% of zeros) = ", &
+                                        & SPARSITY,"F6.2",ERR,ERROR,*999)
                                     ENDIF
                                     CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,DEPENDENT_DOFS_DOMAIN_MAPPING% &
                                       & TOTAL_NUMBER_OF_LOCAL+1,8,8,ROW_INDICES,'("  Row indices    :",8(X,I13))', &
@@ -3712,6 +3803,9 @@ CONTAINS
                                               CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
                                                 CALL FLAG_ERROR("Gauss point based interpolation is not implemented yet.",&
                                                   & ERR,ERROR,*999)
+                                              CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
+                                                CALL FLAG_ERROR("Grid point based interpolation is not implemented yet.",& 
+                                                  & ERR,ERROR,*999)
                                               CASE DEFAULT
                                                 LOCAL_ERROR="Local dof number "//TRIM(NUMBER_TO_VSTRING(local_ny,"*",ERR,ERROR))// &
                                                   & " has invalid interpolation type."
@@ -3771,6 +3865,9 @@ CONTAINS
                                             CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
                                               CALL FLAG_ERROR("Gauss point based interpolation is not implemented yet.", &
                                                 & ERR,ERROR,*999)
+                                            CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
+                                              CALL FLAG_ERROR("Data point based interpolation is not implemented yet.", &
+                                                & ERR,ERROR,*999)
                                             CASE DEFAULT
                                               LOCAL_ERROR="Local dof number "//TRIM(NUMBER_TO_VSTRING(local_ny,"*",ERR,ERROR))// &
                                                 & " has invalid interpolation type."
@@ -3787,6 +3884,8 @@ CONTAINS
                                           CALL FLAG_ERROR("Grid point based interpolation is not implemented yet.",ERR,ERROR,*999)
                                         CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
                                           CALL FLAG_ERROR("Gauss point based interpolation is not implemented yet.",ERR,ERROR,*999)
+                                        CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
+                                          CALL FLAG_ERROR("Data point based interpolation is not implemented yet.",ERR,ERROR,*999)
                                         CASE DEFAULT
                                           LOCAL_ERROR="Local dof number "//TRIM(NUMBER_TO_VSTRING(local_ny,"*",ERR,ERROR))// &
                                             & " has an invalid type."
@@ -3814,10 +3913,10 @@ CONTAINS
                                           & NUMBER_OF_NON_ZEROS,ERR,ERROR,*999)
                                         IF(DEPENDENT_DOFS_DOMAIN_MAPPING%TOTAL_NUMBER_OF_LOCAL* &
                                           & DEPENDENT_DOFS_DOMAIN_MAPPING%NUMBER_OF_GLOBAL/=0) THEN
-                                          SPARSITY=REAL(NUMBER_OF_NON_ZEROS,DP)/REAL(DEPENDENT_DOFS_DOMAIN_MAPPING% &
-                                            & TOTAL_NUMBER_OF_LOCAL*DEPENDENT_DOFS_DOMAIN_MAPPING%NUMBER_OF_GLOBAL,DP)*100.0_DP
-                                          CALL WRITE_STRING_FMT_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  Sparsity (%) = ",SPARSITY,"F5.2", &
-                                            & ERR,ERROR,*999)
+                                          SPARSITY=(1.0_DP-REAL(NUMBER_OF_NON_ZEROS,DP)/REAL(DEPENDENT_DOFS_DOMAIN_MAPPING% &
+                                            & TOTAL_NUMBER_OF_LOCAL*DEPENDENT_DOFS_DOMAIN_MAPPING%NUMBER_OF_GLOBAL,DP))*100.0_DP
+                                          CALL WRITE_STRING_FMT_VALUE(DIAGNOSTIC_OUTPUT_TYPE,"  Sparsity (% of zeros) = ", &
+                                            & SPARSITY,"F6.2",ERR,ERROR,*999)
                                         ENDIF
                                         CALL WRITE_STRING_VECTOR(DIAGNOSTIC_OUTPUT_TYPE,1,1,ROW_DOFS_DOMAIN_MAPPING% &
                                           & TOTAL_NUMBER_OF_LOCAL+1,8,8,ROW_INDICES,'("  Row indices    :",8(X,I13))', &
