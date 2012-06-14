@@ -900,8 +900,8 @@ CONTAINS
               CALL FLAG_ERROR("Equations set is not associated.",ERR,ERROR,*998)
             ENDIF
           ENDDO !equations_set_idx
-          DO interface_condition_idx=1,SOLVER_EQUATIONS%SOLVER_MAPPING%NUMBER_OF_INTERFACE_CONDITIONS
-            INTERFACE_CONDITION=>SOLVER_EQUATIONS%SOLVER_MAPPING%INTERFACE_CONDITIONS(interface_condition_idx)%PTR
+          DO interface_condition_idx=1,SOLVER_EQUATIONS%SOLVER_MAPPING%numberOfInterfaceConditions
+            INTERFACE_CONDITION=>SOLVER_EQUATIONS%SOLVER_MAPPING%interfaceConditions(interface_condition_idx)%ptr
             IF(ASSOCIATED(INTERFACE_CONDITION)) THEN
               INTERFACE_EQUATIONS=>INTERFACE_CONDITION%INTERFACE_EQUATIONS
               IF(ASSOCIATED(INTERFACE_EQUATIONS)) THEN
@@ -1810,7 +1810,7 @@ CONTAINS
     ! Local variables
     INTEGER(INTG) :: boundaryConditionType,equationsSetIdx
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: solverEquations
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: solverMapping
+    TYPE(SolverMappingType), POINTER :: solverMapping
     TYPE(EQUATIONS_SET_TYPE), POINTER :: equationsSet
     LOGICAL :: validEquationsSetFound
 
@@ -1830,8 +1830,8 @@ CONTAINS
       !Check if any DOFs have been set to this BC type
       IF(boundaryConditionsVariable%DOF_COUNTS(boundaryConditionType)>0) THEN
         validEquationsSetFound=.FALSE.
-        DO equationsSetIdx=1,solverMapping%NUMBER_OF_EQUATIONS_SETS
-          equationsSet=>solverMapping%EQUATIONS_SETS(equationsSetIdx)%PTR
+        DO equationsSetIdx=1,solverMapping%numberOfEquationsSets
+          equationsSet=>solverMapping%equationsSets(equationsSetIdx)%ptr
           IF(.NOT.ASSOCIATED(equationsSet)) THEN
             CALL FLAG_ERROR("Solver equations equations set is not associated.",err,error,*999)
           END IF

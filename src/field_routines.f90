@@ -892,6 +892,8 @@ MODULE FIELD_ROUTINES
     & FIELD_PARAMETER_SET_UPDATE_LOCAL_ELEMENT,FIELD_PARAMETER_SET_UPDATE_NODE,FIELD_PARAMETER_SET_UPDATE_LOCAL_NODE, &
     & FIELD_PARAMETER_SET_UPDATE_GAUSS_POINT
 
+  PUBLIC Field_ParameterSetVectorGet
+
   PUBLIC FIELD_PARAMETER_SET_VECTOR_GET
 
   PUBLIC FIELD_REGION_GET
@@ -22825,7 +22827,7 @@ CONTAINS
   !
 
   !>Returns a pointer to the specified field parameter set distributed vector. 
-  SUBROUTINE FIELD_PARAMETER_SET_VECTOR_GET(FIELD,VARIABLE_TYPE,FIELD_SET_TYPE,DISTRIBUTED_VECTOR,ERR,ERROR,*)
+  SUBROUTINE Field_ParameterSetVectorGet(FIELD,VARIABLE_TYPE,FIELD_SET_TYPE,DISTRIBUTED_VECTOR,ERR,ERROR,*)
 
     !Argument variables
     TYPE(FIELD_TYPE), POINTER :: FIELD !<A pointer to the field to get the parameter set vector from
@@ -22839,7 +22841,7 @@ CONTAINS
     TYPE(FIELD_VARIABLE_TYPE), POINTER :: FIELD_VARIABLE
     TYPE(VARYING_STRING) :: LOCAL_ERROR
 
-    CALL ENTERS("FIELD_PARAMETER_SET_VECTOR_GET",ERR,ERROR,*999)
+    CALL ENTERS("Field_ParameterSetVectorGet",ERR,ERROR,*999)
 
     IF(ASSOCIATED(FIELD)) THEN
       IF(ASSOCIATED(DISTRIBUTED_VECTOR)) THEN
@@ -22888,6 +22890,36 @@ CONTAINS
       CALL FLAG_ERROR("Field is not associated.",ERR,ERROR,*999)
     ENDIF
 
+    CALL EXITS("Field_ParameterSetVectorGet")
+    RETURN
+999 CALL ERRORS("Field_ParameterSetVectorGet",ERR,ERROR)
+    CALL EXITS("Field_ParameterSetVectorGet")
+    RETURN 1
+  END SUBROUTINE Field_ParameterSetVectorGet
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Returns a pointer to the specified field parameter set distributed vector. 
+  SUBROUTINE FIELD_PARAMETER_SET_VECTOR_GET(FIELD,VARIABLE_TYPE,FIELD_SET_TYPE,DISTRIBUTED_VECTOR,ERR,ERROR,*)
+
+    !Argument variables
+    TYPE(FIELD_TYPE), POINTER :: FIELD !<A pointer to the field to get the parameter set vector from
+    INTEGER(INTG), INTENT(IN) :: VARIABLE_TYPE !<The field variable type to update \see FIELD_ROUTINES_VariableTypes,FIELD_ROUTINES 
+    INTEGER(INTG), INTENT(IN) :: FIELD_SET_TYPE !<The field parameter set identifier
+    TYPE(DISTRIBUTED_VECTOR_TYPE), POINTER :: DISTRIBUTED_VECTOR !<On return, a pointer to the field parameter set distributed vector. Must not be associated on entry
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    !Local Variables
+    TYPE(FIELD_PARAMETER_SET_TYPE), POINTER :: PARAMETER_SET
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: FIELD_VARIABLE
+    TYPE(VARYING_STRING) :: LOCAL_ERROR
+
+    CALL ENTERS("FIELD_PARAMETER_SET_VECTOR_GET",ERR,ERROR,*999)
+
+    CALL Field_ParameterSetVectorGet(FIELD,VARIABLE_TYPE,FIELD_SET_TYPE,DISTRIBUTED_VECTOR,ERR,ERROR,*999)
+    
     CALL EXITS("FIELD_PARAMETER_SET_VECTOR_GET")
     RETURN
 999 CALL ERRORS("FIELD_PARAMETER_SET_VECTOR_GET",ERR,ERROR)
