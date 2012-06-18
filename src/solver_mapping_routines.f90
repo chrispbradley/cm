@@ -965,6 +965,10 @@ CONTAINS
           CALL DOMAIN_MAPPINGS_LOCAL_FROM_GLOBAL_CALCULATE(rowDomainMapping,err,error,*999)
           IF(ALLOCATED(variablesList)) DEALLOCATE(variablesList)
           IF(ALLOCATED(variableProcessed)) DEALLOCATE(variableProcessed)
+          IF(ALLOCATED(numberOfVariableGlobalSolverDofs)) DEALLOCATE(numberOfVariableGlobalSolverDofs)
+          IF(ALLOCATED(numberOfVariableLocalSolverDofs)) DEALLOCATE(numberOfVariableLocalSolverDofs)
+          IF(ALLOCATED(totalNumberOfVariableLocalSolverDofs)) DEALLOCATE(totalNumberOfVariableLocalSolverDofs)
+          
           !
           !--- Column mappings ---
           !
