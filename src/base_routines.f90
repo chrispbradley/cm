@@ -205,8 +205,8 @@ MODULE BASE_ROUTINES
   
   !>Flags an error condition \see BASE_ROUTINES
   INTERFACE FLAG_ERROR
-    MODULE PROCEDURE FLAG_ERROR_C
-    MODULE PROCEDURE FLAG_ERROR_VS
+    MODULE PROCEDURE FlagErrorC
+    MODULE PROCEDURE FlagErrorVS
   END INTERFACE !FLAG_ERROR
   
   !>Flags a warning to the user \see BASE_ROUTINES
@@ -629,46 +629,6 @@ CONTAINS
 
     RETURN 1
   END SUBROUTINE FlagErrorVS
-
-  !
-  !================================================================================================================================
-  !
-
-  !>Sets the error string specified by a character string and flags an error 
-  SUBROUTINE FLAG_ERROR_C(STRING,ERR,ERROR,*)
-
-    !Argument variables
-    CHARACTER(LEN=*), INTENT(IN) :: STRING !<The error condition string
-    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
-    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
-    !Local variables
-    INTEGER(INTG) :: STRING_LENGTH
-
-    IF(ERR==0) ERR=1
-    STRING_LENGTH=LEN_TRIM(STRING)
-    ERROR=STRING(1:STRING_LENGTH)
-
-    RETURN 1
-  END SUBROUTINE FLAG_ERROR_C
-
-  !
-  !================================================================================================================================
-  !
-
-  !>Sets the error string specified by a varying string and flags an error.
-  SUBROUTINE FLAG_ERROR_VS(STRING,ERR,ERROR,*)
-
-    !Argument variables
-    TYPE(VARYING_STRING), INTENT(IN) :: STRING !<The error condition string
-    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
-    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
-    !Local variables
-
-    IF(ERR==0) ERR=1
-    ERROR=STRING
-
-    RETURN 1
-  END SUBROUTINE FLAG_ERROR_VS
 
   !
   !================================================================================================================================
