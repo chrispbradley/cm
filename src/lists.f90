@@ -874,6 +874,7 @@ CONTAINS
     !Local Variables
 
     CALL List_InitialSizeSet(LIST,INITIAL_SIZE,err,error,*999)
+    
     RETURN
 999 RETURN 1
   END SUBROUTINE LIST_INITIAL_SIZE_SET

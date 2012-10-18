@@ -4523,7 +4523,6 @@ MODULE OPENCMISS
     MODULE PROCEDURE CMISSMeshElements_LocalElementNodeVersionSetObj
   END INTERFACE !CMISSMeshElements_LocalElementNodeVersionSet
 
-
   !>Returns the element user number for an element in a mesh.
   INTERFACE CMISSMeshElements_UserNumberGet
     MODULE PROCEDURE CMISSMeshElements_UserNumberGetNumber
@@ -4548,7 +4547,7 @@ MODULE OPENCMISS
     MODULE PROCEDURE CMISSMesh_ElementExistsObj
   END INTERFACE !CMISSMesh_ElementExists
 
-    !>Returns the domain for a given element in a decomposition of a mesh.
+  !>Returns the domain for a given element in a decomposition of a mesh.
   INTERFACE CMISSDecomposition_NodeDomainGet
     MODULE PROCEDURE CMISSDecomposition_NodeDomainGetNumber
     MODULE PROCEDURE CMISSDecomposition_NodeDomainGetObj
