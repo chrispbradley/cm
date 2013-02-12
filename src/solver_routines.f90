@@ -130,7 +130,11 @@ MODULE SOLVER_ROUTINES
   !> \see SOLVER_ROUTINES
   !>@{
   INTEGER(INTG), PARAMETER :: SOLVER_ITERATIVE_RICHARDSON=1 !<Richardson iterative solver type \see SOLVER_ROUTINES_IterativeLinearSolverTypes,SOLVER_ROUTINES
+#if ( PETSC_VERSION_MAJOR >= 3 && PETSC_VERSION_MINOR >= 3 )
+  INTEGER(INTG), PARAMETER :: SOLVER_ITERATIVE_CHEBYSHEV=2 !<Chebyshev iterative solver type \see SOLVER_ROUTINES_IterativeLinearSolverTypes,SOLVER_ROUTINES
+#else
   INTEGER(INTG), PARAMETER :: SOLVER_ITERATIVE_CHEBYCHEV=2 !<Chebychev iterative solver type \see SOLVER_ROUTINES_IterativeLinearSolverTypes,SOLVER_ROUTINES
+#endif
   INTEGER(INTG), PARAMETER :: SOLVER_ITERATIVE_CONJUGATE_GRADIENT=3 !<Conjugate gradient iterative solver type \see SOLVER_ROUTINES_IterativeLinearSolverTypes,SOLVER_ROUTINES
   INTEGER(INTG), PARAMETER :: SOLVER_ITERATIVE_BICONJUGATE_GRADIENT=4 !<Bi-conjugate gradient iterative solver type \see SOLVER_ROUTINES_IterativeLinearSolverTypes,SOLVER_ROUTINES
   INTEGER(INTG), PARAMETER :: SOLVER_ITERATIVE_GMRES=5 !<Generalised minimum residual iterative solver type \see SOLVER_ROUTINES_IterativeLinearSolverTypes,SOLVER_ROUTINES
@@ -168,6 +172,17 @@ MODULE SOLVER_ROUTINES
   INTEGER(INTG), PARAMETER :: SOLVER_NEWTON_TRUSTREGION=2 !<Newton trust region nonlinear solver type \see SOLVER_ROUTINES_NewtonSolverTypes,SOLVER_ROUTINES
   !>@}
 
+#if ( PETSC_VERSION_MAJOR >= 3 && PETSC_VERSION_MINOR >= 3 )
+  !> \addtogroup SOLVER_ROUTINES_NewtonLineSearchTypes SOLVER_ROUTINES::NewtonLineSearchTypes
+  !> \brief The types line search techniques for Newton line search nonlinear solvers
+  !> \see SOLVER_ROUTINES
+  !>@{
+  INTEGER(INTG), PARAMETER :: SOLVER_NEWTON_LINESEARCH_NONORMS=1 !<No norms line search for Newton line search nonlinear solves \see SOLVER_ROUTINES_NewtonLineSearchTypes,SOLVER_ROUTINES
+  INTEGER(INTG), PARAMETER :: SOLVER_NEWTON_LINESEARCH_LINEAR=2 !<Linear search for Newton line search nonlinear solves \see SOLVER_ROUTINES_NewtonLineSearchTypes,SOLVER_ROUTINES
+  INTEGER(INTG), PARAMETER :: SOLVER_NEWTON_LINESEARCH_QUADRATIC=3 !<Quadratic search for Newton line search nonlinear solves \see SOLVER_ROUTINES_NewtonLineSearchTypes,SOLVER_ROUTINES
+  INTEGER(INTG), PARAMETER :: SOLVER_NEWTON_LINESEARCH_CUBIC=4!<Cubic search for Newton line search nonlinear solves \see SOLVER_ROUTINES_NewtonLineSearchTypes,SOLVER_ROUTINES
+  !>@}
+#else
   !> \addtogroup SOLVER_ROUTINES_NewtonLineSearchTypes SOLVER_ROUTINES::NewtonLineSearchTypes
   !> \brief The types line search techniques for Newton line search nonlinear solvers
   !> \see SOLVER_ROUTINES
@@ -177,6 +192,7 @@ MODULE SOLVER_ROUTINES
   INTEGER(INTG), PARAMETER :: SOLVER_NEWTON_LINESEARCH_QUADRATIC=3 !<Quadratic search for Newton line search nonlinear solves \see SOLVER_ROUTINES_NewtonLineSearchTypes,SOLVER_ROUTINES
   INTEGER(INTG), PARAMETER :: SOLVER_NEWTON_LINESEARCH_CUBIC=4!<Cubic search for Newton line search nonlinear solves \see SOLVER_ROUTINES_NewtonLineSearchTypes,SOLVER_ROUTINES
   !>@}
+#endif
   
   !> \addtogroup SOLVER_ROUTINES_JacobianCalculationTypes SOLVER_ROUTINES::JacobianCalculationTypes
   !> \brief The Jacobian calculation types for a nonlinear solver 
@@ -359,9 +375,14 @@ MODULE SOLVER_ROUTINES
  
   PUBLIC SOLVER_DIRECT_LU,SOLVER_DIRECT_CHOLESKY,SOLVER_DIRECT_SVD
 
-  PUBLIC SOLVER_ITERATIVE_RICHARDSON,SOLVER_ITERATIVE_CHEBYCHEV,SOLVER_ITERATIVE_CONJUGATE_GRADIENT, &
+  PUBLIC SOLVER_ITERATIVE_RICHARDSON,SOLVER_ITERATIVE_CONJUGATE_GRADIENT, &
     & SOLVER_ITERATIVE_BICONJUGATE_GRADIENT,SOLVER_ITERATIVE_GMRES,SOLVER_ITERATIVE_BiCGSTAB,SOLVER_ITERATIVE_CONJGRAD_SQUARED
-
+#if ( PETSC_VERSION_MAJOR >= 3 && PETSC_VERSION_MINOR >= 3 )
+  PUBLIC SOLVER_ITERATIVE_CHEBYSHEV
+#else
+  PUBLIC SOLVER_ITERATIVE_CHEBYCHEV
+#endif
+  
   PUBLIC SOLVER_ITERATIVE_NO_PRECONDITIONER,SOLVER_ITERATIVE_JACOBI_PRECONDITIONER,SOLVER_ITERATIVE_BLOCK_JACOBI_PRECONDITIONER, &
     & SOLVER_ITERATIVE_SOR_PRECONDITIONER,SOLVER_ITERATIVE_INCOMPLETE_CHOLESKY_PRECONDITIONER, &
     & SOLVER_ITERATIVE_INCOMPLETE_LU_PRECONDITIONER,SOLVER_ITERATIVE_ADDITIVE_SCHWARZ_PRECONDITIONER
@@ -370,8 +391,13 @@ MODULE SOLVER_ROUTINES
 
   PUBLIC SOLVER_NEWTON_LINESEARCH,SOLVER_NEWTON_TRUSTREGION
 
+#if ( PETSC_VERSION_MAJOR >= 3 && PETSC_VERSION_MINOR >= 3 )
+  PUBLIC SOLVER_NEWTON_LINESEARCH_NONORMS,SOLVER_NEWTON_LINESEARCH_LINEAR,SOLVER_NEWTON_LINESEARCH_QUADRATIC, &
+    & SOLVER_NEWTON_LINESEARCH_CUBIC
+#else
   PUBLIC SOLVER_NEWTON_LINESEARCH_NONORMS,SOLVER_NEWTON_LINESEARCH_NONE,SOLVER_NEWTON_LINESEARCH_QUADRATIC, &
     & SOLVER_NEWTON_LINESEARCH_CUBIC
+#endif  
 
   PUBLIC SOLVER_NEWTON_JACOBIAN_NOT_CALCULATED,SOLVER_NEWTON_JACOBIAN_EQUATIONS_CALCULATED, &
     & SOLVER_NEWTON_JACOBIAN_FD_CALCULATED
@@ -463,6 +489,18 @@ MODULE SOLVER_ROUTINES
   PUBLIC SOLVER_EQUATIONS_BOUNDARY_CONDITIONS_CREATE_FINISH,SOLVER_EQUATIONS_BOUNDARY_CONDITIONS_CREATE_START
 
   PUBLIC SOLVER_EQUATIONS_TIME_DEPENDENCE_TYPE_SET
+
+  PUBLIC SolverEquations_NumberOfMatricesGet
+
+  PUBLIC SolverEquations_MatrixGet
+
+  PUBLIC SolverEquations_JacobianMatrixGet
+
+  PUBLIC SolverEquations_VectorGet
+
+  PUBLIC SolverEquations_ResidualVectorGet
+
+  PUBLIC SolverEquations_RhsVectorGet
 
   PUBLIC SOLVER_LABEL_GET,SOLVER_LABEL_SET
   
@@ -1422,26 +1460,10 @@ CONTAINS
       IF(SOLVER%SOLVER_FINISHED) THEN
         CALL FLAG_ERROR("Solver has already been finished.",err,error,*999)
       ELSE
-        !Mark linked solvers as finished
+        !Set the finished flag. The final solver finish will be done once the solver equations have been finished.
         DO solver_idx=1,SOLVER%NUMBER_OF_LINKED_SOLVERS
           SOLVER%LINKED_SOLVERS(solver_idx)%PTR%SOLVER_FINISHED=.TRUE.
         ENDDO !solver_idx
-        !Call the specific solver finishing routine for this solver type
-        SELECT CASE(SOLVER%SOLVE_TYPE)
-        CASE(SOLVER_LINEAR_TYPE)
-          CALL SOLVER_LINEAR_CREATE_FINISH(SOLVER%LINEAR_SOLVER,ERR,ERROR,*999)
-        CASE(SOLVER_NONLINEAR_TYPE)
-          CALL SOLVER_NONLINEAR_CREATE_FINISH(SOLVER%NONLINEAR_SOLVER,ERR,ERROR,*999)
-        CASE(SOLVER_DYNAMIC_TYPE)
-          CALL SOLVER_DYNAMIC_CREATE_FINISH(SOLVER%DYNAMIC_SOLVER,ERR,ERROR,*999)
-        CASE(SOLVER_DAE_TYPE)
-          CALL SOLVER_DAE_CREATE_FINISH(SOLVER%DAE_SOLVER,ERR,ERROR,*999)
-        CASE(SOLVER_EIGENPROBLEM_TYPE)
-          CALL SOLVER_EIGENPROBLEM_CREATE_FINISH(SOLVER%EIGENPROBLEM_SOLVER,ERR,ERROR,*999)
-        CASE DEFAULT
-          CALL FLAG_ERROR("The solver type of "//TRIM(NUMBER_TO_VSTRING(SOLVER%SOLVE_TYPE,"*",ERR,ERROR))// &
-            & " is invalid.",ERR,ERROR,*999)
-        END SELECT
         SOLVER%SOLVER_FINISHED=.TRUE.
       ENDIF
     ELSE
@@ -5978,7 +6000,7 @@ CONTAINS
     CALL ENTERS("SOLVER_EQUATIONS_CREATE_START",err,error,*999)
 
     IF(ASSOCIATED(SOLVER)) THEN
-      IF(.NOT.SOLVER%SOLVER_FINISHED) THEN
+      IF(SOLVER%SOLVER_FINISHED) THEN
         IF(ASSOCIATED(SOLVER%LINKING_SOLVER)) THEN
           CALL FLAG_ERROR("Can not start solver equations creation for a solver that has been linked.",err,error,*999)
         ELSE
@@ -6008,7 +6030,7 @@ CONTAINS
           ENDIF
         ENDIF
       ELSE
-        CALL FLAG_ERROR("Solver has already been finished.",ERR,ERROR,*999)
+        CALL FLAG_ERROR("Solver has not been finished.",ERR,ERROR,*999)
       ENDIF
     ELSE
       CALL FLAG_ERROR("Solver is not associated.",err,error,*999)
@@ -6397,6 +6419,7 @@ CONTAINS
     !Local Variables
     TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: BOUNDARY_CONDITIONS
     TYPE(SOLVER_TYPE), POINTER :: SOLVER
+    TYPE(VARYING_STRING) :: LOCAL_ERROR
 
     CALL ENTERS("SOLVER_EQUATIONS_BOUNDARY_CONDITIONS_CREATE_FINISH",err,error,*999)
 
@@ -6412,8 +6435,22 @@ CONTAINS
             ELSE
               !Finish of the solver mapping
               CALL SolverMapping_CreateFinish(SOLVER_EQUATIONS%SOLVER_MAPPING,ERR,ERROR,*999)
-              !Now finish off the solver
-              CALL SOLVER_CREATE_FINISH(SOLVER,ERR,ERROR,*999)
+              !Now finish off with the solver specific actions
+              SELECT CASE(SOLVER%SOLVE_TYPE)
+              CASE(SOLVER_LINEAR_TYPE)
+                CALL SOLVER_LINEAR_CREATE_FINISH(SOLVER%LINEAR_SOLVER,ERR,ERROR,*999)
+              CASE(SOLVER_NONLINEAR_TYPE)
+                CALL SOLVER_NONLINEAR_CREATE_FINISH(SOLVER%NONLINEAR_SOLVER,ERR,ERROR,*999)
+              CASE(SOLVER_DYNAMIC_TYPE)
+                CALL SOLVER_DYNAMIC_CREATE_FINISH(SOLVER%DYNAMIC_SOLVER,ERR,ERROR,*999)
+              CASE(SOLVER_DAE_TYPE)
+                CALL SOLVER_DAE_CREATE_FINISH(SOLVER%DAE_SOLVER,ERR,ERROR,*999)
+              CASE(SOLVER_EIGENPROBLEM_TYPE)
+                CALL SOLVER_EIGENPROBLEM_CREATE_FINISH(SOLVER%EIGENPROBLEM_SOLVER,ERR,ERROR,*999)
+              CASE DEFAULT
+                LOCAL_ERROR="The solver type of "//TRIM(NUMBER_TO_VSTRING(SOLVER%SOLVE_TYPE,"*",ERR,ERROR))//" is invalid."
+                CALL FLAG_ERROR(LOCAL_ERROR,ERR,ERROR,*999)
+              END SELECT
             ENDIF
           ENDIF
         ELSE
@@ -6585,6 +6622,275 @@ CONTAINS
    
   END SUBROUTINE SOLVER_EQUATIONS_TIME_DEPENDENCE_TYPE_SET
         
+  !
+  !================================================================================================================================
+  !
+
+  !>Get the number of solver matrices for the solver equations
+  SUBROUTINE SolverEquations_NumberOfMatricesGet(solverEquations,numberOfMatrices,err,error,*)
+
+    !Argument variables
+    TYPE(SOLVER_EQUATIONS_TYPE), POINTER, INTENT(IN) :: solverEquations !<The solver equations to get the number of matrices for
+    INTEGER(INTG), INTENT(OUT) :: numberOfMatrices !<The number of matrices for the solver equations
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local variables
+    TYPE(SOLVER_MATRICES_TYPE), POINTER :: solverMatrices
+
+    CALL Enters("SolverEquations_NumberOfMatricesGet",err,error,*999)
+
+    IF(ASSOCIATED(solverEquations)) THEN
+      solverMatrices=>solverEquations%solver_matrices
+      IF(ASSOCIATED(solverMatrices)) THEN
+        numberOfMatrices=solverMatrices%number_of_matrices
+      ELSE
+        CALL FlagError("Solver equations solver matrices are not associated.",err,error,*999)
+      END IF
+    ELSE
+      CALL FlagError("Solver equations are not associated.",err,error,*999)
+    END IF
+
+    CALL Exits("SolverEquations_NumberOfMatricesGet")
+    RETURN
+999 CALL Errors("SolverEquations_NumberOfMatricesGet",err,error)
+    CALL Exits("SolverEquations_NumberOfMatricesGet")
+    RETURN
+
+  END SUBROUTINE SolverEquations_NumberOfMatricesGet
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Get a solver matrix from the solver equations matrices
+  SUBROUTINE SolverEquations_MatrixGet(solverEquations,matrixIndex,matrix,err,error,*)
+
+    !Argument variables
+    TYPE(SOLVER_EQUATIONS_TYPE), POINTER, INTENT(IN) :: solverEquations !<The solver equations to get the matrix for
+    INTEGER(INTG), INTENT(IN) :: matrixIndex !<The solver matrix index to get
+    TYPE(DISTRIBUTED_MATRIX_TYPE), POINTER, INTENT(INOUT) :: matrix !<On return, the requested solver matrix
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local variables
+    INTEGER(INTG) :: numberOfMatrices
+    TYPE(SOLVER_MATRICES_TYPE), POINTER :: solverMatrices
+    TYPE(SOLVER_MATRIX_TYPE), POINTER :: solverMatrix
+
+    CALL Enters("SolverEquations_MatrixGet",err,error,*999)
+
+    IF(ASSOCIATED(solverEquations)) THEN
+      solverMatrices=>solverEquations%solver_matrices
+      IF(ASSOCIATED(solverMatrices)) THEN
+        IF(.NOT.ASSOCIATED(matrix)) THEN
+          numberOfMatrices=solverMatrices%number_of_matrices
+          IF(matrixIndex>0.AND.matrixIndex<=numberOfMatrices) THEN
+            solverMatrix=>solverMatrices%matrices(matrixIndex)%ptr
+            IF(ASSOCIATED(solverMatrix)) THEN
+              matrix=>solverMatrix%matrix
+            ELSE
+              CALL FlagError("Solver matrices solver matrix is not associated",err,error,*999)
+            END IF
+          ELSE
+            CALL FlagError("Invalid matrix index. The matrix index must be greater than zero and less than or equal to "// &
+              & TRIM(NumberToVstring(numberOfMatrices,"*",err,error))//".",err,error,*999)
+          END IF
+        ELSE
+          CALL FlagError("The matrix is already associated.",err,error,*999)
+        END IF
+      ELSE
+        CALL FlagError("Solver equations solver matrices are not associated.",err,error,*999)
+      END IF
+    ELSE
+      CALL FlagError("Solver equations are not associated.",err,error,*999)
+    END IF
+
+    CALL Exits("SolverEquations_MatrixGet")
+    RETURN
+999 CALL Errors("SolverEquations_MatrixGet",err,error)
+    CALL Exits("SolverEquations_MatrixGet")
+    RETURN
+
+  END SUBROUTINE SolverEquations_MatrixGet
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Get the Jacobian matrix from the solver equations matrices for nonlinear solver equations
+  SUBROUTINE SolverEquations_JacobianMatrixGet(solverEquations,matrix,err,error,*)
+
+    !Argument variables
+    TYPE(SOLVER_EQUATIONS_TYPE), POINTER, INTENT(IN) :: solverEquations !<The solver equations to get the Jacobian matrix for
+    TYPE(DISTRIBUTED_MATRIX_TYPE), POINTER, INTENT(INOUT) :: matrix !<On return, the solver equations Jacobian matrix
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+
+    CALL Enters("SolverEquations_JacobianMatrixGet",err,error,*999)
+
+    IF(ASSOCIATED(solverEquations)) THEN
+      IF(solverEquations%linearity==SOLVER_EQUATIONS_NONLINEAR) THEN
+        CALL SolverEquations_MatrixGet(solverEquations,1,matrix,err,error,*999)
+      ELSE
+        CALL FlagError("Solver equations linearity is not nonlinear.",err,error,*999)
+      END IF
+    ELSE
+      CALL FlagError("Solver equations are not associated.",err,error,*999)
+    END IF
+
+    CALL Exits("SolverEquations_JacobianMatrixGet")
+    RETURN
+999 CALL Errors("SolverEquations_JacobianMatrixGet",err,error)
+    CALL Exits("SolverEquations_JacobianMatrixGet")
+    RETURN
+
+  END SUBROUTINE SolverEquations_JacobianMatrixGet
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Get the vector assiciated with a solver matrix from the solver equations matrices
+  SUBROUTINE SolverEquations_VectorGet(solverEquations,matrixIndex,vector,err,error,*)
+
+    !Argument variables
+    TYPE(SOLVER_EQUATIONS_TYPE), POINTER, INTENT(IN) :: solverEquations !< The solver equations to get the vector for
+    INTEGER(INTG), INTENT(IN) :: matrixIndex !< The solver matrix index to get the vector for
+    TYPE(DISTRIBUTED_VECTOR_TYPE), POINTER, INTENT(INOUT) :: vector !< On return, the requested solver matrix vector
+    INTEGER(INTG), INTENT(OUT) :: err !< The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local variables
+    INTEGER(INTG) :: numberOfMatrices
+    TYPE(SOLVER_MATRICES_TYPE), POINTER :: solverMatrices
+    TYPE(SOLVER_MATRIX_TYPE), POINTER :: solverMatrix
+
+    CALL Enters("SolverEquations_VectorGet",err,error,*999)
+
+    IF(ASSOCIATED(solverEquations)) THEN
+      solverMatrices=>solverEquations%solver_matrices
+      IF(ASSOCIATED(solverMatrices)) THEN
+        IF(.NOT.ASSOCIATED(vector)) THEN
+          numberOfMatrices=solverMatrices%number_of_matrices
+          IF(matrixIndex>0.AND.matrixIndex<=numberOfMatrices) THEN
+            solverMatrix=>solverMatrices%matrices(matrixIndex)%ptr
+            IF(ASSOCIATED(solverMatrix)) THEN
+              IF(ASSOCIATED(solverMatrix%solver_vector)) THEN
+                vector=>solverMatrix%solver_vector
+              ELSE
+                CALL FlagError("There is no vector associated with this solve matrix.",err,error,*999)
+              END IF
+            ELSE
+              CALL FlagError("Solver matrices solver matrix is not associated",err,error,*999)
+            END IF
+          ELSE
+            CALL FlagError("Invalid matrix index. The matrix index must be greater than zero and less than or equal to "// &
+              & TRIM(NumberToVstring(numberOfMatrices,"*",err,error))//".",err,error,*999)
+          END IF
+        ELSE
+          CALL FlagError("The vector is already associated.",err,error,*999)
+        END IF
+      ELSE
+        CALL FlagError("Solver equations solver matrices are not associated.",err,error,*999)
+      END IF
+    ELSE
+      CALL FlagError("Solver equations are not associated.",err,error,*999)
+    END IF
+
+    CALL Exits("SolverEquations_VectorGet")
+    RETURN
+999 CALL Errors("SolverEquations_VectorGet",err,error)
+    CALL Exits("SolverEquations_VectorGet")
+    RETURN
+
+  END SUBROUTINE SolverEquations_VectorGet
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Get the residual vector from the solver equations for nonlinear problems
+  SUBROUTINE SolverEquations_ResidualVectorGet(solverEquations,residualVector,err,error,*)
+
+    !Argument variables
+    TYPE(SOLVER_EQUATIONS_TYPE), POINTER, INTENT(IN) :: solverEquations !< The solver equations to get the residual vector for
+    TYPE(DISTRIBUTED_VECTOR_TYPE), POINTER, INTENT(INOUT) :: residualVector !< On return, the solver residual vector
+    INTEGER(INTG), INTENT(OUT) :: err !< The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local variables
+    TYPE(SOLVER_MATRICES_TYPE), POINTER :: solverMatrices
+
+    CALL Enters("SolverEquations_ResidualVectorGet",err,error,*999)
+
+    IF(ASSOCIATED(solverEquations)) THEN
+      solverMatrices=>solverEquations%solver_matrices
+      IF(ASSOCIATED(solverMatrices)) THEN
+        IF(.NOT.ASSOCIATED(residualVector)) THEN
+          IF(ASSOCIATED(solverMatrices%residual)) THEN
+            residualVector=>solverMatrices%residual
+          ELSE
+            CALL FlagError("The solver matrices residual vector is not associated.",err,error,*999)
+          END IF
+        ELSE
+          CALL FlagError("The residual vector is already associated.",err,error,*999)
+        END IF
+      ELSE
+        CALL FlagError("Solver equations solver matrices are not associated.",err,error,*999)
+      END IF
+    ELSE
+      CALL FlagError("Solver equations are not associated.",err,error,*999)
+    END IF
+
+    CALL Exits("SolverEquations_ResidualVectorGet")
+    RETURN
+999 CALL Errors("SolverEquations_ResidualVectorGet",err,error)
+    CALL Exits("SolverEquations_ResidualVectorGet")
+    RETURN
+
+  END SUBROUTINE SolverEquations_ResidualVectorGet
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Get the right hand side vector from the solver equations
+  SUBROUTINE SolverEquations_RhsVectorGet(solverEquations,rhsVector,err,error,*)
+
+    !Argument variables
+    TYPE(SOLVER_EQUATIONS_TYPE), POINTER, INTENT(IN) :: solverEquations !< The solver equations to get the right hand side vector for
+    TYPE(DISTRIBUTED_VECTOR_TYPE), POINTER, INTENT(INOUT) :: rhsVector !< On return, the solver right hand side vector
+    INTEGER(INTG), INTENT(OUT) :: err !< The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local variables
+    TYPE(SOLVER_MATRICES_TYPE), POINTER :: solverMatrices
+
+    CALL Enters("SolverEquations_RhsVectorGet",err,error,*999)
+
+    IF(ASSOCIATED(solverEquations)) THEN
+      solverMatrices=>solverEquations%solver_matrices
+      IF(ASSOCIATED(solverMatrices)) THEN
+        IF(.NOT.ASSOCIATED(rhsVector)) THEN
+          IF(ASSOCIATED(solverMatrices%rhs_vector)) THEN
+            rhsVector=>solverMatrices%rhs_vector
+          ELSE
+            CALL FlagError("The solver matrices right hand side vector is not associated.",err,error,*999)
+          END IF
+        ELSE
+          CALL FlagError("The right hand side vector is already associated.",err,error,*999)
+        END IF
+      ELSE
+        CALL FlagError("Solver equations solver matrices are not associated.",err,error,*999)
+      END IF
+    ELSE
+      CALL FlagError("Solver equations are not associated.",err,error,*999)
+    END IF
+
+    CALL Exits("SolverEquations_RhsVectorGet")
+    RETURN
+999 CALL Errors("SolverEquations_RhsVectorGet",err,error)
+    CALL Exits("SolverEquations_RhsVectorGet")
+    RETURN
+
+  END SUBROUTINE SolverEquations_RhsVectorGet
+
   !
   !================================================================================================================================
   !
@@ -8403,9 +8709,14 @@ CONTAINS
             !Set the iterative solver type
             SELECT CASE(LINEAR_ITERATIVE_SOLVER%ITERATIVE_SOLVER_TYPE)
             CASE(SOLVER_ITERATIVE_RICHARDSON)
-              CALL PETSC_KSPSETTYPE(LINEAR_ITERATIVE_SOLVER%KSP,PETSC_KSPRICHARDSON,err,error,*999)
+              CALL PETSC_KSPSETTYPE(LINEAR_ITERATIVE_SOLVER%KSP,PETSC_KSPRICHARDSON,ERR,ERROR,*999)
+#if ( PETSC_VERSION_MAJOR >= 3 && PETSC_VERSION_MINOR >= 3 )
+            CASE(SOLVER_ITERATIVE_CHEBYSHEV)
+              CALL PETSC_KSPSETTYPE(LINEAR_ITERATIVE_SOLVER%KSP,PETSC_KSPCHEBYSHEV,ERR,ERROR,*999)
+#else
             CASE(SOLVER_ITERATIVE_CHEBYCHEV)
-              CALL PETSC_KSPSETTYPE(LINEAR_ITERATIVE_SOLVER%KSP,PETSC_KSPCHEBYCHEV,err,error,*999)
+              CALL PETSC_KSPSETTYPE(LINEAR_ITERATIVE_SOLVER%KSP,PETSC_KSPCHEBYCHEV,ERR,ERROR,*999)
+#endif              
             CASE(SOLVER_ITERATIVE_CONJUGATE_GRADIENT)
               CALL PETSC_KSPSETTYPE(LINEAR_ITERATIVE_SOLVER%KSP,PETSC_KSPCG,err,error,*999)
             CASE(SOLVER_ITERATIVE_BICONJUGATE_GRADIENT)
@@ -8723,8 +9034,13 @@ CONTAINS
       SELECT CASE(ITERATIVE_SOLVER%ITERATIVE_SOLVER_TYPE)
       CASE(SOLVER_ITERATIVE_RICHARDSON)
         SOLVER_LIBRARY_TYPE=ITERATIVE_SOLVER%SOLVER_LIBRARY
+#if ( PETSC_VERSION_MAJOR >= 3 && PETSC_VERSION_MINOR >= 3 )
+      CASE(SOLVER_ITERATIVE_CHEBYSHEV)
+        SOLVER_LIBRARY_TYPE=ITERATIVE_SOLVER%SOLVER_LIBRARY
+#else
       CASE(SOLVER_ITERATIVE_CHEBYCHEV)
         SOLVER_LIBRARY_TYPE=ITERATIVE_SOLVER%SOLVER_LIBRARY
+#endif        
       CASE(SOLVER_ITERATIVE_CONJUGATE_GRADIENT)
         SOLVER_LIBRARY_TYPE=ITERATIVE_SOLVER%SOLVER_LIBRARY
       CASE(SOLVER_ITERATIVE_GMRES)
@@ -8781,7 +9097,11 @@ CONTAINS
             & TRIM(NUMBER_TO_VSTRING(SOLVER_LIBRARY_TYPE,"*",ERR,ERROR))// &
             & " is invalid for a Richardson iterative linear solver."
         END SELECT
+#if ( PETSC_VERSION_MAJOR >= 3 && PETSC_VERSION_MINOR >= 3 )
+      CASE(SOLVER_ITERATIVE_CHEBYSHEV)
+#else
       CASE(SOLVER_ITERATIVE_CHEBYCHEV)
+#endif        
         SELECT CASE(SOLVER_LIBRARY_TYPE)
         CASE(SOLVER_CMISS_LIBRARY)
           CALL FLAG_ERROR("Not implemented.",err,error,*999)
@@ -9398,8 +9718,13 @@ CONTAINS
                     SELECT CASE(ITERATIVE_SOLVER_TYPE)
                     CASE(SOLVER_ITERATIVE_RICHARDSON)
                       SOLVER%LINEAR_SOLVER%ITERATIVE_SOLVER%ITERATIVE_SOLVER_TYPE=SOLVER_ITERATIVE_RICHARDSON
+#if ( PETSC_VERSION_MAJOR >= 3 && PETSC_VERSION_MINOR >= 3 )
+                    CASE(SOLVER_ITERATIVE_CHEBYSHEV)
+                      SOLVER%LINEAR_SOLVER%ITERATIVE_SOLVER%ITERATIVE_SOLVER_TYPE=SOLVER_ITERATIVE_CHEBYSHEV
+#else
                     CASE(SOLVER_ITERATIVE_CHEBYCHEV)
                       SOLVER%LINEAR_SOLVER%ITERATIVE_SOLVER%ITERATIVE_SOLVER_TYPE=SOLVER_ITERATIVE_CHEBYCHEV
+#endif                      
                     CASE(SOLVER_ITERATIVE_CONJUGATE_GRADIENT)
                       SOLVER%LINEAR_SOLVER%ITERATIVE_SOLVER%ITERATIVE_SOLVER_TYPE=SOLVER_ITERATIVE_CONJUGATE_GRADIENT
                     CASE(SOLVER_ITERATIVE_BICONJUGATE_GRADIENT)
@@ -10275,15 +10600,15 @@ CONTAINS
   !!TODO: what if the equations set doesn't have a RHS vector???
                                         rhsVariable=>rhsMapping%RHS_VARIABLE
                                         rhsDomainMapping=>rhsVariable%DOMAIN_MAPPING
+                                        CALL FIELD_PARAMETER_SET_CREATED(rhsVariable%FIELD,RHS_VARIABLE_TYPE, &
+                                          & FIELD_INTEGRATED_NEUMANN_SET_TYPE,HAS_INTEGRATED_VALUES,ERR,ERROR,*999)
                                         equationsRhsVector=>rhsVector%vector
                                         CALL BOUNDARY_CONDITIONS_VARIABLE_GET(boundaryConditions,rhsVariable, &
                                           & rhsBoundaryConditions,err,error,*999)
                                         IF(ASSOCIATED(rhsBoundaryConditions)) THEN
 
-                                          !Call SOLVER_NEUMANN_CALCULATE to check whether any Neumann boundary conditions
-                                          !have been set if set then Neumann Boundary Condition calculate routines are called
-                                       !   CALL SOLVER_NEUMANN_CALCULATE(RHS_MAPPING,BOUNDARY_CONDITIONS, &
-                                       !     & EQUATIONS_MAPPING,DEPENDENT_FIELD,err,error,*999)
+                                          !Update RHS field by integrating any point Neumann conditions
+                                          CALL BoundaryConditions_NeumannIntegrate(rhsBoundaryConditions,err,error,*999)
 
                                           !Setup the nonlinear vector contributions
                                           IF(solver%SOLVE_TYPE==SOLVER_NONLINEAR_TYPE) THEN 
@@ -10395,6 +10720,13 @@ CONTAINS
                                               !Get the equations RHS values
                                               CALL DistributedVector_ValuesGet(equationsRhsVector,equationsRowNumber, &
                                                 & rhsValue,err,error,*999)
+                                              IF(HAS_INTEGRATED_VALUES) THEN
+                                                !Add any Neumann integrated values, b = f + N q
+                                                CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(rhsVariable%FIELD,RHS_VARIABLE_TYPE, &
+                                                  & FIELD_INTEGRATED_NEUMANN_SET_TYPE,rhs_variable_dof,RHS_INTEGRATED_VALUE, &
+                                                  & ERR,ERROR,*999)
+                                                rhsValue=rhsValue+RHS_INTEGRATED_VALUE
+                                              END IF
                                               !Loop over the solver rows associated with this equations set row
                                               DO solverRowIdx=1,solverMapping%equationsSetToSolverMap(equationsSetIdx)% &
                                                 & equationsRowToSolverRowsMaps(equationsRowNumber)%numberOfSolverRows
@@ -10621,6 +10953,13 @@ CONTAINS
                                                 rowCouplingCoefficient=solverMapping%equationsSetToSolverMap( &
                                                   & equationsSetIdx)%equationsRowToSolverRowsMaps(equationsRowNumber)% &
                                                   & couplingCoefficients(solverRowNumber)
+                                                IF(HAS_INTEGRATED_VALUES) THEN
+                                                  !Add any Neumann integrated values, b = f + N q
+                                                  CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(rhsVariable%FIELD,RHS_VARIABLE_TYPE, &
+                                                    & FIELD_INTEGRATED_NEUMANN_SET_TYPE,rhsVariableDof,RHS_INTEGRATED_VALUE, &
+                                                    & ERR,ERROR,*999)
+                                                  value=value+RHS_INTEGRATED_VALUE*row_coupling_coefficient
+                                                END IF
                                                 CALL DistributedVector_ValuesAdd(solverRhsVector,solverRowNumber,value, &
                                                   & err,error,*999)
                                               ENDDO !solverRowIdx
@@ -11016,14 +11355,14 @@ CONTAINS
       & equationsMatrixIdx2,equationsMatrixNumber,equationsRowNumber,equationsSetIdx,interfaceColumnNumber, &
       & interfaceConditionIdx,interfaceMatrixIdx,interfaceRowNumber,interfaceVariableType,lhsBoundaryCondition, &
       & lhsGlobalDof,lhsVariableDof,lhsVariableType,linearVariableType,numberOfEquationsVectors,numberOfInterfaceMatrices, &
-      & residualVariableIdx,residualVariableType, &
-      & rhsBoundaryCondition,rhsGlobalDof,rhsVariableDof,rhsVariableType,variableBoundaryCondition,solverMatrixIdx, &
-      & solverRowIdx,solverRowNumber,sourceVariableType,variableDof,variableGlobalDof,variableIdx,variableType
+      & residualVariableIdx,residualVariableType,rhsBoundaryCondition,rhsGlobalDof,rhsIntegratedValue,rhsVariableDof, &
+      & rhsVariableType,variableBoundaryCondition,solverMatrixIdx,solverRowIdx,solverRowNumber,sourceVariableType,variableDof, &
+      & variableGlobalDof,variableIdx,variableType
     REAL(SP) :: systemElapsed,systemTime1(1),systemTime2(2),userElapsed,userTime1(1),userTime2(1)
     REAL(DP) :: dependentValue,matrixValue,residualValue,rhsValue,rowCouplingCoefficient,sourceValue,value
     REAL(DP), ALLOCATABLE :: equationsVectorsCoefficients(:)
     REAL(DP), POINTER ::  rhsData(:),rhsParameters(:),sourceData(:),sourceParameters(:)
-    LOGICAL :: linearContributions(FIELD_NUMBER_OF_VARIABLE_TYPES),subtractFixedBCsFromResidual
+    LOGICAL :: hasIntegratedValues,linearContributions(FIELD_NUMBER_OF_VARIABLE_TYPES),subtractFixedBCsFromResidual
     TYPE(REAL_DP_PTR_TYPE), ALLOCATABLE :: dependentParameters(:)
     TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: boundaryConditions
     TYPE(BOUNDARY_CONDITIONS_DIRICHLET_TYPE), POINTER :: dirichletConditions
@@ -11655,6 +11994,12 @@ CONTAINS
                                   
                                   IF(ASSOCIATED(lhsBoundaryConditions)) THEN
                                     
+                                    !Check if there are any integrated values to add
+                                    CALL FIELD_PARAMETER_SET_CREATED(rhsVariable%FIELD,rhsVariableType, &
+                                      & FIELD_INTEGRATED_NEUMANN_SET_TYPE,hasIntegratedValues,err,error,*999)
+                                    !Update RHS field by integrating any point Neumann conditions
+                                    CALL BoundaryConditions_NeumannIntegrate(rhsBoundaryConditions,err,error,*999)
+                                    
                                     !Loop over the rows in the equations set
                                     DO equationsRowNumber=1,equationsMapping%TOTAL_NUMBER_OF_ROWS
                                       
@@ -11679,7 +12024,14 @@ CONTAINS
                                             !Get the contribution from the equations set RHS vector
                                             VALUE=rhsData(equationsRowNumber)
                                           CASE(BOUNDARY_CONDITION_DOF_FIXED)
-                                            VALUE=rhsParameters(rhsVariableDof)
+                                            value=rhsParameters(rhsVariableDof)
+                                            IF(hasIntegratedValues) THEN
+                                              !Add any Neumann integrated values, b = f + N q
+                                              CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(rhsVariable%FIELD,RHS_VARIABLE_TYPE, &
+                                                & FIELD_INTEGRATED_NEUMANN_SET_TYPE,rhsVariableDof,rhsIntegratedValue, &
+                                                & ERR,ERROR,*999)
+                                              value=value+rhsIntegratedValue
+                                            END IF
                                           CASE DEFAULT
                                             localError="The RHS boundary condition of "// &
                                               & TRIM(NumberToVString(rhsBoundaryCondition,"*",err,error))// &
@@ -11709,7 +12061,10 @@ CONTAINS
                                             rowCouplingCoefficient=solverMapping%equationsSetToSolverMap(equationsSetIdx)% &
                                               & equationsRowToSolverRowsMaps(equationsRowNumber)% &
                                               & couplingCoefficients(solverRowIdx)
-                                            VALUE=-1.0_DP*rhsValue*rowCouplingCoefficient
+                                            !For nonlinear problems, f(x) - b = 0, and for linear, K x = b,
+                                            !so we always add the right hand side field value to the solver
+                                            !right hand side vector
+                                            VALUE=rhsValue*rowCouplingCoefficient
                                             CALL DistributedVector_ValuesAdd(solverRhsVector,solverRowNumber,VALUE, &
                                               & err,error,*999)
                                           ENDDO !SolverRowIdx
@@ -11750,7 +12105,7 @@ CONTAINS
                                               & DOF_TYPES(variableGlobalDof)
                                             dependentValue=dependentParameters(variableIdx)%ptr(variableDof)
                                             IF(ABS(dependentValue)>=ZERO_TOLERANCE) THEN
-                                              !Loop over equations matrices associated with this depdenent variable
+                                              !Loop over equations matrices associated with this dependent variable
                                               DO equationsMatrixIdx=1,linearMapping%VAR_TO_EQUATIONS_MATRICES_MAPS( &
                                                 & variableType)%NUMBER_OF_EQUATIONS_MATRICES
                                                 equationsMatrixNumber=linearMapping%VAR_TO_EQUATIONS_MATRICES_MAPS( &
@@ -11837,9 +12192,12 @@ CONTAINS
                                                             & couplingCoefficients(solverRowIdx)
                                                           value=-1.0_DP*matrixValue*dependentValue* &
                                                             & rowCouplingCoefficient
+                                                          !For nonlinear problems, f(x) - b = 0, and for linear, K x = b,
+                                                          !so we always add the right hand side field value to the solver
+                                                          !right hand side vector
                                                           CALL DistributedVector_ValuesAdd(solverRhsVector, &
                                                             & solverRowNumber,value,err,error,*999)
-                                                          IF(subtractFixedBcsFromResidual) THEN
+                                                           IF(subtractFixedBcsFromResidual) THEN
                                                             CALL DistributedVector_ValuesAdd(solverResidualVector, &
                                                               & solverRowNumber,value,err,error,*999)
                                                           ENDIF
@@ -11882,11 +12240,7 @@ CONTAINS
                                   ENDIF
                                   IF(ASSOCIATED(sourceMapping)) THEN
                                     CALL DistributedVector_DataRestore(distributedSourceVector,sourceData,err,error,*999)
-                                  ENDIF
-                                  IF(ASSOCIATED(linearMapping)) THEN
-                                    DO variableIdx=1,linearMapping%NUMBER_OF_LINEAR_MATRIX_VARIABLES
-                                      variableType=linearMapping%LINEAR_MATRIX_VARIABLE_TYPES(variableIdx)
-                                      CALL Field_ParameterSetDataRestore(dependentField,variableType,FIELD_VALUES_SET_TYPE, &
+                                    CALL Field_ParameterSetDataRestore(dependentField,variableType,FIELD_VALUES_SET_TYPE, &
                                         & dependentParameters(variableIdx)%ptr,err,error,*999)
                                     ENDDO !variable_idx
                                     IF(ALLOCATED(dependentParameters)) DEALLOCATE(dependentParameters)
@@ -12998,6 +13352,7 @@ CONTAINS
                       CALL PETSC_SNESMONITORSET(LINESEARCH_SOLVER%SNES,SOLVER_NONLINEAR_MONITOR_PETSC, &
                         & LINESEARCH_SOLVER%NEWTON_SOLVER%NONLINEAR_SOLVER%SOLVER,err,error,*999)
                     ENDIF
+#if ( PETSC_VERSION_MAJOR <= 3 && PETSC_VERSION_MINOR < 3 )
                     !Set the line search type
                     SELECT CASE(LINESEARCH_SOLVER%LINESEARCH_TYPE)
                     CASE(SOLVER_NEWTON_LINESEARCH_NONORMS)
@@ -13017,6 +13372,31 @@ CONTAINS
                     CALL PETSC_SNESLINESEARCHSETPARAMS(LINESEARCH_SOLVER%SNES,LINESEARCH_SOLVER%LINESEARCH_ALPHA, &
                       & LINESEARCH_SOLVER%LINESEARCH_MAXSTEP,LINESEARCH_SOLVER%LINESEARCH_STEPTOLERANCE, &
                       & err,error,*999)
+#else
+                    CALL Petsc_SnesGetSnesLineSearch(linesearch_solver%snes,linesearch_solver%snesLineSearch,err,error,*999)
+                    !Set the line search type and order where applicable
+                    SELECT CASE(linesearch_solver%linesearch_type)
+                    CASE(SOLVER_NEWTON_LINESEARCH_NONORMS)
+                      CALL Petsc_SnesLineSearchSetType(linesearch_solver%snesLineSearch,PETSC_SNES_LINESEARCH_BASIC,err,error,*999)
+                      CALL Petsc_SnesLineSearchSetComputeNorms(linesearch_solver%snesLineSearch,PETSC_FALSE,err,error,*999)
+                    CASE(SOLVER_NEWTON_LINESEARCH_LINEAR)
+                      CALL Petsc_SnesLineSearchSetType(linesearch_solver%snesLineSearch,PETSC_SNES_LINESEARCH_CP,err,error,*999)
+                      CALL Petsc_SnesLineSearchSetOrder(linesearch_solver%snesLineSearch,PETSC_SNES_LINESEARCH_LINEAR, &
+                        & err,error,*999)
+                    CASE(SOLVER_NEWTON_LINESEARCH_QUADRATIC)
+                      CALL Petsc_SnesLineSearchSetType(linesearch_solver%snesLineSearch,PETSC_SNES_LINESEARCH_BT,err,error,*999)
+                      CALL Petsc_SnesLineSearchSetOrder(linesearch_solver%snesLineSearch,PETSC_SNES_LINESEARCH_QUADRATIC, &
+                        & err,error,*999)
+                    CASE(SOLVER_NEWTON_LINESEARCH_CUBIC)
+                      CALL Petsc_SnesLineSearchSetType(linesearch_solver%snesLineSearch,PETSC_SNES_LINESEARCH_BT,err,error,*999)
+                      CALL Petsc_SnesLineSearchSetOrder(linesearch_solver%snesLineSearch,PETSC_SNES_LINESEARCH_CUBIC, &
+                        & err,error,*999)
+                    CASE DEFAULT
+                      local_error="The nonlinear Newton line search type of "// &
+                        & TRIM(NUMBER_TO_VSTRING(linesearch_solver%linesearch_type,"*",err,error))//" is invalid."
+                      CALL FlagError(local_error,err,error,*999)
+                    END SELECT
+#endif
                     !Set the tolerances for the SNES solver
                     CALL PETSC_SNESSETTOLERANCES(LINESEARCH_SOLVER%SNES,NEWTON_SOLVER%ABSOLUTE_TOLERANCE, &
                       & NEWTON_SOLVER%RELATIVE_TOLERANCE,NEWTON_SOLVER%SOLUTION_TOLERANCE, &
@@ -13075,9 +13455,10 @@ CONTAINS
     CALL ENTERS("SOLVER_NEWTON_LINESEARCH_FINALISE",err,error,*999)
 
     IF(ASSOCIATED(LINESEARCH_SOLVER)) THEN
-      CALL PETSC_ISCOLORINGFINALISE(LINESEARCH_SOLVER%JACOBIAN_ISCOLORING,err,error,*999)
-      CALL PETSC_MATFDCOLORINGFINALISE(LINESEARCH_SOLVER%JACOBIAN_FDCOLORING,err,error,*999)
-      CALL PETSC_SNESFINALISE(LINESEARCH_SOLVER%SNES,err,error,*999)
+      CALL PETSC_ISCOLORINGFINALISE(LINESEARCH_SOLVER%JACOBIAN_ISCOLORING,ERR,ERROR,*999)
+      CALL PETSC_MATFDCOLORINGFINALISE(LINESEARCH_SOLVER%JACOBIAN_FDCOLORING,ERR,ERROR,*999)
+      CALL Petsc_SnesLineSearchFinalise(LINESEARCH_SOLVER%snesLineSearch,err,error,*999)
+      CALL PETSC_SNESFINALISE(LINESEARCH_SOLVER%SNES,ERR,ERROR,*999)
       DEALLOCATE(LINESEARCH_SOLVER)
     ENDIF
         
@@ -13120,9 +13501,10 @@ CONTAINS
         NEWTON_SOLVER%LINESEARCH_SOLVER%LINESEARCH_ALPHA=0.0001_DP
         NEWTON_SOLVER%LINESEARCH_SOLVER%LINESEARCH_MAXSTEP=1.0E8_DP
         NEWTON_SOLVER%LINESEARCH_SOLVER%LINESEARCH_STEPTOLERANCE=CONVERGENCE_TOLERANCE
-        CALL PETSC_ISCOLORINGINITIALISE(NEWTON_SOLVER%LINESEARCH_SOLVER%JACOBIAN_ISCOLORING,err,error,*999)
-        CALL PETSC_MATFDCOLORINGINITIALISE(NEWTON_SOLVER%LINESEARCH_SOLVER%JACOBIAN_FDCOLORING,err,error,*999)
-        CALL PETSC_SNESINITIALISE(NEWTON_SOLVER%LINESEARCH_SOLVER%SNES,err,error,*999)
+        CALL PETSC_ISCOLORINGINITIALISE(NEWTON_SOLVER%LINESEARCH_SOLVER%JACOBIAN_ISCOLORING,ERR,ERROR,*999)
+        CALL PETSC_MATFDCOLORINGINITIALISE(NEWTON_SOLVER%LINESEARCH_SOLVER%JACOBIAN_FDCOLORING,ERR,ERROR,*999)
+        CALL PETSC_SNESINITIALISE(NEWTON_SOLVER%LINESEARCH_SOLVER%SNES,ERR,ERROR,*999)
+        CALL Petsc_SnesLineSearchInitialise(NEWTON_SOLVER%LINESEARCH_SOLVER%snesLineSearch,err,error,*999)
       ENDIF
     ELSE
       CALL FlagError("Newton solver is not associated.",ERR,ERROR,*998)
@@ -13310,9 +13692,11 @@ CONTAINS
                           CASE(PETSC_SNES_CONVERGED_FNORM_RELATIVE)
                             CALL WRITE_STRING(GENERAL_OUTPUT_TYPE,"Converged Reason = PETSc converged F Norm relative.", &
                               & err,error,*999)
+#if ( PETSC_VERSION_MAJOR <= 3 && PETSC_VERSION_MINOR < 3 )
                           CASE(PETSC_SNES_CONVERGED_PNORM_RELATIVE)
                             CALL WRITE_STRING(GENERAL_OUTPUT_TYPE,"Converged Reason = PETSc converged P Norm relative.", &
-                              & err,error,*999)
+                              & ERR,ERROR,*999)
+#endif
                           CASE(PETSC_SNES_CONVERGED_ITS)
                             CALL WRITE_STRING(GENERAL_OUTPUT_TYPE,"Converged Reason = PETSc converged its.",err,error,*999)
                           CASE(PETSC_SNES_CONVERGED_ITERATING)
@@ -13468,6 +13852,22 @@ CONTAINS
                 IF(NONLINEAR_SOLVER%NONLINEAR_SOLVE_TYPE==SOLVER_NEWTON_LINESEARCH) THEN
                   LINESEARCH_SOLVER=>NEWTON_SOLVER%LINESEARCH_SOLVER
                   IF(ASSOCIATED(LINESEARCH_SOLVER)) THEN
+#if ( PETSC_VERSION_MAJOR >= 3 && PETSC_VERSION_MINOR >= 3 )
+                    SELECT CASE(LINESEARCH_TYPE)
+                    CASE(SOLVER_NEWTON_LINESEARCH_NONORMS)
+                      LINESEARCH_SOLVER%LINESEARCH_TYPE=SOLVER_NEWTON_LINESEARCH_NONORMS
+                    CASE(SOLVER_NEWTON_LINESEARCH_LINEAR)
+                      LINESEARCH_SOLVER%LINESEARCH_TYPE=SOLVER_NEWTON_LINESEARCH_LINEAR
+                    CASE(SOLVER_NEWTON_LINESEARCH_QUADRATIC)
+                      LINESEARCH_SOLVER%LINESEARCH_TYPE=SOLVER_NEWTON_LINESEARCH_QUADRATIC
+                    CASE(SOLVER_NEWTON_LINESEARCH_CUBIC)
+                      LINESEARCH_SOLVER%LINESEARCH_TYPE=SOLVER_NEWTON_LINESEARCH_CUBIC
+                    CASE DEFAULT
+                      LOCAL_ERROR="The specified line search type of "//TRIM(NUMBER_TO_VSTRING(LINESEARCH_TYPE,"*",ERR,ERROR))// &
+                        & " is invalid."
+                      CALL FLAG_ERROR(LOCAL_ERROR,ERR,ERROR,*999)
+                    END SELECT
+#else
                     SELECT CASE(LINESEARCH_TYPE)
                     CASE(SOLVER_NEWTON_LINESEARCH_NONORMS)
                       LINESEARCH_SOLVER%LINESEARCH_TYPE=SOLVER_NEWTON_LINESEARCH_NONORMS
@@ -13482,6 +13882,7 @@ CONTAINS
                         & " is invalid."
                       CALL FlagError(LOCAL_ERROR,err,error,*999)
                     END SELECT
+#endif                    
                   ELSE
                     CALL FlagError("The Newton solver line search solver is not associated.",err,error,*999)
                   ENDIF
@@ -15454,14 +15855,18 @@ CONTAINS
     CALL ENTERS("SOLVER_SOLVER_EQUATIONS_GET",ERR,ERROR,*998)
 
     IF(ASSOCIATED(SOLVER)) THEN
-      IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
-        CALL FlagError("Solver equations is already associated.",ERR,ERROR,*998)
+      IF(SOLVER%SOLVER_FINISHED) THEN 
+        IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
+          CALL FLAG_ERROR("Solver equations is already associated.",ERR,ERROR,*998)
+        ELSE
+          SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
+          IF(.NOT.ASSOCIATED(SOLVER_EQUATIONS)) CALL FLAG_ERROR("Solver equations is not associated.",ERR,ERROR,*999)
+        ENDIF
       ELSE
-        SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
-        IF(.NOT.ASSOCIATED(SOLVER_EQUATIONS)) CALL FlagError("Solver equations is not associated.",err,error,*999)
+        CALL FLAG_ERROR("Solver has not been finished.",ERR,ERROR,*998)
       ENDIF
     ELSE
-      CALL FlagError("Solver is not associated.",ERR,ERROR,*998)
+      CALL FLAG_ERROR("Solver is not associated.",ERR,ERROR,*998)
     ENDIF
        
     CALL EXITS("SOLVER_SOLVER_EQUATIONS_GET")
@@ -16582,7 +16987,9 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
+    INTEGER(INTG) :: solver_idx
     TYPE(CONTROL_LOOP_TYPE), POINTER :: CONTROL_LOOP
+    TYPE(SOLVER_TYPE), POINTER :: SOLVER
    
     CALL ENTERS("SOLVERS_CREATE_FINISH",err,error,*999)
 
@@ -16594,6 +17001,14 @@ CONTAINS
         IF(ASSOCIATED(CONTROL_LOOP)) THEN          
           !Finish the solver creation
           IF(ALLOCATED(SOLVERS%SOLVERS)) THEN
+            DO solver_idx=1,SOLVERS%NUMBER_OF_SOLVERS
+              SOLVER=>SOLVERS%SOLVERS(solver_idx)%PTR
+              IF(ASSOCIATED(SOLVER)) THEN
+                CALL SOLVER_CREATE_FINISH(SOLVER,ERR,ERROR,*999)
+              ELSE
+                CALL FLAG_ERROR("Solver is not associated.",ERR,ERROR,*999)
+              ENDIF
+            ENDDO !solver_idx            
             SOLVERS%SOLVERS_FINISHED=.TRUE.
           ELSE
             CALL FlagError("Solvers solvers is not allocated.",err,error,*999)
@@ -16894,100 +17309,6 @@ CONTAINS
     
   END SUBROUTINE SOLVERS_SOLVER_GET
      
-  !
-  !================================================================================================================================
-  !
-
-  !>Calculate the Neumann Boundary conditions
-  SUBROUTINE SOLVER_NEUMANN_CALCULATE(RHS_MAPPING,BOUNDARY_CONDITIONS,EQUATIONS_MAPPING,DEPENDENT_FIELD,&
-    & ERR,ERROR,*)
-    
-    !Argument variable
-    TYPE(EQUATIONS_MAPPING_RHS_TYPE), POINTER :: RHS_MAPPING
-    TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: BOUNDARY_CONDITIONS
-    TYPE(EQUATIONS_MAPPING_TYPE), POINTER :: EQUATIONS_MAPPING
-    TYPE(FIELD_TYPE), POINTER :: DEPENDENT_FIELD
-    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
-    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
-    !Local Variables
-    INTEGER(INTG) :: NUMBER_OF_NEUMANN_ROWS,equations_row_number,rhs_variable_dof,rhs_global_dof,rhs_boundary_condition, &
-      & component_idx,rhs_dof,j,RHS_VARIABLE_TYPE
-    REAL(DP) :: INTEGRATED_VALUE
-    TYPE(FIELD_VARIABLE_TYPE), POINTER :: RHS_VARIABLE,FIELD_VARIABLE
-    TYPE(BOUNDARY_CONDITIONS_VARIABLE_TYPE), POINTER :: RHS_BOUNDARY_CONDITIONS
-    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: RHS_DOMAIN_MAPPING
-
-    CALL ENTERS("SOLVER_NEUMANN_CALCULATE",err,error,*999)
-
-    IF(ASSOCIATED(RHS_MAPPING)) THEN
-      RHS_VARIABLE=>RHS_MAPPING%RHS_VARIABLE
-      IF(ASSOCIATED(RHS_VARIABLE)) THEN
-        RHS_VARIABLE_TYPE=RHS_VARIABLE%VARIABLE_TYPE
-        RHS_DOMAIN_MAPPING=>RHS_VARIABLE%DOMAIN_MAPPING
-        IF(ASSOCIATED(RHS_DOMAIN_MAPPING)) THEN
-          CALL BOUNDARY_CONDITIONS_VARIABLE_GET(BOUNDARY_CONDITIONS,RHS_VARIABLE, &
-            & RHS_BOUNDARY_CONDITIONS,err,error,*999)
-          IF(ASSOCIATED(RHS_BOUNDARY_CONDITIONS)) THEN
-
-
-            !Count the number of Neumann conditions set
-            NUMBER_OF_NEUMANN_ROWS=0
-            DO equations_row_number=1,EQUATIONS_MAPPING%TOTAL_NUMBER_OF_ROWS
-              rhs_variable_dof=RHS_MAPPING%EQUATIONS_ROW_TO_RHS_DOF_MAP(equations_row_number)
-              rhs_global_dof=RHS_DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(rhs_variable_dof)
-              rhs_boundary_condition=RHS_BOUNDARY_CONDITIONS%CONDITION_TYPES(rhs_global_dof)
-              IF(rhs_boundary_condition==BOUNDARY_CONDITION_NEUMANN_POINT.OR.&
-                & rhs_boundary_condition==BOUNDARY_CONDITION_NEUMANN_INTEGRATED) THEN
-                NUMBER_OF_NEUMANN_ROWS=NUMBER_OF_NEUMANN_ROWS+1
-              ENDIF
-            ENDDO !equations_row_number
-
-            !Calculate the Neumann integrated flux boundary conditions
-            IF(NUMBER_OF_NEUMANN_ROWS>0) THEN
-              FIELD_VARIABLE=>DEPENDENT_FIELD%VARIABLE_TYPE_MAP(RHS_VARIABLE_TYPE)%PTR
-              IF(ASSOCIATED(FIELD_VARIABLE)) THEN
-                !Iterate over components u,v,w,p
-                DO component_idx=1,FIELD_VARIABLE%NUMBER_OF_COMPONENTS
-
-                  CALL BOUNDARY_CONDITIONS_INTEGRATED_CALCULATE(BOUNDARY_CONDITIONS,DEPENDENT_FIELD, &
-                    & RHS_VARIABLE_TYPE,component_idx,err,error,*999)
-
-                  !Locate calculated value at dof
-                  INTEGRATED_VALUE=0.0_DP
-                  DO j=1,RHS_BOUNDARY_CONDITIONS%NEUMANN_BOUNDARY_CONDITIONS &
-                    & %INTEGRATED_VALUES_VECTOR_SIZE
-
-                    INTEGRATED_VALUE=RHS_BOUNDARY_CONDITIONS &
-                      & %NEUMANN_BOUNDARY_CONDITIONS%INTEGRATED_VALUES_VECTOR(j)
-                    rhs_dof=RHS_BOUNDARY_CONDITIONS &
-                      & %NEUMANN_BOUNDARY_CONDITIONS%INTEGRATED_VALUES_VECTOR_MAPPING(j)
-
-                    !Note: check whether MAPPING dofs are local or global
-
-                    CALL FIELD_PARAMETER_SET_UPDATE_LOCAL_DOF(DEPENDENT_FIELD, &
-                      & rhs_variable_type,FIELD_VALUES_SET_TYPE, &
-                      & rhs_dof,INTEGRATED_VALUE,err,error,*999)
-                  ENDDO !j
-
-                  DEALLOCATE(RHS_BOUNDARY_CONDITIONS%NEUMANN_BOUNDARY_CONDITIONS% &
-                    & INTEGRATED_VALUES_VECTOR_MAPPING)
-                  DEALLOCATE(RHS_BOUNDARY_CONDITIONS%NEUMANN_BOUNDARY_CONDITIONS% &
-                    & INTEGRATED_VALUES_VECTOR)
-                ENDDO !component_idx
-              ENDIF
-            ENDIF
-          ENDIF
-        ENDIF
-      ENDIF
-    ENDIF
-
-    CALL EXITS("SOLVER_NEUMANN_CALCULATE")
-    RETURN
-999 CALL ERRORS("SOLVER_NEUMANN_CALCULATE",ERR,ERROR)
-    CALL EXITS("SOLVER_NEUMANN_CALCULATE")
-    RETURN 1
-  END SUBROUTINE SOLVER_NEUMANN_CALCULATE
-
   !
   !================================================================================================================================
   !

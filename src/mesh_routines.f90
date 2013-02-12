@@ -115,7 +115,7 @@ MODULE MESH_ROUTINES
   
   PUBLIC DECOMPOSITION_NUMBER_OF_DOMAINS_GET,DECOMPOSITION_NUMBER_OF_DOMAINS_SET
   
-  PUBLIC DECOMPOSITION_TOPOLOGY_ELEMENT_CHECK_EXISTS
+  PUBLIC DECOMPOSITION_TOPOLOGY_ELEMENT_CHECK_EXISTS,DecompositionTopology_DataPointCheckExists
   
   PUBLIC DECOMPOSITION_TYPE_GET,DECOMPOSITION_TYPE_SET
   
@@ -153,7 +153,7 @@ MODULE MESH_ROUTINES
 
   PUBLIC MESH_TOPOLOGY_ELEMENTS_ELEMENT_USER_NUMBER_GET,MESH_TOPOLOGY_ELEMENTS_ELEMENT_USER_NUMBER_SET
   
-  PUBLIC MESH_TOPOLOGY_DATA_POINTS_CALCULATE_PROJECTION
+  PUBLIC Mesh_TopologyDataPointsCalculateProjection
 
   PUBLIC MESH_USER_NUMBER_FIND, MESH_USER_NUMBER_TO_MESH
   
@@ -244,6 +244,7 @@ CONTAINS
       !Calculate the decomposition topology
       CALL DECOMPOSITION_TOPOLOGY_CALCULATE(DECOMPOSITION,ERR,ERROR,*999)
       DECOMPOSITION%DECOMPOSITION_FINISHED=.TRUE.
+      ! 
     ELSE
       CALL FLAG_ERROR("Decomposition is not associated.",ERR,ERROR,*999)
     ENDIF
@@ -545,8 +546,11 @@ CONTAINS
       & RECEIVE_COUNTS(:)
     INTEGER(INTG) :: ELEMENT_WEIGHT(1),WEIGHT_FLAG,NUMBER_FLAG,NUMBER_OF_CONSTRAINTS, &
       & NUMBER_OF_COMMON_NODES,PARMETIS_OPTIONS(0:2)
-    REAL(SP) :: UBVEC(1)
-    REAL(SP), ALLOCATABLE :: TPWGTS(:)
+    !ParMETIS now has double for these
+    !REAL(SP) :: UBVEC(1)
+    !REAL(SP), ALLOCATABLE :: TPWGTS(:)
+    REAL(DP) :: UBVEC(1)
+    REAL(DP), ALLOCATABLE :: TPWGTS(:)
     REAL(DP) :: NUMBER_ELEMENTS_PER_NODE
     TYPE(BASIS_TYPE), POINTER :: BASIS
     TYPE(MESH_TYPE), POINTER :: MESH
@@ -643,8 +647,11 @@ CONTAINS
               NUMBER_FLAG=0 !C Numbering as there is a bug with Fortran numbering
               NUMBER_OF_CONSTRAINTS=1
               NUMBER_OF_COMMON_NODES=2
-              TPWGTS=1.0_SP/REAL(DECOMPOSITION%NUMBER_OF_DOMAINS,SP)
-              UBVEC=1.05_SP
+              !ParMETIS now has doule precision for these
+              !TPWGTS=1.0_SP/REAL(DECOMPOSITION%NUMBER_OF_DOMAINS,SP)
+              !UBVEC=1.05_SP
+              TPWGTS=1.0_DP/REAL(DECOMPOSITION%NUMBER_OF_DOMAINS,DP)
+              UBVEC=1.05_DP
               PARMETIS_OPTIONS(0)=1 !If zero, defaults are used, otherwise next two values are used
               PARMETIS_OPTIONS(1)=7 !Level of information to output
               PARMETIS_OPTIONS(2)=CMISS_RANDOM_SEEDS(1) !Seed for random number generator
@@ -762,11 +769,11 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables`
     TYPE(MESH_TYPE), POINTER :: MESH
-    TYPE(MESH_TOPOLOGY_TYPE), POINTER :: MESH_TOPOLOGY
+    TYPE(MeshComponentTopologyType), POINTER :: MESH_TOPOLOGY
     TYPE(VARYING_STRING) :: LOCAL_ERROR
     INTEGER(INTG) :: GLOBAL_ELEMENT_NUMBER
     TYPE(TREE_NODE_TYPE), POINTER :: TREE_NODE
-    TYPE(MESH_ELEMENTS_TYPE), POINTER :: MESH_ELEMENTS
+    TYPE(MeshComponentElementsType), POINTER :: MESH_ELEMENTS
 
 
     CALL ENTERS("DECOMPOSITION_ELEMENT_DOMAIN_GET",ERR,ERROR,*999)
@@ -834,7 +841,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: number_computational_nodes
     TYPE(MESH_TYPE), POINTER :: MESH
-    TYPE(MESH_TOPOLOGY_TYPE), POINTER :: MESH_TOPOLOGY
+    TYPE(MeshComponentTopologyType), POINTER :: MESH_TOPOLOGY
     TYPE(VARYING_STRING) :: LOCAL_ERROR
 
     CALL ENTERS("DECOMPOSITION_ELEMENT_DOMAIN_SET",ERR,ERROR,*999)
@@ -1087,6 +1094,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
+    INTEGER(INTG) :: meshComponentNumber
 
     CALL ENTERS("DECOMPOSITION_TOPOLOGY_CALCULATE",ERR,ERROR,*999)
 
@@ -1101,6 +1109,10 @@ CONTAINS
       IF(DECOMPOSITION%CALCULATE_FACES) THEN
         CALL DECOMPOSITION_TOPOLOGY_FACES_CALCULATE(DECOMPOSITION%TOPOLOGY,ERR,ERROR,*999)
       ENDIF
+      meshComponentNumber=DECOMPOSITION%MESH_COMPONENT_NUMBER
+      IF(ALLOCATED(DECOMPOSITION%MESH%TOPOLOGY(meshComponentNumber)%PTR%dataPoints%dataPoints)) THEN
+          CALL DecompositionTopology_DataPointsCalculate(DECOMPOSITION%TOPOLOGY,ERR,ERROR,*999)
+        ENDIF   
     ELSE
       CALL FLAG_ERROR("Topology is not associated.",ERR,ERROR,*999)
     ENDIF
@@ -1111,6 +1123,171 @@ CONTAINS
     CALL EXITS("DECOMPOSITION_TOPOLOGY_CALCULATE")
     RETURN 1
   END SUBROUTINE DECOMPOSITION_TOPOLOGY_CALCULATE
+  
+  !
+  !================================================================================================================================
+  !
+
+  !>Calculates the decomposition element topology.
+  SUBROUTINE DecompositionTopology_DataPointsCalculate(TOPOLOGY,ERR,ERROR,*)
+
+    !Argument variables
+    TYPE(DECOMPOSITION_TOPOLOGY_TYPE), POINTER :: TOPOLOGY !<A pointer to the decomposition topology to calculate the elements for
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    !Local Variables
+    INTEGER(INTG) :: localElement,globalElement,dataPointIdx,localData,meshComponentNumber
+    INTEGER(INTG) :: INSERT_STATUS,MPI_IERROR,NUMBER_OF_COMPUTATIONAL_NODES,MY_COMPUTATIONAL_NODE_NUMBER,NUMBER_OF_GHOST_DATA, &
+      & NUMBER_OF_LOCAL_DATA
+    TYPE(DECOMPOSITION_TYPE), POINTER :: decomposition
+    TYPE(DECOMPOSITION_ELEMENTS_TYPE), POINTER :: decompositionElements
+    TYPE(DecompositionDataPointsType), POINTER :: decompositionData
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: elementsMapping
+    TYPE(MeshDataPointsType), POINTER :: meshData
+
+    CALL ENTERS("DecompositionTopology_DataPointsCalculate",ERR,ERROR,*999)
+
+    IF(ASSOCIATED(TOPOLOGY)) THEN
+      decompositionData=>TOPOLOGY%dataPoints
+      IF(ASSOCIATED(decompositionData)) THEN
+        decomposition=>decompositionData%DECOMPOSITION
+        IF(ASSOCIATED(decomposition)) THEN
+         decompositionElements=>TOPOLOGY%ELEMENTS
+         IF(ASSOCIATED(decompositionElements)) THEN
+           elementsMapping=>decomposition%DOMAIN(decomposition%MESH_COMPONENT_NUMBER)%PTR%MAPPINGS%ELEMENTS
+           IF(ASSOCIATED(elementsMapping)) THEN
+              meshComponentNumber=decomposition%MESH_COMPONENT_NUMBER
+              meshData=>decomposition%MESH%TOPOLOGY(meshComponentNumber)%PTR%dataPoints
+              IF(ASSOCIATED(meshData)) THEN
+                NUMBER_OF_COMPUTATIONAL_NODES=COMPUTATIONAL_NODES_NUMBER_GET(ERR,ERROR)
+                IF(ERR/=0) GOTO 999
+                MY_COMPUTATIONAL_NODE_NUMBER=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
+                IF(ERR/=0) GOTO 999
+                ALLOCATE(decompositionData%numberOfDomainLocal(0:NUMBER_OF_COMPUTATIONAL_NODES-1),STAT=ERR)
+                ALLOCATE(decompositionData%numberOfDomainGhost(0:NUMBER_OF_COMPUTATIONAL_NODES-1),STAT=ERR)
+                ALLOCATE(decompositionData%numberOfElementDataPoints(decompositionElements%NUMBER_OF_GLOBAL_ELEMENTS),STAT=ERR)
+                ALLOCATE(decompositionData%elementDataPoint(decompositionElements%TOTAL_NUMBER_OF_ELEMENTS),STAT=ERR)
+                IF(ERR/=0) CALL FLAG_ERROR("Could not allocate decomposition element data points.",ERR,ERROR,*999)
+                CALL TREE_CREATE_START(decompositionData%dataPointsTree,ERR,ERROR,*999)
+                CALL TREE_INSERT_TYPE_SET(decompositionData%dataPointsTree,TREE_NO_DUPLICATES_ALLOWED,ERR,ERROR,*999)
+                CALL TREE_CREATE_FINISH(decompositionData%dataPointsTree,ERR,ERROR,*999)
+                decompositionData%numberOfGlobalDataPoints=meshData%totalNumberOfProjectedData 
+                DO globalElement=1,decompositionElements%NUMBER_OF_GLOBAL_ELEMENTS
+                  decompositionData%numberOfElementDataPoints(globalElement)= &
+                    & meshData%elementDataPoint(globalElement)%numberOfProjectedData
+                ENDDO !globalElement
+                localData=0;
+                DO localElement=1,decompositionElements%TOTAL_NUMBER_OF_ELEMENTS
+                  globalElement=decompositionElements%ELEMENTS(localElement)%GLOBAL_NUMBER
+                  decompositionData%elementDataPoint(localElement)%numberOfProjectedData= &
+                    & meshData%elementDataPoint(globalElement)%numberOfProjectedData
+                  decompositionData%elementDataPoint(localElement)%globalElementNumber=globalElement
+                  IF(localElement<elementsMapping%GHOST_START) THEN
+                    decompositionData%numberOfDataPoints=decompositionData%numberOfDataPoints+ &
+                      & decompositionData%elementDataPoint(localElement)%numberOfProjectedData
+                  ENDIF               
+                  decompositionData%totalNumberOfDataPoints=decompositionData%totalNumberOfDataPoints+ &
+                    & decompositionData%elementDataPoint(localElement)%numberOfProjectedData
+                  ALLOCATE(decompositionData%elementDataPoint(localElement)%dataIndices(decompositionData% &
+                    & elementDataPoint(localElement)%numberOfProjectedData),STAT=ERR)
+                  DO dataPointIdx=1,decompositionData%elementDataPoint(localElement)%numberOfProjectedData
+                    decompositionData%elementDataPoint(localElement)%dataIndices(dataPointIdx)%userNumber= &
+                      & meshData%elementDataPoint(globalElement)%dataIndices(dataPointIdx)%userNumber
+                    decompositionData%elementDataPoint(localElement)%dataIndices(dataPointIdx)%globalNumber= &
+                      & meshData%elementDataPoint(globalElement)%dataIndices(dataPointIdx)%globalNumber
+                    localData=localData+1
+                    decompositionData%elementDataPoint(localElement)%dataIndices(dataPointIdx)%localNumber=localData
+                    CALL TREE_ITEM_INSERT(decompositionData%dataPointsTree,decompositionData% &
+                      & elementDataPoint(localElement)%dataIndices(dataPointIdx)%userNumber,localData, &
+                      & INSERT_STATUS,ERR,ERROR,*999)
+                  ENDDO !dataPointIdx
+                ENDDO !localElement   
+                !Calculate number of ghost data points on the current computational domain
+                NUMBER_OF_LOCAL_DATA=decompositionData%numberOfDataPoints
+                NUMBER_OF_GHOST_DATA=decompositionData%totalNumberOfDataPoints-decompositionData%numberOfDataPoints
+                !Gather number of local data points on all computational nodes
+                CALL MPI_ALLGATHER(NUMBER_OF_LOCAL_DATA,1,MPI_INTEGER,decompositionData% &
+                  & numberOfDomainLocal,1,MPI_INTEGER,COMPUTATIONAL_ENVIRONMENT%MPI_COMM,MPI_IERROR)
+                CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
+                !Gather number of ghost data points on all computational nodes
+                CALL MPI_ALLGATHER(NUMBER_OF_GHOST_DATA,1,MPI_INTEGER,decompositionData% &
+                  & numberOfDomainGhost,1,MPI_INTEGER,COMPUTATIONAL_ENVIRONMENT%MPI_COMM,MPI_IERROR)
+                CALL MPI_ERROR_CHECK("MPI_ALLGATHER",MPI_IERROR,ERR,ERROR,*999)
+              ELSE
+                CALL FLAG_ERROR("Mesh data points topology is not associated.",ERR,ERROR,*999)
+              ENDIF
+            ELSE
+              CALL FLAG_ERROR("Element mapping  is not associated.",ERR,ERROR,*999)
+            ENDIF
+          ELSE
+            CALL FLAG_ERROR("Decomposition elements topology is not associated.",ERR,ERROR,*999)
+          ENDIF
+        ELSE
+          CALL FLAG_ERROR("Decomposition is not associated.",ERR,ERROR,*999)
+        ENDIF
+      ELSE
+        CALL FLAG_ERROR("Decomposition data points topology is not associated.",ERR,ERROR,*999)
+      ENDIF
+    ELSE
+      CALL FLAG_ERROR("Topology is not associated.",ERR,ERROR,*999)
+    ENDIF
+    
+    CALL EXITS("DecompositionTopology_DataPointsCalculate")
+    RETURN
+999 CALL ERRORS("DecompositionTopology_DataPointsCalculate",ERR,ERROR)
+    CALL EXITS("DecompositionTopology_DataPointsCalculate")
+    RETURN 1
+  END SUBROUTINE DecompositionTopology_DataPointsCalculate
+  
+  !
+  !================================================================================================================================
+  !
+
+  !>Checks that a user element number exists in a decomposition. 
+  SUBROUTINE DecompositionTopology_DataPointCheckExists(decompositionTopology,userDataPointNumber,userDataPointExists, &
+        & decompositionLocalDataPointNumber,ghostDataPoint,err,error,*)
+
+    !Argument variables
+    TYPE(DECOMPOSITION_TOPOLOGY_TYPE), POINTER :: decompositionTopology !<A pointer to the decomposition topology to check the data point exists on
+    INTEGER(INTG), INTENT(IN) :: userDataPointNumber !<The user data point number to check if it exists
+    LOGICAL, INTENT(OUT) :: userDataPointExists !<On exit, is .TRUE. if the data point user number exists in the decomposition topology, .FALSE. if not
+    INTEGER(INTG), INTENT(OUT) :: decompositionLocalDataPointNumber !<On exit, if the data point exists the local number corresponding to the user data point number. If the data point does not exist then local number will be 0.
+    LOGICAL, INTENT(OUT) :: ghostDataPoint !<On exit, is .TRUE. if the local data point (if it exists) is a ghost data point, .FALSE. if not.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+    TYPE(DecompositionDataPointsType), POINTER :: decompositionData
+    TYPE(TREE_NODE_TYPE), POINTER :: treeNode
+    
+    CALL ENTERS("DecompositionTopology_DataPointCheckExists",ERR,error,*999)
+
+    userDataPointExists=.FALSE.
+    decompositionLocalDataPointNumber=0
+    ghostDataPoint=.FALSE.
+    IF(ASSOCIATED(decompositionTopology)) THEN
+      decompositionData=>decompositionTopology%dataPoints
+      IF(ASSOCIATED(decompositionData)) THEN
+        NULLIFY(treeNode)
+        CALL TREE_SEARCH(decompositionData%dataPointsTree,userDataPointNumber,treeNode,err,error,*999)
+        IF(ASSOCIATED(treeNode)) THEN
+          CALL TREE_NODE_VALUE_GET(decompositionData%dataPointsTree,treeNode,decompositionLocalDataPointNumber,err,error,*999)
+          userDataPointExists=.TRUE.
+          ghostDataPoint=decompositionLocalDataPointNumber>decompositionData%numberOfDataPoints
+        ENDIF
+      ELSE
+        CALL FLAG_ERROR("Decomposition data point topology is not associated.",err,error,*999)
+      ENDIF
+    ELSE
+      CALL FLAG_ERROR("Decomposition topology is not associated.",err,error,*999)
+    ENDIF
+    
+    CALL EXITS("DecompositionTopology_DataPointCheckExists")
+    RETURN
+999 CALL ERRORS("DecompositionTopology_DataPointCheckExists",err,error)
+    CALL EXITS("DecompositionTopology_DataPointCheckExists")
+    RETURN 1
+    
+  END SUBROUTINE DecompositionTopology_DataPointCheckExists
   
   !
   !================================================================================================================================
@@ -1589,8 +1766,8 @@ CONTAINS
     TYPE(DOMAIN_MAPPINGS_TYPE), POINTER :: DOMAIN_MAPPINGS
     TYPE(DOMAIN_TOPOLOGY_TYPE), POINTER :: DOMAIN_TOPOLOGY
     TYPE(MESH_TYPE), POINTER :: MESH
-    TYPE(MESH_ELEMENTS_TYPE), POINTER :: MESH_ELEMENTS
-    TYPE(MESH_TOPOLOGY_TYPE), POINTER :: MESH_TOPOLOGY
+    TYPE(MeshComponentElementsType), POINTER :: MESH_ELEMENTS
+    TYPE(MeshComponentTopologyType), POINTER :: MESH_TOPOLOGY
 
     CALL ENTERS("DECOMPOSITION_TOPOLOGY_ELEMENTS_CALCULATE",ERR,ERROR,*999)
 
@@ -1803,6 +1980,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
+    INTEGER(INTG) :: meshComponentNumber
 
     CALL ENTERS("DECOMPOSITION_TOPOLOGY_INITIALISE",ERR,ERROR,*999)
 
@@ -1817,7 +1995,7 @@ CONTAINS
         NULLIFY(DECOMPOSITION%TOPOLOGY%ELEMENTS)
         NULLIFY(DECOMPOSITION%TOPOLOGY%LINES)
         NULLIFY(DECOMPOSITION%TOPOLOGY%FACES)
-        NULLIFY(DECOMPOSITION%TOPOLOGY%DATA_POINTS)
+        NULLIFY(DECOMPOSITION%TOPOLOGY%dataPoints)
         !Initialise the topology components
         CALL DECOMPOSITION_TOPOLOGY_ELEMENTS_INITIALISE(DECOMPOSITION%TOPOLOGY,ERR,ERROR,*999)
         IF(DECOMPOSITION%CALCULATE_LINES) THEN !Default is currently true
@@ -1826,7 +2004,8 @@ CONTAINS
         IF(DECOMPOSITION%CALCULATE_FACES) THEN !Default is currently false
           CALL DECOMPOSITION_TOPOLOGY_FACES_INITIALISE(DECOMPOSITION%TOPOLOGY,ERR,ERROR,*999)
         ENDIF      
-        IF(ALLOCATED(DECOMPOSITION%MESH%TOPOLOGY(DECOMPOSITION%MESH_COMPONENT_NUMBER)%PTR%DATA_POINTS%DATA_POINTS)) THEN
+        meshComponentNumber=DECOMPOSITION%MESH_COMPONENT_NUMBER
+        IF(ALLOCATED(DECOMPOSITION%MESH%TOPOLOGY(meshComponentNumber)%PTR%dataPoints%dataPoints)) THEN
           CALL DECOMPOSITION_TOPOLOGY_DATA_POINTS_INITIALISE(DECOMPOSITION%TOPOLOGY,ERR,ERROR,*999)
         ENDIF   
       ENDIF
@@ -1889,7 +2068,7 @@ CONTAINS
     LINE%XI_DIRECTION=0
     LINE%NUMBER_OF_SURROUNDING_ELEMENTS=0
     LINE%ADJACENT_LINES=0
-    LINE%BOUNDARY_LINE=.FALSE.    
+    LINE%BOUNDARY_LINE=.FALSE.
 
     CALL EXITS("DECOMPOSITION_TOPOLOGY_LINE_INITIALISE")
     RETURN
@@ -2472,14 +2651,16 @@ CONTAINS
     CALL ENTERS("DECOMPOSITION_TOPOLOGY_DATA_POINTS_INITIALISE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(TOPOLOGY)) THEN
-      IF(ASSOCIATED(TOPOLOGY%DATA_POINTS)) THEN
+      IF(ASSOCIATED(TOPOLOGY%dataPoints)) THEN
         CALL FLAG_ERROR("Decomposition already has topology data points associated.",ERR,ERROR,*999)
       ELSE
-        ALLOCATE(TOPOLOGY%DATA_POINTS,STAT=ERR)
+        ALLOCATE(TOPOLOGY%dataPoints,STAT=ERR)
         IF(ERR/=0) CALL FLAG_ERROR("Could not allocate topology data points.",ERR,ERROR,*999)
-        TOPOLOGY%DATA_POINTS%NUMBER_OF_ELEMENTS=0
-        TOPOLOGY%DATA_POINTS%TOTAL_NUMBER_OF_PROJECTED_DATA=0
-        TOPOLOGY%DATA_POINTS%DECOMPOSITION=>TOPOLOGY%DECOMPOSITION      
+        TOPOLOGY%dataPoints%numberOfDataPoints=0
+        TOPOLOGY%dataPoints%totalNumberOfDataPoints=0
+        TOPOLOGY%dataPoints%numberOfGlobalDataPoints=0
+        NULLIFY(TOPOLOGY%dataPoints%dataPointsTree)
+        TOPOLOGY%dataPoints%DECOMPOSITION=>TOPOLOGY%DECOMPOSITION      
       ENDIF
     ELSE
       CALL FLAG_ERROR("Topology is not associated.",ERR,ERROR,*999)
@@ -3796,7 +3977,7 @@ CONTAINS
     TYPE(MESH_TYPE), POINTER :: MESH
     TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: DATA_POINTS_MAPPING
-    TYPE(MESH_DATA_POINTS_TYPE), POINTER :: DATA_POINTS_TOPOLOGY
+    TYPE(MeshDataPointsType), POINTER :: DATA_POINTS_TOPOLOGY
     TYPE(VARYING_STRING) :: DUMMY_ERROR
 
     CALL ENTERS("DOMAIN_MAPPINGS_DATA_POINTS_CALCULATE",ERR,ERROR,*999)
@@ -3811,12 +3992,12 @@ CONTAINS
               MESH=>DOMAIN%MESH
               component_idx=DOMAIN%MESH_COMPONENT_NUMBER
               my_computational_node_number=COMPUTATIONAL_NODE_NUMBER_GET(ERR,ERROR)
-              DATA_POINTS_TOPOLOGY=>MESH%TOPOLOGY(component_idx)%PTR%DATA_POINTS
+              DATA_POINTS_TOPOLOGY=>MESH%TOPOLOGY(component_idx)%ptr%dataPoints
               IF(ERR/=0) GOTO 999           
               !Calculate the local and global numbers and set up the mappings
-              ALLOCATE(DATA_POINTS_MAPPING%GLOBAL_TO_LOCAL_MAP(DATA_POINTS_TOPOLOGY%TOTAL_NUMBER_OF_PROJECTED_DATA),STAT=ERR)
+              ALLOCATE(DATA_POINTS_MAPPING%GLOBAL_TO_LOCAL_MAP(DATA_POINTS_TOPOLOGY%totalNumberOfProjectedData),STAT=ERR)
               IF(ERR/=0) CALL FLAG_ERROR("Could not allocate element mapping global to local map.",ERR,ERROR,*999)
-              DATA_POINTS_MAPPING%NUMBER_OF_GLOBAL=DATA_POINTS_TOPOLOGY%TOTAL_NUMBER_OF_PROJECTED_DATA
+              DATA_POINTS_MAPPING%NUMBER_OF_GLOBAL=DATA_POINTS_TOPOLOGY%totalNumberOfProjectedData
               !Loop over the global elements and calculate local numbers
               ALLOCATE(LOCAL_ELEMENT_NUMBERS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1),STAT=ERR)
               IF(ERR/=0) CALL FLAG_ERROR("Could not allocate local element numbers.",ERR,ERROR,*999)
@@ -3860,9 +4041,9 @@ CONTAINS
                 CALL LIST_REMOVE_DUPLICATES(ADJACENT_DOMAINS_LIST,ERR,ERROR,*999)
                 CALL LIST_DETACH_AND_DESTROY(ADJACENT_DOMAINS_LIST,NUMBER_OF_DOMAINS,DOMAINS,ERR,ERROR,*999)
                 DEALLOCATE(DOMAINS)
-                DO data_point_idx=1,DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(ne)%NUMBER_OF_PROJECTED_DATA
+                DO data_point_idx=1,DATA_POINTS_TOPOLOGY%elementDataPoint(ne)%numberOfProjectedData
                   LOCAL_DATA_POINT_NUMBERS(domain_no)=LOCAL_DATA_POINT_NUMBERS(domain_no)+1
-                  DATA_POINT_GLOBAL_NUMBER=DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(ne)%DATA_INDICES(data_point_idx)%GLOBAL_NUMBER
+                  DATA_POINT_GLOBAL_NUMBER=DATA_POINTS_TOPOLOGY%elementDataPoint(ne)%dataIndices(data_point_idx)%globalNumber
                   CALL DOMAIN_MAPPINGS_MAPPING_GLOBAL_INITIALISE(DATA_POINTS_MAPPING%GLOBAL_TO_LOCAL_MAP &
                     & (DATA_POINT_GLOBAL_NUMBER),ERR,ERROR,*999)
                   ALLOCATE(DATA_POINTS_MAPPING%GLOBAL_TO_LOCAL_MAP(DATA_POINT_GLOBAL_NUMBER)%LOCAL_NUMBER(NUMBER_OF_DOMAINS), &
@@ -3895,10 +4076,10 @@ CONTAINS
                 DO no_adjacent_element=1,NUMBER_OF_ADJACENT_ELEMENTS
                   adjacent_element=ADJACENT_ELEMENTS(no_adjacent_element)
                   LOCAL_ELEMENT_NUMBERS(domain_idx)=LOCAL_ELEMENT_NUMBERS(domain_idx)+1            
-                  DO data_point_idx=1,DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(adjacent_element)%NUMBER_OF_PROJECTED_DATA
+                  DO data_point_idx=1,DATA_POINTS_TOPOLOGY%elementDataPoint(adjacent_element)%numberOfProjectedData
                     LOCAL_DATA_POINT_NUMBERS(domain_idx)=LOCAL_DATA_POINT_NUMBERS(domain_idx)+1
-                    DATA_POINT_GLOBAL_NUMBER=DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(adjacent_element)% &
-                      & DATA_INDICES(data_point_idx)%GLOBAL_NUMBER
+                    DATA_POINT_GLOBAL_NUMBER=DATA_POINTS_TOPOLOGY%elementDataPoint(adjacent_element)% &
+                      & dataIndices(data_point_idx)%globalNumber
                     !local_domain_idx is the last domian in the list
                     local_domain_idx=DATA_POINTS_MAPPING%GLOBAL_TO_LOCAL_MAP(DATA_POINT_GLOBAL_NUMBER)%NUMBER_OF_DOMAINS+1                 
                     DATA_POINTS_MAPPING%GLOBAL_TO_LOCAL_MAP(DATA_POINT_GLOBAL_NUMBER)%NUMBER_OF_DOMAINS=local_domain_idx
@@ -4045,42 +4226,6 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Initialises the element mapping in the given domain mapping.
-  SUBROUTINE DOMAIN_MAPPINGS_DATA_POINTS_INITIALISE(DOMAIN_MAPPINGS,ERR,ERROR,*)
-
-    !Argument variables
-    TYPE(DOMAIN_MAPPINGS_TYPE), POINTER :: DOMAIN_MAPPINGS !<A pointer to the domain mappings to initialise the elements for
-    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
-    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
-    !Local Variables
-    
-    CALL ENTERS("DOMAIN_MAPPINGS_DATA_POINTS_INITIALISE",ERR,ERROR,*999)
-
-    IF(ASSOCIATED(DOMAIN_MAPPINGS)) THEN
-      IF(ASSOCIATED(DOMAIN_MAPPINGS%DATA_POINTS)) THEN
-        CALL FLAG_ERROR("Domain data points mappings are already associated.",ERR,ERROR,*999)
-      ELSE
-        ALLOCATE(DOMAIN_MAPPINGS%DATA_POINTS,STAT=ERR)
-        IF(ERR/=0) CALL FLAG_ERROR("Could not allocate domain mappings data points.",ERR,ERROR,*999)
-        CALL DOMAIN_MAPPINGS_MAPPING_INITIALISE(DOMAIN_MAPPINGS%DATA_POINTS,DOMAIN_MAPPINGS%DOMAIN%DECOMPOSITION% &
-          & NUMBER_OF_DOMAINS,ERR,ERROR,*999)
-      ENDIF
-    ELSE
-      CALL FLAG_ERROR("Domain mapping is not associated.",ERR,ERROR,*999)
-    ENDIF
- 
-    CALL EXITS("DOMAIN_MAPPINGS_DATA_POINTS_INITIALISE")
-    RETURN
-999 CALL ERRORS("DOMAIN_MAPPINGS_DATA_POINTS_INITIALISE",ERR,ERROR)
-    CALL EXITS("DOMAIN_MAPPINGS_DATA_POINTS_INITIALISE")
-    RETURN 1
-   
-  END SUBROUTINE DOMAIN_MAPPINGS_DATA_POINTS_INITIALISE
-
-  !
-  !================================================================================================================================
-  !
-
   !>Initialises the mappings for a domain decomposition. \todo finalise on error.
   SUBROUTINE DOMAIN_MAPPINGS_INITIALISE(DOMAIN,ERR,ERROR,*)
 
@@ -4109,7 +4254,7 @@ CONTAINS
         CALL DOMAIN_MAPPINGS_DOFS_INITIALISE(DOMAIN%MAPPINGS,ERR,ERROR,*999)
         CALL DOMAIN_MAPPINGS_ELEMENTS_CALCULATE(DOMAIN,ERR,ERROR,*999)
         CALL DOMAIN_MAPPINGS_NODES_DOFS_CALCULATE(DOMAIN,ERR,ERROR,*999)
-        IF(ALLOCATED(DOMAIN%MESH%TOPOLOGY(DOMAIN%MESH_COMPONENT_NUMBER)%PTR%DATA_POINTS%DATA_POINTS)) THEN
+        IF(ALLOCATED(DOMAIN%MESH%TOPOLOGY(DOMAIN%MESH_COMPONENT_NUMBER)%ptr%dataPoints%dataPoints)) THEN
           CALL DOMAIN_MAPPINGS_DATA_POINTS_INITIALISE(DOMAIN%MAPPINGS,ERR,ERROR,*999)
           CALL DOMAIN_MAPPINGS_DATA_POINTS_CALCULATE(DOMAIN,ERR,ERROR,*999)
         ENDIF
@@ -4147,7 +4292,7 @@ CONTAINS
     TYPE(LIST_TYPE), POINTER :: ADJACENT_DOMAINS_LIST,ALL_ADJACENT_DOMAINS_LIST
     TYPE(LIST_PTR_TYPE), ALLOCATABLE :: GHOST_NODES_LIST(:)
     TYPE(MESH_TYPE), POINTER :: MESH
-    TYPE(MESH_TOPOLOGY_TYPE), POINTER :: MESH_TOPOLOGY
+    TYPE(MeshComponentTopologyType), POINTER :: MESH_TOPOLOGY
     TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: ELEMENTS_MAPPING
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: NODES_MAPPING
@@ -4791,16 +4936,15 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     INTEGER(INTG) :: local_element,global_element,local_node,global_node,version_idx,derivative_idx,node_idx,dof_idx, &
-      & component_idx,data_point_idx
-    INTEGER(INTG) :: ne,nn,nkk,INSERT_STATUS,LOCAL_NUMBER
+      & component_idx
+    INTEGER(INTG) :: ne,nn,nkk,INSERT_STATUS
     LOGICAL :: FOUND
     TYPE(BASIS_TYPE), POINTER :: BASIS
     TYPE(MESH_TYPE), POINTER :: MESH
     TYPE(DOMAIN_ELEMENTS_TYPE), POINTER :: DOMAIN_ELEMENTS
-    TYPE(MESH_ELEMENTS_TYPE), POINTER :: MESH_ELEMENTS
+    TYPE(MeshComponentElementsType), POINTER :: MESH_ELEMENTS
     TYPE(DOMAIN_NODES_TYPE), POINTER :: DOMAIN_NODES
     TYPE(MESH_NODES_TYPE), POINTER :: MESH_NODES
-    TYPE(MESH_DATA_POINTS_TYPE), POINTER :: MESH_DATA_POINTS
     TYPE(DOMAIN_DOFS_TYPE), POINTER :: DOMAIN_DOFS
     TYPE(DOMAIN_DATA_POINTS_TYPE), POINTER :: DOMAIN_DATA_POINTS 
 
@@ -4834,7 +4978,7 @@ CONTAINS
               DOMAIN_DOFS%NUMBER_OF_DOFS=DOMAIN%MAPPINGS%DOFS%NUMBER_OF_LOCAL
               DOMAIN_DOFS%TOTAL_NUMBER_OF_DOFS=DOMAIN%MAPPINGS%DOFS%TOTAL_NUMBER_OF_LOCAL
               DOMAIN_DOFS%NUMBER_OF_GLOBAL_DOFS=DOMAIN%MAPPINGS%DOFS%NUMBER_OF_GLOBAL
-              IF(ALLOCATED(DOMAIN%MESH%TOPOLOGY(DOMAIN%MESH_COMPONENT_NUMBER)%PTR%DATA_POINTS%DATA_POINTS)) THEN
+              IF(ALLOCATED(DOMAIN%MESH%TOPOLOGY(DOMAIN%MESH_COMPONENT_NUMBER)%ptr%dataPoints%dataPoints)) THEN
                 ALLOCATE(DOMAIN_DATA_POINTS%ELEMENT_DATA_POINTS(DOMAIN_ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS),STAT=ERR)
                 IF(ERR/=0) CALL FLAG_ERROR("Could not allocate domain data points dof index.",ERR,ERROR,*999)
                 DOMAIN_DATA_POINTS%NUMBER_OF_DATA_POINTS=DOMAIN%MAPPINGS%DATA_POINTS%NUMBER_OF_LOCAL
@@ -4918,33 +5062,6 @@ CONTAINS
                   ENDDO !derivative_idx
                 ENDDO !nn
               ENDDO !local_element                       
-              IF(ALLOCATED(DOMAIN%MESH%TOPOLOGY(DOMAIN%MESH_COMPONENT_NUMBER)%PTR%DATA_POINTS%DATA_POINTS)) THEN
-                LOCAL_NUMBER=0
-                MESH_DATA_POINTS=>DOMAIN%MESH%TOPOLOGY(component_idx)%PTR%DATA_POINTS
-                CALL TREE_CREATE_START(DOMAIN_DATA_POINTS%DATA_POINTS_TREE,ERR,ERROR,*999)
-                CALL TREE_INSERT_TYPE_SET(DOMAIN_DATA_POINTS%DATA_POINTS_TREE,TREE_NO_DUPLICATES_ALLOWED,ERR,ERROR,*999)
-                CALL TREE_CREATE_FINISH(DOMAIN_DATA_POINTS%DATA_POINTS_TREE,ERR,ERROR,*999)
-                DO local_element=1,DOMAIN_ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS
-                  global_element=DOMAIN%MAPPINGS%ELEMENTS%LOCAL_TO_GLOBAL_MAP(local_element)    
-                  DOMAIN_DATA_POINTS%ELEMENT_DATA_POINTS(local_element)%NUMBER_OF_PROJECTED_DATA=MESH_DATA_POINTS% &
-                    & ELEMENT_DATA_POINTS(global_element)%NUMBER_OF_PROJECTED_DATA
-                  DOMAIN_DATA_POINTS%ELEMENT_DATA_POINTS(local_element)%ELEMENT_NUMBER=MESH_DATA_POINTS% &
-                    & ELEMENT_DATA_POINTS(global_element)%ELEMENT_NUMBER
-                  ALLOCATE(DOMAIN_DATA_POINTS%ELEMENT_DATA_POINTS(local_element)%DATA_INDICES(DOMAIN_DATA_POINTS% &
-                    & ELEMENT_DATA_POINTS(local_element)%NUMBER_OF_PROJECTED_DATA),STAT=ERR)
-                  DO data_point_idx=1,DOMAIN_DATA_POINTS%ELEMENT_DATA_POINTS(local_element)%NUMBER_OF_PROJECTED_DATA
-                    DOMAIN_DATA_POINTS%ELEMENT_DATA_POINTS(local_element)%DATA_INDICES(data_point_idx)%USER_NUMBER= &
-                      & MESH_DATA_POINTS%ELEMENT_DATA_POINTS(global_element)%DATA_INDICES(data_point_idx)%USER_NUMBER
-                    DOMAIN_DATA_POINTS%ELEMENT_DATA_POINTS(local_element)%DATA_INDICES(data_point_idx)%GLOBAL_NUMBER= &
-                      & MESH_DATA_POINTS%ELEMENT_DATA_POINTS(global_element)%DATA_INDICES(data_point_idx)%GLOBAL_NUMBER
-                    LOCAL_NUMBER=LOCAL_NUMBER+1
-                    DOMAIN_DATA_POINTS%ELEMENT_DATA_POINTS(local_element)%DATA_INDICES(data_point_idx)%LOCAL_NUMBER=LOCAL_NUMBER
-                    CALL TREE_ITEM_INSERT(DOMAIN_DATA_POINTS%DATA_POINTS_TREE,DOMAIN_DATA_POINTS% &
-                      & ELEMENT_DATA_POINTS(local_element)%DATA_INDICES(data_point_idx)%USER_NUMBER,LOCAL_NUMBER, &
-                      & INSERT_STATUS,ERR,ERROR,*999)
-                  ENDDO !data_point_idx
-                ENDDO !local_element
-              ENDIF
             ELSE
               CALL FLAG_ERROR("Mesh topology is not associated",ERR,ERROR,*999)
             ENDIF
@@ -5230,6 +5347,7 @@ CONTAINS
     RETURN 1
   END SUBROUTINE DOMAIN_TOPOLOGY_ELEMENTS_INITIALISE
   
+  
   !
   !================================================================================================================================
   !
@@ -5337,7 +5455,7 @@ CONTAINS
         CALL DOMAIN_TOPOLOGY_DOFS_INITIALISE(DOMAIN%TOPOLOGY,ERR,ERROR,*999)
         CALL DOMAIN_TOPOLOGY_LINES_INITIALISE(DOMAIN%TOPOLOGY,ERR,ERROR,*999)
         CALL DOMAIN_TOPOLOGY_FACES_INITIALISE(DOMAIN%TOPOLOGY,ERR,ERROR,*999)
-        IF(ALLOCATED(DOMAIN%MESH%TOPOLOGY(DOMAIN%MESH_COMPONENT_NUMBER)%PTR%DATA_POINTS%DATA_POINTS)) THEN
+        IF(ALLOCATED(DOMAIN%MESH%TOPOLOGY(DOMAIN%MESH_COMPONENT_NUMBER)%ptr%dataPoints%dataPoints)) THEN
           CALL DOMAIN_TOPOLOGY_DATA_POINTS_INITIALISE(DOMAIN%TOPOLOGY,ERR,ERROR,*999)
         ENDIF 
         !Initialise the domain topology from the domain mappings and the mesh it came from
@@ -5401,6 +5519,7 @@ CONTAINS
 
     LINE%NUMBER=0
     NULLIFY(LINE%BASIS)
+    LINE%BOUNDARY_LINE=.FALSE.
     
     CALL EXITS("DOMAIN_TOPOLOGY_LINE_INITIALISE")
     RETURN
@@ -5524,6 +5643,7 @@ CONTAINS
 
     FACE%NUMBER=0
     NULLIFY(FACE%BASIS)
+    FACE%BOUNDARY_FACE=.FALSE.
     
     CALL EXITS("DOMAIN_TOPOLOGY_FACE_INITIALISE")
     RETURN
@@ -6026,7 +6146,7 @@ CONTAINS
         MESH%MESH_FINISHED=.TRUE.
         !Calulcate the mesh topology
         DO component_idx=1,MESH%NUMBER_OF_COMPONENTS
-          CALL MESH_TOPOLOGY_CALCULATE(MESH%TOPOLOGY(component_idx)%PTR,MESH%SURROUNDING_ELEMENTS_CALCULATE,ERR,ERROR,*999)
+          CALL MESH_TOPOLOGY_CALCULATE(MESH%TOPOLOGY(component_idx)%ptr,ERR,ERROR,*999)
         ENDDO !component_idx
       ELSE
         CALL FLAG_ERROR("Mesh topology is not associated",ERR,ERROR,*999)
@@ -6535,7 +6655,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: component_idx
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    TYPE(MESH_TOPOLOGY_PTR_TYPE), POINTER :: NEW_TOPOLOGY(:)
+    TYPE(MeshComponentTopologyPtrType), POINTER :: NEW_TOPOLOGY(:)
 
     NULLIFY(NEW_TOPOLOGY)
     
@@ -6566,7 +6686,7 @@ CONTAINS
                 NULLIFY(NEW_TOPOLOGY(component_idx)%PTR%ELEMENTS)
                 NULLIFY(NEW_TOPOLOGY(component_idx)%PTR%NODES)
                 NULLIFY(NEW_TOPOLOGY(component_idx)%PTR%DOFS)
-                NULLIFY(NEW_TOPOLOGY(component_idx)%PTR%DATA_POINTS)
+                NULLIFY(NEW_TOPOLOGY(component_idx)%PTR%dataPoints)
                 !Initialise the topology components
                 CALL MESH_TOPOLOGY_ELEMENTS_INITIALISE(NEW_TOPOLOGY(component_idx)%PTR,ERR,ERROR,*999)
                 CALL MESH_TOPOLOGY_NODES_INITIALISE(NEW_TOPOLOGY(component_idx)%PTR,ERR,ERROR,*999)
@@ -6728,11 +6848,10 @@ CONTAINS
   !
 
   !>Calculates the mesh topology.
-  SUBROUTINE MESH_TOPOLOGY_CALCULATE(TOPOLOGY,SURROUNDING_ELEMENTS_CALCULATE,ERR,ERROR,*)    
+  SUBROUTINE MESH_TOPOLOGY_CALCULATE(TOPOLOGY,ERR,ERROR,*)    
 
     !Argument variables
-    TYPE(MESH_TOPOLOGY_TYPE), POINTER :: TOPOLOGY !<A pointer to the mesh topology to calculate
-    LOGICAL, INTENT(IN) :: SURROUNDING_ELEMENTS_CALCULATE !<Flag to determine whether surrounding elements should be calculated
+    TYPE(MeshComponentTopologyType), POINTER :: TOPOLOGY !<A pointer to the mesh topology to calculate
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
@@ -6740,23 +6859,27 @@ CONTAINS
     CALL ENTERS("MESH_TOPOLOGY_CALCULATE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(TOPOLOGY)) THEN
-      !Calculate the nodes used in the mesh
-      CALL MESH_TOPOLOGY_NODES_CALCULATE(TOPOLOGY,ERR,ERROR,*999)
-      !Calculate the elements surrounding the nodes in a mesh
-      !IF(SURROUNDING_ELEMENTS_CALCULATE) THEN
+      IF(ASSOCIATED(topology%mesh)) THEN
+        !Calculate the nodes used in the mesh
+        CALL MESH_TOPOLOGY_NODES_CALCULATE(TOPOLOGY,ERR,ERROR,*999)
+        !Calculate the elements surrounding the nodes in a mesh
+        !IF(SURROUNDING_ELEMENTS_CALCULATE) THEN
         CALL MESH_TOPOLOGY_NODES_SURROUNDING_ELEMENTS_CALCULATE(TOPOLOGY,ERR,ERROR,*999)
-      !Calculate the number of derivatives at each node in a mesh
-      CALL MESH_TOPOLOGY_NODES_DERIVATIVES_CALCULATE(TOPOLOGY,ERR,ERROR,*999)
-      !Calculate the number of versions for each derivative at each node in a mesh
-      CALL MESH_TOPOLOGY_NODES_VERSIONS_CALCULATE(TOPOLOGY,ERR,ERROR,*999)
-      !Calculate the elements surrounding the elements in the mesh
-      !IF(SURROUNDING_ELEMENTS_CALCULATE) THEN
-        CALL MESH_TOPOLOGY_ELEMENTS_ADJACENT_ELEMENTS_CALCULATE(TOPOLOGY,ERR,ERROR,*999)
-        !Calculate the boundary nodes and elements in the mesh
-        CALL MESH_TOPOLOGY_BOUNDARY_CALCULATE(TOPOLOGY,ERR,ERROR,*999)
-      !ENDIF
-      !Calculate the elements surrounding the elements in the mesh
-      CALL MESH_TOPOLOGY_DOFS_CALCULATE(TOPOLOGY,ERR,ERROR,*999)
+        !Calculate the number of derivatives at each node in a mesh
+        CALL MESH_TOPOLOGY_NODES_DERIVATIVES_CALCULATE(TOPOLOGY,ERR,ERROR,*999)
+        !Calculate the number of versions for each derivative at each node in a mesh
+        CALL MESH_TOPOLOGY_NODES_VERSIONS_CALCULATE(TOPOLOGY,ERR,ERROR,*999)
+        !Calculate the elements surrounding the elements in the mesh
+        IF(topology%mesh%SURROUNDING_ELEMENTS_CALCULATE) THEN
+          CALL MESH_TOPOLOGY_ELEMENTS_ADJACENT_ELEMENTS_CALCULATE(TOPOLOGY,ERR,ERROR,*999)
+          !Calculate the boundary nodes and elements in the mesh
+          CALL MESH_TOPOLOGY_BOUNDARY_CALCULATE(TOPOLOGY,ERR,ERROR,*999)
+        ENDIF
+        !Calculate the elements surrounding the elements in the mesh
+        CALL MESH_TOPOLOGY_DOFS_CALCULATE(TOPOLOGY,ERR,ERROR,*999)
+      ELSE
+        CALL FLagError("Topology mesh is not associated",err,error,*999)
+      ENDIF
     ELSE
       CALL FLAG_ERROR("Topology is not associated",ERR,ERROR,*999)
     ENDIF
@@ -6776,7 +6899,7 @@ CONTAINS
   SUBROUTINE MESH_TOPOLOGY_BOUNDARY_CALCULATE(TOPOLOGY,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(MESH_TOPOLOGY_TYPE), POINTER :: TOPOLOGY !<A pointer to the mesh topology to calculate the boundary for
+    TYPE(MeshComponentTopologyType), POINTER :: TOPOLOGY !<A pointer to the mesh topology to calculate the boundary for
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
@@ -6890,7 +7013,7 @@ CONTAINS
   SUBROUTINE MESH_TOPOLOGY_DOFS_CALCULATE(TOPOLOGY,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(MESH_TOPOLOGY_TYPE), POINTER :: TOPOLOGY !<A pointer to the mesh topology to calculate the dofs for
+    TYPE(MeshComponentTopologyType), POINTER :: TOPOLOGY !<A pointer to the mesh topology to calculate the dofs for
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
@@ -6939,7 +7062,7 @@ CONTAINS
   SUBROUTINE MESH_TOPOLOGY_DOFS_FINALISE(TOPOLOGY,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(MESH_TOPOLOGY_TYPE), POINTER :: TOPOLOGY !<A pointer to the mesh topology to finalise the dofs for
+    TYPE(MeshComponentTopologyType), POINTER :: TOPOLOGY !<A pointer to the mesh topology to finalise the dofs for
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
@@ -6969,7 +7092,7 @@ CONTAINS
   SUBROUTINE MESH_TOPOLOGY_DOFS_INITIALISE(TOPOLOGY,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(MESH_TOPOLOGY_TYPE), POINTER :: TOPOLOGY !<A pointer to the mesh topology to initialise the dofs for
+    TYPE(MeshComponentTopologyType), POINTER :: TOPOLOGY !<A pointer to the mesh topology to initialise the dofs for
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
@@ -7004,7 +7127,7 @@ CONTAINS
   SUBROUTINE MESH_TOPOLOGY_ELEMENTS_CREATE_FINISH(ELEMENTS,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(MESH_ELEMENTS_TYPE), POINTER :: ELEMENTS !<A pointer to the mesh elements to finish creating
+    TYPE(MeshComponentElementsType), POINTER :: ELEMENTS !<A pointer to the mesh elements to finish creating
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
@@ -7077,7 +7200,7 @@ CONTAINS
     TYPE(MESH_TYPE), POINTER :: MESH !<A pointer to the mesh to start creating the elements on
     INTEGER(INTG), INTENT(IN) :: MESH_COMPONENT_NUMBER !<The mesh component number
     TYPE(BASIS_TYPE), POINTER :: BASIS !<A pointer to the default basis to use
-    TYPE(MESH_ELEMENTS_TYPE), POINTER :: ELEMENTS !<On return, a pointer to the created mesh elements
+    TYPE(MeshComponentElementsType), POINTER :: ELEMENTS !<On return, a pointer to the created mesh elements
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
@@ -7163,7 +7286,7 @@ CONTAINS
   SUBROUTINE MESH_TOPOLOGY_ELEMENTS_DESTROY(ELEMENTS,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(MESH_ELEMENTS_TYPE), POINTER :: ELEMENTS !<A pointer to the mesh elements to destroy 
+    TYPE(MeshComponentElementsType), POINTER :: ELEMENTS !<A pointer to the mesh elements to destroy 
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
@@ -7227,7 +7350,7 @@ CONTAINS
     !Argument variables
     TYPE(MESH_TYPE), POINTER :: MESH !<A pointer to the mesh to get the elements for
     INTEGER(INTG), INTENT(IN) :: MESH_COMPONENT_NUMBER !<The mesh component number to get the elements for
-    TYPE(MESH_ELEMENTS_TYPE), POINTER :: ELEMENTS !<On return, a pointer to the mesh elements
+    TYPE(MeshComponentElementsType), POINTER :: ELEMENTS !<On return, a pointer to the mesh elements
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
@@ -7307,7 +7430,7 @@ CONTAINS
 
     !Argument variables
     INTEGER(INTG), INTENT(IN) :: GLOBAL_NUMBER !<The global number of the element to get the basis for
-    TYPE(MESH_ELEMENTS_TYPE), POINTER :: ELEMENTS !<A pointer to the elements to get the basis for \todo before number?
+    TYPE(MeshComponentElementsType), POINTER :: ELEMENTS !<A pointer to the elements to get the basis for \todo before number?
     TYPE(BASIS_TYPE), POINTER :: BASIS !<On return, a pointer to the basis to get
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
@@ -7351,7 +7474,7 @@ CONTAINS
 
     !Argument variables
     INTEGER(INTG), INTENT(IN) :: GLOBAL_NUMBER !<The global number of the element to set the basis for
-    TYPE(MESH_ELEMENTS_TYPE), POINTER :: ELEMENTS !<A pointer to the elements to set the basis for \todo before number?
+    TYPE(MeshComponentElementsType), POINTER :: ELEMENTS !<A pointer to the elements to set the basis for \todo before number?
     TYPE(BASIS_TYPE), POINTER :: BASIS !<A pointer to the basis to set
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
@@ -7432,7 +7555,7 @@ CONTAINS
 
     !Argument variables
     INTEGER(INTG), INTENT(IN) :: GLOBAL_NUMBER !<The global number of the element to set the nodes for
-    TYPE(MESH_ELEMENTS_TYPE), POINTER :: ELEMENTS !<A pointer to the elements to set \todo before number?
+    TYPE(MeshComponentElementsType), POINTER :: ELEMENTS !<A pointer to the elements to set \todo before number?
     INTEGER(INTG), INTENT(OUT) :: USER_ELEMENT_NODES(:) !<On return, USER_ELEMENT_NODES(i). USER_ELEMENT_NODES(i) is the i'th user node number for the element
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
@@ -7481,7 +7604,7 @@ CONTAINS
 
     !Argument variables
     INTEGER(INTG), INTENT(IN) :: GLOBAL_NUMBER !<The global number of the element to set the nodes for
-    TYPE(MESH_ELEMENTS_TYPE), POINTER :: ELEMENTS !<A pointer to the elements to set \todo before number?
+    TYPE(MeshComponentElementsType), POINTER :: ELEMENTS !<A pointer to the elements to set \todo before number?
     INTEGER(INTG), INTENT(IN) :: USER_ELEMENT_NODES(:) !<USER_ELEMENT_NODES(i). USER_ELEMENT_NODES(i) is the i'th user node number for the element
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
@@ -7606,7 +7729,7 @@ CONTAINS
 
     !Argument variables
     INTEGER(INTG), INTENT(IN) :: GLOBAL_NUMBER !<The global number of the element to set the nodes for
-    TYPE(MESH_ELEMENTS_TYPE), POINTER :: ELEMENTS !<A pointer to the elements to set \todo before number?
+    TYPE(MeshComponentElementsType), POINTER :: ELEMENTS !<A pointer to the elements to set \todo before number?
     INTEGER(INTG), INTENT(IN) :: VERSION_NUMBER !<The version number of the specified element node to set.
     INTEGER(INTG), INTENT(IN) :: DERIVATIVE_NUMBER !<The derivative number of the specified element node to set.
     INTEGER(INTG), INTENT(IN) :: USER_ELEMENT_NODE_INDEX !< The node index of the specified element node to set a version for.
@@ -7693,7 +7816,7 @@ CONTAINS
   SUBROUTINE MESH_TOPOLOGY_ELEMENTS_ADJACENT_ELEMENTS_CALCULATE(TOPOLOGY,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(MESH_TOPOLOGY_TYPE), POINTER :: TOPOLOGY !<A pointer to the mesh topology to calculate the elements adjacent to elements for
+    TYPE(MeshComponentTopologyType), POINTER :: TOPOLOGY !<A pointer to the mesh topology to calculate the elements adjacent to elements for
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
@@ -7973,7 +8096,7 @@ CONTAINS
   SUBROUTINE MESH_TOPOLOGY_ELEMENTS_FINALISE(ELEMENTS,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(MESH_ELEMENTS_TYPE), POINTER :: ELEMENTS !<A pointer to the mesh topology to finalise the elements for
+    TYPE(MeshComponentElementsType), POINTER :: ELEMENTS !<A pointer to the mesh topology to finalise the elements for
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
@@ -8005,7 +8128,7 @@ CONTAINS
   SUBROUTINE MESH_TOPOLOGY_ELEMENTS_INITIALISE(TOPOLOGY,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(MESH_TOPOLOGY_TYPE), POINTER :: TOPOLOGY !<A pointer to the mesh topology to initialise the elements for
+    TYPE(MeshComponentTopologyType), POINTER :: TOPOLOGY !<A pointer to the mesh topology to initialise the elements for
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
@@ -8042,7 +8165,7 @@ CONTAINS
   SUBROUTINE MESH_TOPOLOGY_DATA_POINTS_INITIALISE(TOPOLOGY,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(MESH_TOPOLOGY_TYPE), POINTER :: TOPOLOGY !<A pointer to the mesh topology to initialise the elements for
+    TYPE(MeshComponentTopologyType), POINTER :: TOPOLOGY !<A pointer to the mesh topology to initialise the elements for
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
@@ -8050,14 +8173,13 @@ CONTAINS
     CALL ENTERS("MESH_TOPOLOGY_DATA_POINTS_INITIALISE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(TOPOLOGY)) THEN
-      IF(ASSOCIATED(TOPOLOGY%DATA_POINTS)) THEN
+      IF(ASSOCIATED(TOPOLOGY%dataPoints)) THEN
         CALL FLAG_ERROR("Mesh already has topology data points associated",ERR,ERROR,*999)
       ELSE
-        ALLOCATE(TOPOLOGY%DATA_POINTS,STAT=ERR)
+        ALLOCATE(TOPOLOGY%dataPoints,STAT=ERR)
         IF(ERR/=0) CALL FLAG_ERROR("Could not allocate topology data points",ERR,ERROR,*999)
-        TOPOLOGY%DATA_POINTS%TOTAL_NUMBER_OF_PROJECTED_DATA=0
-        TOPOLOGY%DATA_POINTS%NUMBER_OF_ELEMENTS=0
-        TOPOLOGY%DATA_POINTS%MESH=>TOPOLOGY%MESH
+        TOPOLOGY%dataPoints%totalNumberOfProjectedData=0
+        TOPOLOGY%dataPoints%mesh=>TOPOLOGY%MESH
       ENDIF
     ELSE
       CALL FLAG_ERROR("Topology is not associated",ERR,ERROR,*999)
@@ -8082,7 +8204,7 @@ CONTAINS
     !Argument variables
     INTEGER(INTG), INTENT(IN) :: GLOBAL_NUMBER !<The global number of the elements to get.
     INTEGER(INTG), INTENT(OUT) :: USER_NUMBER !<The user number of the element to get
-    TYPE(MESH_ELEMENTS_TYPE), POINTER :: ELEMENTS !<On return, a pointer to the elements to get the user number for \todo This should be the first parameter.
+    TYPE(MeshComponentElementsType), POINTER :: ELEMENTS !<On return, a pointer to the elements to get the user number for \todo This should be the first parameter.
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
@@ -8124,7 +8246,7 @@ CONTAINS
     !Argument variables
     INTEGER(INTG), INTENT(IN) :: GLOBAL_NUMBER !<The global number of the elements to get.
     INTEGER(INTG), INTENT(OUT) :: USER_NUMBER !<The user number of the element to get
-    TYPE(MESH_ELEMENTS_TYPE), POINTER :: ELEMENTS !<A pointer to the elements to set the user number for \todo This should be the first parameter.
+    TYPE(MeshComponentElementsType), POINTER :: ELEMENTS !<A pointer to the elements to set the user number for \todo This should be the first parameter.
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
@@ -8167,7 +8289,7 @@ CONTAINS
     !Argument variables
     INTEGER(INTG), INTENT(IN) :: GLOBAL_NUMBER !<The global number of the elements to set.
     INTEGER(INTG), INTENT(IN) :: USER_NUMBER !<The user number of the element to set
-    TYPE(MESH_ELEMENTS_TYPE), POINTER :: ELEMENTS !<A pointer to the elements to set the user number for \todo This should be the first parameter.
+    TYPE(MeshComponentElementsType), POINTER :: ELEMENTS !<A pointer to the elements to set the user number for \todo This should be the first parameter.
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
 
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
@@ -8219,103 +8341,103 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Calculates the data points in the given decomposition topology.
-  SUBROUTINE MESH_TOPOLOGY_DATA_POINTS_CALCULATE_PROJECTION(MESH,DATA_PROJECTION,ERR,ERROR,*)
+  !>Calculates the data points in the given mesh topology.
+  SUBROUTINE Mesh_TopologyDataPointsCalculateProjection(mesh,dataProjection,err,error,*)
   
     !Argument variables
-    TYPE(MESH_TYPE), POINTER :: MESH !<A pointer to the mesh topology to calcualte the data projection for
-    TYPE(DATA_PROJECTION_TYPE), POINTER :: DATA_PROJECTION !A pointer to the data projection
+    TYPE(MESH_TYPE), POINTER :: mesh !<A pointer to the mesh topology to calcualte the data projection for
+    TYPE(DATA_PROJECTION_TYPE), POINTER :: dataProjection !<A pointer to the data projection
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    TYPE(DATA_POINTS_TYPE), POINTER :: DATA_POINTS !<A pointer to the data points
-    TYPE(MESH_DATA_POINTS_TYPE), POINTER :: DATA_POINTS_TOPOLOGY
-    TYPE(DATA_PROJECTION_RESULT_TYPE), POINTER :: DATA_PROJECTION_RESULT
-    TYPE(MESH_ELEMENTS_TYPE), POINTER :: ELEMENTS
-    INTEGER(INTG) :: data_projection_idx,data_point_idx,ELEMENT_NUMBER,element_idx,count_idx,PROJECTION_NUMBER,global_count_idx
+    TYPE(DATA_POINTS_TYPE), POINTER :: dataPoints !<A pointer to the data points
+    TYPE(MeshDataPointsType), POINTER :: dataPointsTopology
+    TYPE(DATA_PROJECTION_RESULT_TYPE), POINTER :: dataProjectionResult
+    TYPE(MeshComponentElementsType), POINTER :: elements
+    INTEGER(INTG) :: dataPointIdx,elementIdx,countIdx,projectionNumber,globalCountIdx,elementNumber
        
-    IF(ASSOCIATED(MESH)) THEN
-      IF(DATA_PROJECTION%DATA_PROJECTION_FINISHED) THEN 
-        DATA_POINTS=>DATA_PROJECTION%DATA_POINTS
-        DATA_POINTS_TOPOLOGY=>MESH%TOPOLOGY(1)%PTR%DATA_POINTS
+    IF(ASSOCIATED(mesh)) THEN
+      IF(dataProjection%DATA_PROJECTION_FINISHED) THEN 
+        dataPoints=>dataProjection%DATA_POINTS
+        !Default the first mesh component topology to contain data points ! \TODO: need to be changed once the data points topology is moved under meshTopologyType.
+        dataPointsTopology=>mesh%TOPOLOGY(1)%PTR%dataPoints
         !Extract the global number of the data projection 
-        PROJECTION_NUMBER=DATA_PROJECTION%GLOBAL_NUMBER
+        projectionNumber=dataProjection%GLOBAL_NUMBER
         !Hard code the first mesh component since element topology is the same for all mesh components
-        ELEMENTS=>MESH%TOPOLOGY(1)%PTR%ELEMENTS
-        ALLOCATE(DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(ELEMENTS%NUMBER_OF_ELEMENTS),STAT=ERR)     
-        DATA_POINTS_TOPOLOGY%NUMBER_OF_ELEMENTS=ELEMENTS%NUMBER_OF_ELEMENTS
-        DO element_idx=1,DATA_POINTS_TOPOLOGY%NUMBER_OF_ELEMENTS
-          DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(element_idx)%ELEMENT_NUMBER=ELEMENTS%ELEMENTS(element_idx)%GLOBAL_NUMBER
+        !\TODO: need to be changed once the elements topology is moved under meshTopologyType.
+        elements=>mesh%TOPOLOGY(1)%PTR%ELEMENTS
+        ALLOCATE(dataPointsTopology%elementDataPoint(elements%NUMBER_OF_ELEMENTS),STAT=ERR)     
+        DO elementIdx=1,elements%NUMBER_OF_ELEMENTS
+          dataPointsTopology%elementDataPoint(elementIdx)%elementNumber=elements%ELEMENTS(elementIdx)%GLOBAL_NUMBER
+          dataPointsTopology%elementDataPoint(elementIdx)%numberOfProjectedData=0
         ENDDO        
         !Calculate number of projected data points on an element
-        DO data_point_idx=1,DATA_POINTS%NUMBER_OF_DATA_POINTS
-          DATA_PROJECTION_RESULT=>DATA_PROJECTION%DATA_PROJECTION_RESULTS(data_point_idx)
-          ELEMENT_NUMBER=DATA_PROJECTION_RESULT%ELEMENT_NUMBER
-          DO element_idx=1,DATA_POINTS_TOPOLOGY%NUMBER_OF_ELEMENTS
-            IF(DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(element_idx)%ELEMENT_NUMBER==ELEMENT_NUMBER) THEN
-              DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(element_idx)%NUMBER_OF_PROJECTED_DATA= &
-                & DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(element_idx)%NUMBER_OF_PROJECTED_DATA+1;
+        DO dataPointIdx=1,dataPoints%NUMBER_OF_DATA_POINTS
+          dataProjectionResult=>dataProjection%DATA_PROJECTION_RESULTS(dataPointIdx)
+          elementNumber=dataProjectionResult%ELEMENT_NUMBER
+          DO elementIdx=1,elements%NUMBER_OF_ELEMENTS
+            IF(dataPointsTopology%elementDataPoint(elementIdx)%elementNumber==elementNumber) THEN
+              dataPointsTopology%elementDataPoint(elementIdx)%numberOfProjectedData= &
+                & dataPointsTopology%elementDataPoint(elementIdx)%numberOfProjectedData+1;
             ENDIF
-          ENDDO !element_idx
+          ENDDO !elementIdx
         ENDDO       
         !Allocate memory to store data indices and initialise them to be zero   
-        DO element_idx=1,DATA_POINTS_TOPOLOGY%NUMBER_OF_ELEMENTS
-          ALLOCATE(DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(element_idx)%DATA_INDICES(DATA_POINTS_TOPOLOGY% &
-            & ELEMENT_DATA_POINTS(element_idx)%NUMBER_OF_PROJECTED_DATA),STAT=ERR)
-          DO count_idx=1,DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(element_idx)%NUMBER_OF_PROJECTED_DATA
-            DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(element_idx)%DATA_INDICES(count_idx)%USER_NUMBER=0
-            DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(element_idx)%DATA_INDICES(count_idx)%GLOBAL_NUMBER=0
+        DO elementIdx=1,elements%NUMBER_OF_ELEMENTS
+          ALLOCATE(dataPointsTopology%elementDataPoint(elementIdx)%dataIndices(dataPointsTopology% &
+            & elementDataPoint(elementIdx)%numberOfProjectedData),STAT=ERR)
+          DO countIdx=1,dataPointsTopology%elementDataPoint(elementIdx)%numberOfProjectedData
+            dataPointsTopology%elementDataPoint(elementIdx)%dataIndices(countIdx)%userNumber=0
+            dataPointsTopology%elementDataPoint(elementIdx)%dataIndices(countIdx)%globalNumber=0
           ENDDO
         ENDDO     
-        !Record the indecies of the data that projected on the elements 
-        global_count_idx=0
-        DO data_point_idx=1,DATA_POINTS%NUMBER_OF_DATA_POINTS
-          !The last projection is hard-coded to be the interface mesh projection
-          DATA_PROJECTION_RESULT=>DATA_PROJECTION%DATA_PROJECTION_RESULTS(data_point_idx)
-          ELEMENT_NUMBER=DATA_PROJECTION_RESULT%ELEMENT_NUMBER
-          DO element_idx=1,DATA_POINTS_TOPOLOGY%NUMBER_OF_ELEMENTS
-            count_idx=1         
-            IF(DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(element_idx)%ELEMENT_NUMBER==ELEMENT_NUMBER) THEN
-              global_count_idx=global_count_idx+1
+        !Record the indices of the data that projected on the elements 
+        globalCountIdx=0
+        DO dataPointIdx=1,dataPoints%NUMBER_OF_DATA_POINTS 
+          dataProjectionResult=>dataProjection%DATA_PROJECTION_RESULTS(dataPointIdx)
+          elementNumber=dataProjectionResult%ELEMENT_NUMBER
+          DO elementIdx=1,elements%NUMBER_OF_ELEMENTS
+            countIdx=1         
+            IF(dataPointsTopology%elementDataPoint(elementIdx)%elementNumber==elementNumber) THEN
+              globalCountIdx=globalCountIdx+1
               !Find the next data point index in this element
-              DO WHILE(DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(element_idx)%DATA_INDICES(count_idx)%GLOBAL_NUMBER/=0)
-                count_idx=count_idx+1
+              DO WHILE(dataPointsTopology%elementDataPoint(elementIdx)%dataIndices(countIdx)%globalNumber/=0)
+                countIdx=countIdx+1
               ENDDO
-              DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(element_idx)%DATA_INDICES(count_idx)%USER_NUMBER=data_point_idx
-              DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(element_idx)%DATA_INDICES(count_idx)%GLOBAL_NUMBER=global_count_idx
-              DATA_POINTS_TOPOLOGY%TOTAL_NUMBER_OF_PROJECTED_DATA=DATA_POINTS_TOPOLOGY%TOTAL_NUMBER_OF_PROJECTED_DATA+1
+              dataPointsTopology%elementDataPoint(elementIdx)%dataIndices(countIdx)%userNumber=dataPointIdx
+              dataPointsTopology%elementDataPoint(elementIdx)%dataIndices(countIdx)%globalNumber=dataPointIdx!globalCountIdx (used this if only projected data are taken into account)
+              dataPointsTopology%totalNumberOfProjectedData=dataPointsTopology%totalNumberOfProjectedData+1
             ENDIF             
-          ENDDO !element_idx
-        ENDDO !data_point_idx
+          ENDDO !elementIdx
+        ENDDO !dataPointIdx
         !Allocate memory to store total data indices in ascending order and element map
-        ALLOCATE(DATA_POINTS_TOPOLOGY%DATA_POINTS(DATA_POINTS_TOPOLOGY%TOTAL_NUMBER_OF_PROJECTED_DATA),STAT=ERR)
-        !Record the global number, user number and corresponding element for each data point
+        ALLOCATE(dataPointsTopology%dataPoints(dataPointsTopology%totalNumberOfProjectedData),STAT=ERR)
         !The global number for the data points will be looping through elements.
-        count_idx=1  
-        DO element_idx=1,DATA_POINTS_TOPOLOGY%NUMBER_OF_ELEMENTS
-          DO data_point_idx=1,DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(element_idx)%NUMBER_OF_PROJECTED_DATA
-            DATA_POINTS_TOPOLOGY%DATA_POINTS(count_idx)%USER_NUMBER=DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(element_idx)% &
-              & DATA_INDICES(data_point_idx)%USER_NUMBER
-             DATA_POINTS_TOPOLOGY%DATA_POINTS(count_idx)%GLOBAL_NUMBER=DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(element_idx)% &
-              & DATA_INDICES(data_point_idx)%GLOBAL_NUMBER
-             DATA_POINTS_TOPOLOGY%DATA_POINTS(count_idx)%ELEMENT_NUMBER=DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(element_idx)% &
-               & ELEMENT_NUMBER
-             count_idx=count_idx+1
-          ENDDO !data_point_idx
-        ENDDO !element_idx                      
+        countIdx=1  
+        DO elementIdx=1,elements%NUMBER_OF_ELEMENTS
+          DO dataPointIdx=1,dataPointsTopology%elementDataPoint(elementIdx)%numberOfProjectedData
+            dataPointsTopology%dataPoints(countIdx)%userNumber=dataPointsTopology%elementDataPoint(elementIdx)% &
+              & dataIndices(dataPointIdx)%userNumber
+             dataPointsTopology%dataPoints(countIdx)%globalNumber=dataPointsTopology%elementDataPoint(elementIdx)% &
+              & dataIndices(dataPointIdx)%globalNumber
+             dataPointsTopology%dataPoints(countIdx)%elementNumber=dataPointsTopology%elementDataPoint(elementIdx)% &
+               & elementNumber
+             countIdx=countIdx+1
+          ENDDO !dataPointIdx
+        ENDDO !elementIdx                      
       ELSE
-        CALL FLAG_ERROR("Data projection is not finished.",ERR,ERROR,*999)
+        CALL FLAG_ERROR("Data projection is not finished.",err,error,*999)
       ENDIF     
     ELSE
-      CALL FLAG_ERROR("Mesh is not associated.",ERR,ERROR,*999)
+      CALL FLAG_ERROR("Mesh is not associated.",err,error,*999)
     ENDIF
     
-  CALL EXITS("MESH_TOPOLOGY_DATA_POINTS_CALCULATE_PROJECTION")
+  CALL EXITS("Mesh_TopologyDataPointsCalculateProjection")
     RETURN
-999 CALL ERRORS("MESH_TOPOLOGY_DATA_POINTS_CALCULATE_PROJECTION",ERR,ERROR)
-    CALL EXITS("MESH_TOPOLOGY_DATA_POINTS_CALCULATE_PROJECTION")
+999 CALL ERRORS("Mesh_TopologyDataPointsCalculateProjection",err,error)
+    CALL EXITS("Mesh_TopologyDataPointsCalculateProjection")
     RETURN 1
-  END SUBROUTINE MESH_TOPOLOGY_DATA_POINTS_CALCULATE_PROJECTION
+  END SUBROUTINE Mesh_TopologyDataPointsCalculateProjection
 
   !
   !================================================================================================================================
@@ -8383,7 +8505,7 @@ CONTAINS
           NULLIFY(MESH%TOPOLOGY(component_idx)%PTR%ELEMENTS)
           NULLIFY(MESH%TOPOLOGY(component_idx)%PTR%NODES)
           NULLIFY(MESH%TOPOLOGY(component_idx)%PTR%DOFS)
-          NULLIFY(MESH%TOPOLOGY(component_idx)%PTR%DATA_POINTS)
+          NULLIFY(MESH%TOPOLOGY(component_idx)%PTR%dataPoints)
           !Initialise the topology components
           CALL MESH_TOPOLOGY_ELEMENTS_INITIALISE(MESH%TOPOLOGY(component_idx)%PTR,ERR,ERROR,*999)
           CALL MESH_TOPOLOGY_NODES_INITIALISE(MESH%TOPOLOGY(component_idx)%PTR,ERR,ERROR,*999)
@@ -8419,8 +8541,8 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    TYPE(MESH_ELEMENTS_TYPE), POINTER :: MESH_ELEMENTS
-    TYPE(MESH_TOPOLOGY_TYPE), POINTER :: MESH_TOPOLOGY
+    TYPE(MeshComponentElementsType), POINTER :: MESH_ELEMENTS
+    TYPE(MeshComponentTopologyType), POINTER :: MESH_TOPOLOGY
     TYPE(TREE_NODE_TYPE), POINTER :: TREE_NODE
     TYPE(VARYING_STRING) :: LOCAL_ERROR
     
@@ -8492,7 +8614,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(MESH_NODES_TYPE), POINTER :: MESH_NODES
-    TYPE(MESH_TOPOLOGY_TYPE), POINTER :: MESH_TOPOLOGY
+    TYPE(MeshComponentTopologyType), POINTER :: MESH_TOPOLOGY
     TYPE(TREE_NODE_TYPE), POINTER :: TREE_NODE
     TYPE(VARYING_STRING) :: LOCAL_ERROR
     
@@ -8614,7 +8736,7 @@ CONTAINS
   SUBROUTINE MESH_TOPOLOGY_NODES_CALCULATE(TOPOLOGY,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(MESH_TOPOLOGY_TYPE), POINTER :: TOPOLOGY !<A pointer to the mesh topology
+    TYPE(MeshComponentTopologyType), POINTER :: TOPOLOGY !<A pointer to the mesh topology
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
@@ -8623,7 +8745,7 @@ CONTAINS
     TYPE(BASIS_TYPE), POINTER :: BASIS
     TYPE(INTERFACE_TYPE), POINTER :: INTERFACE
     TYPE(MESH_TYPE), POINTER :: MESH
-    TYPE(MESH_ELEMENTS_TYPE), POINTER :: ELEMENTS
+    TYPE(MeshComponentElementsType), POINTER :: ELEMENTS
     TYPE(MESH_NODES_TYPE), POINTER :: MESHNODES
     TYPE(NODES_TYPE), POINTER :: NODES
     TYPE(REGION_TYPE), POINTER :: REGION
@@ -8813,7 +8935,7 @@ CONTAINS
   SUBROUTINE MESH_TOPOLOGY_NODES_DERIVATIVES_CALCULATE(TOPOLOGY,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(MESH_TOPOLOGY_TYPE), POINTER :: TOPOLOGY !<A pointer to the mesh topology to calculate the derivates at each node for
+    TYPE(MeshComponentTopologyType), POINTER :: TOPOLOGY !<A pointer to the mesh topology to calculate the derivates at each node for
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
@@ -8821,7 +8943,7 @@ CONTAINS
     INTEGER(INTG), ALLOCATABLE :: DERIVATIVES(:)
     LOGICAL :: FOUND
     TYPE(LIST_TYPE), POINTER :: NODE_DERIVATIVE_LIST
-    TYPE(MESH_ELEMENTS_TYPE), POINTER :: ELEMENTS
+    TYPE(MeshComponentElementsType), POINTER :: ELEMENTS
     TYPE(MESH_NODES_TYPE), POINTER :: NODES
     TYPE(BASIS_TYPE), POINTER :: BASIS
     TYPE(VARYING_STRING) :: LOCAL_ERROR
@@ -8935,14 +9057,14 @@ CONTAINS
   SUBROUTINE MESH_TOPOLOGY_NODES_VERSIONS_CALCULATE(TOPOLOGY,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(MESH_TOPOLOGY_TYPE), POINTER :: TOPOLOGY !<A pointer to the mesh topology to calculate the versions at each node for
+    TYPE(MeshComponentTopologyType), POINTER :: TOPOLOGY !<A pointer to the mesh topology to calculate the versions at each node for
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     INTEGER(INTG) :: NUMBER_OF_VERSIONS,ne,nn,derivative_idx,node_idx,version_idx
     INTEGER(INTG), ALLOCATABLE :: VERSIONS(:)
     TYPE(LIST_PTR_TYPE), POINTER :: NODE_VERSION_LIST(:,:)
-    TYPE(MESH_ELEMENTS_TYPE), POINTER :: ELEMENTS
+    TYPE(MeshComponentElementsType), POINTER :: ELEMENTS
     TYPE(MESH_NODES_TYPE), POINTER :: NODES
     TYPE(BASIS_TYPE), POINTER :: BASIS
     
@@ -9050,7 +9172,7 @@ CONTAINS
   SUBROUTINE MESH_TOPOLOGY_NODES_SURROUNDING_ELEMENTS_CALCULATE(TOPOLOGY,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(MESH_TOPOLOGY_TYPE), POINTER :: TOPOLOGY !<A pointer to the mesh topology to calculate the elements surrounding each node for
+    TYPE(MeshComponentTopologyType), POINTER :: TOPOLOGY !<A pointer to the mesh topology to calculate the elements surrounding each node for
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
@@ -9134,7 +9256,7 @@ CONTAINS
   SUBROUTINE MESH_TOPOLOGY_NODES_FINALISE(TOPOLOGY,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(MESH_TOPOLOGY_TYPE), POINTER :: TOPOLOGY !<A pointer to the mesh topology to finalise the nodes for
+    TYPE(MeshComponentTopologyType), POINTER :: TOPOLOGY !<A pointer to the mesh topology to finalise the nodes for
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
@@ -9170,7 +9292,7 @@ CONTAINS
   SUBROUTINE MESH_TOPOLOGY_NODES_INITIALISE(TOPOLOGY,ERR,ERROR,*)
 
     !Argument variables
-    TYPE(MESH_TOPOLOGY_TYPE), POINTER :: TOPOLOGY !<A pointer to the mesh topology to initialise the nodes for
+    TYPE(MeshComponentTopologyType), POINTER :: TOPOLOGY !<A pointer to the mesh topology to initialise the nodes for
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
@@ -9461,7 +9583,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables`
     TYPE(MESH_TYPE), POINTER :: MESH
-    TYPE(MESH_TOPOLOGY_TYPE), POINTER :: MESH_TOPOLOGY
+    TYPE(MeshComponentTopologyType), POINTER :: MESH_TOPOLOGY
     TYPE(VARYING_STRING) :: LOCAL_ERROR
     INTEGER(INTG) :: GLOBAL_NODE_NUMBER
     TYPE(TREE_NODE_TYPE), POINTER :: TREE_NODE
