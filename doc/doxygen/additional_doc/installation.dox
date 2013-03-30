@@ -19,6 +19,7 @@ They will be used during the installation process.
   - openmotif-devel
   - libXmu-devel
   - tcsh
+  - loibibverbs-devel ( (Optional: required if you plan to use OpenMPI as the MPI library)
 - For Ubuntu
   - gcc
   - g++
@@ -35,6 +36,8 @@ They will be used during the installation process.
   - libmotif-dev
   - libxmu-dev
   - csh
+  - libibverbs-dev (Optional: required if you plan to use OpenMPI as the MPI library)
+
 
 If you don't have 
 - GNU Fortran (GCC) 4.4 or 4.6 or later (you may install it later during the OpenCMISSExtras compiler build)
