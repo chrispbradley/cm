@@ -3,7 +3,7 @@
 \section before_start Before Start
 Before the installation, you need to check if the following libraries or tools are installed, preferably to the latest or recent versions. 
 They will be used during the installation process.
-- For Fedora
+- For Fedora, Red Hat, Scientific Linux etc. 
   - gcc
   - gcc-c++
   - gcc-gfortran (Optional: to compile the libraries and OpenCMISS with gfortran, Can be installed later as a tool)
@@ -19,8 +19,8 @@ They will be used during the installation process.
   - openmotif-devel
   - libXmu-devel
   - tcsh
-  - loibibverbs-devel ( (Optional: required if you plan to use OpenMPI as the MPI library)
-- For Ubuntu
+  - libibverbs-devel ( (Optional: required if you plan to use OpenMPI as the MPI library)
+- For Ubuntu, Mint etc.
   - gcc
   - g++
   - gfortran (Optional: to compile the libraries and OpenCMISS with gfortran, Can be installed later as a tool)
@@ -45,6 +45,8 @@ If you don't have
 - git 
 installed or you do not have the right version, you can download and build them as part of the installation steps (See \ref step6 "Step 6"). To do this, you need to set the USE_OPENCMISS_xxx environment variables to true in \ref step4_2 "Step 4.2".
 
+Note for Scientific Linux you will need to set USE_OPENCMISS_CMAKE to true as the system version of CMake is too old.
+
 You may also like to install additional packages for your Linux distribution to save compiling libraries later. 
 - For Fedora you can install
   - blas-devel and blas-static
@@ -66,6 +68,7 @@ You may also like to install additional packages for your Linux distribution to 
     - netcdf-cxx4-openmpi-devel and netcdf-cxx4-openmpi-static
     - netcdf-fortran-openmpi-devel and netcdf-fortran-openmpi-static
 - For Ubuntu you can install
+  - libatlas-base-dev 
   - libblas-dev
   - liblapack-dev
   - libomniorb4-dev and omniidl (omniidl4 for Ubuntu 10.04 LTS)
