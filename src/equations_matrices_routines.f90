@@ -556,27 +556,24 @@ CONTAINS
   !
 
   !>Calculate the positions in the equations matrices of the element matrix. Old CMISS name MELGE.
-  !>Takes input of a row variable element number and a column variable element number
-  SUBROUTINE EQUATIONS_MATRICES_ELEMENT_MATRIX_CALCULATE(ELEMENT_MATRIX,UPDATE_MATRIX,ROW_ELEMENT_NUMBERS, &
-      & COL_ELEMENT_NUMBERS,ROWS_FIELD_VARIABLE,COLS_FIELD_VARIABLE,ERR,ERROR,*)
+  SUBROUTINE EQUATIONS_MATRICES_ELEMENT_MATRIX_CALCULATE(ELEMENT_MATRIX,UPDATE_MATRIX,ROW_ELEMENT_NUMBERS,COLUMN_ELEMENT_NUMBERS, &
+    & ROWS_FIELD_VARIABLE,COLS_FIELD_VARIABLE,ERR,ERROR,*)
 
     !Argument variables
     TYPE(ELEMENT_MATRIX_TYPE) :: ELEMENT_MATRIX !<The element matrix to calculate
     LOGICAL :: UPDATE_MATRIX !<Is .TRUE. if the element matrix is to be updated, .FALSE. if not.
     INTEGER(INTG), INTENT(IN) :: ROW_ELEMENT_NUMBERS(:) !<The row element number to calculate
-    INTEGER(INTG), INTENT(IN) :: COL_ELEMENT_NUMBERS(:) !<The column element number to calculate
+    INTEGER(INTG), INTENT(IN) :: COLUMN_ELEMENT_NUMBERS(:) !<The column element number to calculate
     TYPE(FIELD_VARIABLE_TYPE), POINTER :: ROWS_FIELD_VARIABLE !<A pointer to the field variable associated with the rows
     TYPE(FIELD_VARIABLE_TYPE), POINTER :: COLS_FIELD_VARIABLE !<A pointer to the field variable associated with the columns
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    INTEGER(INTG) :: component_idx,derivative,derivative_idx,global_ny,local_ny,node,node_idx,version,gauss_point_idx,xi_idx, &
-      & element_idx,data_point_idx
-    INTEGER(INTG) :: TOTAL_NUMBER_OF_GAUSS_POINTS,NUMBER_OF_ROW_ELEMENTS,NUMBER_OF_COL_ELEMENTS,ROW_ELEMENT_NUMBER, &
-      & COLUMN_ELEMENT_NUMBER,DATA_POINT_LOCAL_NUMBER
+    INTEGER(INTG) :: component_idx,derivative,derivative_idx,global_ny,local_ny,node,node_idx,version,dataPointIdx, &
+      & localDataPointNumber,elementIdx,rowElementNumber,colElementNumber
     TYPE(BASIS_TYPE), POINTER :: BASIS
     TYPE(DOMAIN_ELEMENTS_TYPE), POINTER :: ELEMENTS_TOPOLOGY
-    TYPE(DOMAIN_DATA_POINTS_TYPE), POINTER :: DATA_POINTS_TOPOLOGY
+    TYPE(DecompositionDataPointsType), POINTER :: decompositionData
     TYPE(VARYING_STRING) :: LOCAL_ERROR
 
     CALL ENTERS("EQUATIONS_MATRICES_ELEMENT_MATRIX_CALCULATE",ERR,ERROR,*999)
@@ -590,77 +587,77 @@ CONTAINS
             !Row and columns variable is the same.
             DO component_idx=1,ROWS_FIELD_VARIABLE%NUMBER_OF_COMPONENTS
               ELEMENTS_TOPOLOGY=>ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%ELEMENTS
-              NUMBER_OF_ROW_ELEMENTS=SIZE(ROW_ELEMENT_NUMBERS,1)
-              DO element_idx=1,NUMBER_OF_ROW_ELEMENTS
-              ROW_ELEMENT_NUMBER=ROW_ELEMENT_NUMBERS(element_idx)
-              IF(ROW_ELEMENT_NUMBER>=1.AND.ROW_ELEMENT_NUMBER<=ELEMENTS_TOPOLOGY%TOTAL_NUMBER_OF_ELEMENTS) THEN
-                SELECT CASE(ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%INTERPOLATION_TYPE)
-                CASE(FIELD_CONSTANT_INTERPOLATION)
-                  local_ny=ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%CONSTANT_PARAM2DOF_MAP
-                  global_ny=ROWS_FIELD_VARIABLE%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_ny)
-                  ELEMENT_MATRIX%NUMBER_OF_ROWS=ELEMENT_MATRIX%NUMBER_OF_ROWS+1
-                  ELEMENT_MATRIX%NUMBER_OF_COLUMNS=ELEMENT_MATRIX%NUMBER_OF_COLUMNS+1
-                  ELEMENT_MATRIX%ROW_DOFS(ELEMENT_MATRIX%NUMBER_OF_ROWS)=local_ny
-                  ELEMENT_MATRIX%COLUMN_DOFS(ELEMENT_MATRIX%NUMBER_OF_COLUMNS)=global_ny
-                CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
-                  local_ny=ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
-                    & ELEMENTS(ROW_ELEMENT_NUMBER)
-                  global_ny=ROWS_FIELD_VARIABLE%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_ny)
-                  ELEMENT_MATRIX%NUMBER_OF_ROWS=ELEMENT_MATRIX%NUMBER_OF_ROWS+1
-                  ELEMENT_MATRIX%NUMBER_OF_COLUMNS=ELEMENT_MATRIX%NUMBER_OF_COLUMNS+1
-                  ELEMENT_MATRIX%ROW_DOFS(ELEMENT_MATRIX%NUMBER_OF_ROWS)=local_ny
-                  ELEMENT_MATRIX%COLUMN_DOFS(ELEMENT_MATRIX%NUMBER_OF_COLUMNS)=global_ny
-                CASE(FIELD_NODE_BASED_INTERPOLATION)
-                  BASIS=>ELEMENTS_TOPOLOGY%ELEMENTS(ROW_ELEMENT_NUMBER)%BASIS
-                  DO node_idx=1,BASIS%NUMBER_OF_NODES
-                    node=ELEMENTS_TOPOLOGY%ELEMENTS(ROW_ELEMENT_NUMBER)%ELEMENT_NODES(node_idx)
-                    DO derivative_idx=1,BASIS%NUMBER_OF_DERIVATIVES(node_idx)
-                      derivative=ELEMENTS_TOPOLOGY%ELEMENTS(ROW_ELEMENT_NUMBER)%ELEMENT_DERIVATIVES(1,derivative_idx,node_idx)
-                      version=ELEMENTS_TOPOLOGY%ELEMENTS(ROW_ELEMENT_NUMBER)%ELEMENT_DERIVATIVES(2,derivative_idx,node_idx)
-                      local_ny=ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node)% &
-                        & DERIVATIVES(derivative)%VERSIONS(version)
+              DO elementIdx=1,SIZE(ROW_ELEMENT_NUMBERS)
+                rowElementNumber=ROW_ELEMENT_NUMBERS(elementIdx)
+                IF(rowElementNumber>=1.AND.rowElementNumber<=ELEMENTS_TOPOLOGY%TOTAL_NUMBER_OF_ELEMENTS) THEN
+                  SELECT CASE(ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%INTERPOLATION_TYPE)
+                  CASE(FIELD_CONSTANT_INTERPOLATION)
+                    local_ny=ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%CONSTANT_PARAM2DOF_MAP
+                    global_ny=ROWS_FIELD_VARIABLE%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_ny)
+                    ELEMENT_MATRIX%NUMBER_OF_ROWS=ELEMENT_MATRIX%NUMBER_OF_ROWS+1
+                    ELEMENT_MATRIX%NUMBER_OF_COLUMNS=ELEMENT_MATRIX%NUMBER_OF_COLUMNS+1
+                    ELEMENT_MATRIX%ROW_DOFS(ELEMENT_MATRIX%NUMBER_OF_ROWS)=local_ny
+                    ELEMENT_MATRIX%COLUMN_DOFS(ELEMENT_MATRIX%NUMBER_OF_COLUMNS)=global_ny
+                  CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
+                    local_ny=ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+                      & ELEMENTS(rowElementNumber)
+                    global_ny=ROWS_FIELD_VARIABLE%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_ny)
+                    ELEMENT_MATRIX%NUMBER_OF_ROWS=ELEMENT_MATRIX%NUMBER_OF_ROWS+1
+                    ELEMENT_MATRIX%NUMBER_OF_COLUMNS=ELEMENT_MATRIX%NUMBER_OF_COLUMNS+1
+                    ELEMENT_MATRIX%ROW_DOFS(ELEMENT_MATRIX%NUMBER_OF_ROWS)=local_ny
+                    ELEMENT_MATRIX%COLUMN_DOFS(ELEMENT_MATRIX%NUMBER_OF_COLUMNS)=global_ny
+                  CASE(FIELD_NODE_BASED_INTERPOLATION)
+                    BASIS=>ELEMENTS_TOPOLOGY%ELEMENTS(rowElementNumber)%BASIS
+                    DO node_idx=1,BASIS%NUMBER_OF_NODES
+                      node=ELEMENTS_TOPOLOGY%ELEMENTS(rowElementNumber)%ELEMENT_NODES(node_idx)
+                      DO derivative_idx=1,BASIS%NUMBER_OF_DERIVATIVES(node_idx)
+                        derivative=ELEMENTS_TOPOLOGY%ELEMENTS(rowElementNumber)%ELEMENT_DERIVATIVES(1,derivative_idx,node_idx)
+                        version=ELEMENTS_TOPOLOGY%ELEMENTS(rowElementNumber)%ELEMENT_DERIVATIVES(2,derivative_idx,node_idx)
+                        local_ny=ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node)% &
+                          & DERIVATIVES(derivative)%VERSIONS(version)
+                        global_ny=ROWS_FIELD_VARIABLE%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_ny)
+                        ELEMENT_MATRIX%NUMBER_OF_ROWS=ELEMENT_MATRIX%NUMBER_OF_ROWS+1
+                        ELEMENT_MATRIX%NUMBER_OF_COLUMNS=ELEMENT_MATRIX%NUMBER_OF_COLUMNS+1
+                        ELEMENT_MATRIX%ROW_DOFS(ELEMENT_MATRIX%NUMBER_OF_ROWS)=local_ny
+                        ELEMENT_MATRIX%COLUMN_DOFS(ELEMENT_MATRIX%NUMBER_OF_COLUMNS)=global_ny
+                      ENDDO !derivative_idx
+                    ENDDO !node_idx
+                  CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
+                    CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
+                  CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
+                    CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
+                  CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
+                    decompositionData=>ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%DECOMPOSITION%TOPOLOGY%dataPoints
+                    DO dataPointIdx=1,decompositionData%elementDataPoint(colElementNumber)%numberOfProjectedData
+                      localDataPointNumber=decompositionData%elementDataPoint(colElementNumber)% &
+                        & dataIndices(dataPointIdx)%localNumber
+                      local_ny=ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%DATA_POINT_PARAM2DOF_MAP% &
+                        & DATA_POINTS(localDataPointNumber)
                       global_ny=ROWS_FIELD_VARIABLE%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_ny)
                       ELEMENT_MATRIX%NUMBER_OF_ROWS=ELEMENT_MATRIX%NUMBER_OF_ROWS+1
                       ELEMENT_MATRIX%NUMBER_OF_COLUMNS=ELEMENT_MATRIX%NUMBER_OF_COLUMNS+1
                       ELEMENT_MATRIX%ROW_DOFS(ELEMENT_MATRIX%NUMBER_OF_ROWS)=local_ny
                       ELEMENT_MATRIX%COLUMN_DOFS(ELEMENT_MATRIX%NUMBER_OF_COLUMNS)=global_ny
-                    ENDDO !derivative_idx
-                  ENDDO !node_idx
-                CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
-                  CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
-                CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
-                  CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
-                CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
-                  DATA_POINTS_TOPOLOGY=>COLS_FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%DATA_POINTS
-                  DO data_point_idx=1,DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(ROW_ELEMENT_NUMBER)%NUMBER_OF_PROJECTED_DATA
-                    DATA_POINT_LOCAL_NUMBER=DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(ROW_ELEMENT_NUMBER)% &
-                      & DATA_INDICES(data_point_idx)%LOCAL_NUMBER
-                    local_ny=COLS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%DATA_POINT_PARAM2DOF_MAP% &
-                      & DATA_POINTS(DATA_POINT_LOCAL_NUMBER)
-                    global_ny=COLS_FIELD_VARIABLE%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_ny)
-                    ELEMENT_MATRIX%NUMBER_OF_ROWS=ELEMENT_MATRIX%NUMBER_OF_ROWS+1
-                    ELEMENT_MATRIX%NUMBER_OF_COLUMNS=ELEMENT_MATRIX%NUMBER_OF_COLUMNS+1
-                    ELEMENT_MATRIX%ROW_DOFS(ELEMENT_MATRIX%NUMBER_OF_ROWS)=local_ny
-                    ELEMENT_MATRIX%COLUMN_DOFS(ELEMENT_MATRIX%NUMBER_OF_COLUMNS)=global_ny
-                  ENDDO !data_point_idx                  
-                CASE DEFAULT
-                  LOCAL_ERROR="The interpolation type of "// &
-                    & TRIM(NUMBER_TO_VSTRING(ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%INTERPOLATION_TYPE,"*",ERR,ERROR))// &
-                    & " is invalid for component number "// &
-                    & TRIM(NUMBER_TO_VSTRING(component_idx,"*",ERR,ERROR))// &
+                    ENDDO
+                  CASE DEFAULT
+                    LOCAL_ERROR="The interpolation type of "// &
+                      & TRIM(NUMBER_TO_VSTRING(ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%INTERPOLATION_TYPE,"*",ERR,ERROR))// &
+                      & " is invalid for component number "// &
+                      & TRIM(NUMBER_TO_VSTRING(component_idx,"*",ERR,ERROR))// &
+                      & " of rows field variable type "// &
+                      & TRIM(NUMBER_TO_VSTRING(ROWS_FIELD_VARIABLE%VARIABLE_TYPE,"*",ERR,ERROR))//"."
+                    CALL FLAG_ERROR(LOCAL_ERROR,ERR,ERROR,*999)          
+                  END SELECT
+                ELSE
+                  LOCAL_ERROR="Element number "//TRIM(NUMBER_TO_VSTRING(rowElementNumber,"*",ERR,ERROR))// &
+                    & " is invalid for component number "//TRIM(NUMBER_TO_VSTRING(component_idx,"*",ERR,ERROR))// &
                     & " of rows field variable type "// &
-                    & TRIM(NUMBER_TO_VSTRING(ROWS_FIELD_VARIABLE%VARIABLE_TYPE,"*",ERR,ERROR))//"."
-                  CALL FLAG_ERROR(LOCAL_ERROR,ERR,ERROR,*999)          
-                END SELECT
-              ELSE
-                LOCAL_ERROR="Element number "//TRIM(NUMBER_TO_VSTRING(ROW_ELEMENT_NUMBER,"*",ERR,ERROR))// &
-                  & " is invalid for component number "//TRIM(NUMBER_TO_VSTRING(component_idx,"*",ERR,ERROR))// &
-                  & " of rows field variable type "// &
-                  & TRIM(NUMBER_TO_VSTRING(ROWS_FIELD_VARIABLE%VARIABLE_TYPE,"*",ERR,ERROR))// &
-                  & ". The element number must be between 1 and "// &
-                  & TRIM(NUMBER_TO_VSTRING(ELEMENTS_TOPOLOGY%TOTAL_NUMBER_OF_ELEMENTS,"*",ERR,ERROR))//"."
-                CALL FLAG_ERROR(LOCAL_ERROR,ERR,ERROR,*999)
-              ENDIF
+                    & TRIM(NUMBER_TO_VSTRING(ROWS_FIELD_VARIABLE%VARIABLE_TYPE,"*",ERR,ERROR))// &
+                    & ". The element number must be between 1 and "// &
+                    & TRIM(NUMBER_TO_VSTRING(ELEMENTS_TOPOLOGY%TOTAL_NUMBER_OF_ELEMENTS,"*",ERR,ERROR))//"."
+                  CALL FLAG_ERROR(LOCAL_ERROR,ERR,ERROR,*999)
+                ENDIF
+              ENDDO !elementIdx
             ENDDO !component_idx
             ENDDO !element_idx
           ELSE
@@ -668,144 +665,134 @@ CONTAINS
             !Row mapping
             DO component_idx=1,ROWS_FIELD_VARIABLE%NUMBER_OF_COMPONENTS
               ELEMENTS_TOPOLOGY=>ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%ELEMENTS
-              NUMBER_OF_ROW_ELEMENTS=SIZE(ROW_ELEMENT_NUMBERS,1)
-              DO element_idx=1,NUMBER_OF_ROW_ELEMENTS
-              ROW_ELEMENT_NUMBER=ROW_ELEMENT_NUMBERS(element_idx)
-              IF(ROW_ELEMENT_NUMBER>=1.AND.ROW_ELEMENT_NUMBER<=ELEMENTS_TOPOLOGY%TOTAL_NUMBER_OF_ELEMENTS) THEN
-                SELECT CASE(ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%INTERPOLATION_TYPE)
-                CASE(FIELD_CONSTANT_INTERPOLATION)
-                  local_ny=ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%CONSTANT_PARAM2DOF_MAP
-                  ELEMENT_MATRIX%NUMBER_OF_ROWS=ELEMENT_MATRIX%NUMBER_OF_ROWS+1
-                  ELEMENT_MATRIX%ROW_DOFS(ELEMENT_MATRIX%NUMBER_OF_ROWS)=local_ny
-                CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
-                  local_ny=ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
-                    & ELEMENTS(ROW_ELEMENT_NUMBER)
-                  ELEMENT_MATRIX%NUMBER_OF_ROWS=ELEMENT_MATRIX%NUMBER_OF_ROWS+1
-                  ELEMENT_MATRIX%ROW_DOFS(ELEMENT_MATRIX%NUMBER_OF_ROWS)=local_ny
-                CASE(FIELD_NODE_BASED_INTERPOLATION)
-                  BASIS=>ELEMENTS_TOPOLOGY%ELEMENTS(ROW_ELEMENT_NUMBER)%BASIS
-                  DO node_idx=1,BASIS%NUMBER_OF_NODES
-                    node=ELEMENTS_TOPOLOGY%ELEMENTS(ROW_ELEMENT_NUMBER)%ELEMENT_NODES(node_idx)
-                    DO derivative_idx=1,BASIS%NUMBER_OF_DERIVATIVES(node_idx)
-                      derivative=ELEMENTS_TOPOLOGY%ELEMENTS(ROW_ELEMENT_NUMBER)%ELEMENT_DERIVATIVES(1,derivative_idx,node_idx)
-                      version=ELEMENTS_TOPOLOGY%ELEMENTS(ROW_ELEMENT_NUMBER)%ELEMENT_DERIVATIVES(2,derivative_idx,node_idx)
-                      local_ny=ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node)% &
-                        & DERIVATIVES(derivative)%VERSIONS(version)
-                      ELEMENT_MATRIX%NUMBER_OF_ROWS=ELEMENT_MATRIX%NUMBER_OF_ROWS+1
-                      ELEMENT_MATRIX%ROW_DOFS(ELEMENT_MATRIX%NUMBER_OF_ROWS)=local_ny
-                    ENDDO !derivative_idx
-                  ENDDO !node_idx
-                CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
-                  CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
-                CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
-                  CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
-                CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
-                  DATA_POINTS_TOPOLOGY=>COLS_FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%DATA_POINTS
-                  DO data_point_idx=1,DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(ROW_ELEMENT_NUMBER)%NUMBER_OF_PROJECTED_DATA
-                    DATA_POINT_LOCAL_NUMBER=DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(ROW_ELEMENT_NUMBER)% &
-                      & DATA_INDICES(data_point_idx)%LOCAL_NUMBER
-                    local_ny=ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%DATA_POINT_PARAM2DOF_MAP% &
-                      & DATA_POINTS(DATA_POINT_LOCAL_NUMBER)
-                    ELEMENT_MATRIX%NUMBER_OF_COLUMNS=ELEMENT_MATRIX%NUMBER_OF_COLUMNS+1
-                    ELEMENT_MATRIX%COLUMN_DOFS(ELEMENT_MATRIX%NUMBER_OF_COLUMNS)=global_ny
-                  ENDDO !data_point_idx                  
-                CASE DEFAULT
-                  LOCAL_ERROR="The interpolation type of "// &
-                    & TRIM(NUMBER_TO_VSTRING(ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%INTERPOLATION_TYPE,"*",ERR,ERROR))// &
-                    & " is invalid for component number "// &
-                    & TRIM(NUMBER_TO_VSTRING(component_idx,"*",ERR,ERROR))// &
+              DO elementIdx=1,SIZE(ROW_ELEMENT_NUMBERS)
+                rowElementNumber=ROW_ELEMENT_NUMBERS(elementIdx)
+                IF(rowElementNumber>=1.AND.rowElementNumber<=ELEMENTS_TOPOLOGY%TOTAL_NUMBER_OF_ELEMENTS) THEN
+                  SELECT CASE(ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%INTERPOLATION_TYPE)
+                  CASE(FIELD_CONSTANT_INTERPOLATION)
+                    local_ny=ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%CONSTANT_PARAM2DOF_MAP
+                    ELEMENT_MATRIX%NUMBER_OF_ROWS=ELEMENT_MATRIX%NUMBER_OF_ROWS+1
+                    ELEMENT_MATRIX%ROW_DOFS(ELEMENT_MATRIX%NUMBER_OF_ROWS)=local_ny
+                  CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
+                    local_ny=ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+                      & ELEMENTS(rowElementNumber)
+                    ELEMENT_MATRIX%NUMBER_OF_ROWS=ELEMENT_MATRIX%NUMBER_OF_ROWS+1
+                    ELEMENT_MATRIX%ROW_DOFS(ELEMENT_MATRIX%NUMBER_OF_ROWS)=local_ny
+                  CASE(FIELD_NODE_BASED_INTERPOLATION)
+                    BASIS=>ELEMENTS_TOPOLOGY%ELEMENTS(rowElementNumber)%BASIS
+                    DO node_idx=1,BASIS%NUMBER_OF_NODES
+                      node=ELEMENTS_TOPOLOGY%ELEMENTS(rowElementNumber)%ELEMENT_NODES(node_idx)
+                      DO derivative_idx=1,BASIS%NUMBER_OF_DERIVATIVES(node_idx)
+                        derivative=ELEMENTS_TOPOLOGY%ELEMENTS(rowElementNumber)%ELEMENT_DERIVATIVES(1,derivative_idx,node_idx)
+                        version=ELEMENTS_TOPOLOGY%ELEMENTS(rowElementNumber)%ELEMENT_DERIVATIVES(2,derivative_idx,node_idx)
+                        local_ny=ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node)% &
+                          & DERIVATIVES(derivative)%VERSIONS(version)
+                        ELEMENT_MATRIX%NUMBER_OF_ROWS=ELEMENT_MATRIX%NUMBER_OF_ROWS+1
+                        ELEMENT_MATRIX%ROW_DOFS(ELEMENT_MATRIX%NUMBER_OF_ROWS)=local_ny
+                      ENDDO !derivative_idx
+                    ENDDO !node_idx
+                  CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
+                    CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
+                  CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
+                    CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
+                  CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
+                    decompositionData=>ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%DECOMPOSITION%TOPOLOGY%dataPoints
+                    DO dataPointIdx=1,decompositionData%elementDataPoint(colElementNumber)%numberOfProjectedData
+                      localDataPointNumber=decompositionData%elementDataPoint(colElementNumber)% &
+                        & dataIndices(dataPointIdx)%localNumber
+                      local_ny=ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%DATA_POINT_PARAM2DOF_MAP% &
+                        & DATA_POINTS(localDataPointNumber)
+                      global_ny=ROWS_FIELD_VARIABLE%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_ny)
+                      ELEMENT_MATRIX%NUMBER_OF_COLUMNS=ELEMENT_MATRIX%NUMBER_OF_COLUMNS+1
+                      ELEMENT_MATRIX%COLUMN_DOFS(ELEMENT_MATRIX%NUMBER_OF_COLUMNS)=global_ny
+                    ENDDO
+                  CASE DEFAULT
+                    LOCAL_ERROR="The interpolation type of "// &
+                      & TRIM(NUMBER_TO_VSTRING(ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%INTERPOLATION_TYPE,"*",ERR,ERROR))// &
+                      & " is invalid for component number "// &
+                      & TRIM(NUMBER_TO_VSTRING(component_idx,"*",ERR,ERROR))// &
+                      & " of rows field variable type "// &
+                      & TRIM(NUMBER_TO_VSTRING(ROWS_FIELD_VARIABLE%VARIABLE_TYPE,"*",ERR,ERROR))//"."
+                    CALL FLAG_ERROR(LOCAL_ERROR,ERR,ERROR,*999)          
+                  END SELECT
+                ELSE
+                  LOCAL_ERROR="Row element number "//TRIM(NUMBER_TO_VSTRING(rowElementNumber,"*",ERR,ERROR))// &
+                    & " is invalid for component number "//TRIM(NUMBER_TO_VSTRING(component_idx,"*",ERR,ERROR))// &
                     & " of rows field variable type "// &
-                    & TRIM(NUMBER_TO_VSTRING(ROWS_FIELD_VARIABLE%VARIABLE_TYPE,"*",ERR,ERROR))//"."
-                  CALL FLAG_ERROR(LOCAL_ERROR,ERR,ERROR,*999)          
-                END SELECT
-              ELSE
-                LOCAL_ERROR="Row element number "//TRIM(NUMBER_TO_VSTRING(ROW_ELEMENT_NUMBER,"*",ERR,ERROR))// &
-                  & " is invalid for component number "//TRIM(NUMBER_TO_VSTRING(component_idx,"*",ERR,ERROR))// &
-                  & " of rows field variable type "// &
-                  & TRIM(NUMBER_TO_VSTRING(ROWS_FIELD_VARIABLE%VARIABLE_TYPE,"*",ERR,ERROR))// &
-                  & ". The element number must be between 1 and "// &
-                  & TRIM(NUMBER_TO_VSTRING(ELEMENTS_TOPOLOGY%TOTAL_NUMBER_OF_ELEMENTS,"*",ERR,ERROR))//"."
-                CALL FLAG_ERROR(LOCAL_ERROR,ERR,ERROR,*999)
-              ENDIF
+                    & TRIM(NUMBER_TO_VSTRING(ROWS_FIELD_VARIABLE%VARIABLE_TYPE,"*",ERR,ERROR))// &
+                    & ". The element number must be between 1 and "// &
+                    & TRIM(NUMBER_TO_VSTRING(ELEMENTS_TOPOLOGY%TOTAL_NUMBER_OF_ELEMENTS,"*",ERR,ERROR))//"."
+                  CALL FLAG_ERROR(LOCAL_ERROR,ERR,ERROR,*999)
+                ENDIF
+              ENDDO !elementIdx
             ENDDO !component_idx
             ENDDO !element_idx
             !Column mapping
             DO component_idx=1,COLS_FIELD_VARIABLE%NUMBER_OF_COMPONENTS
               ELEMENTS_TOPOLOGY=>COLS_FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%ELEMENTS
-              NUMBER_OF_COL_ELEMENTS=SIZE(COL_ELEMENT_NUMBERS,1)
-              DO element_idx=1,NUMBER_OF_COL_ELEMENTS
-              COLUMN_ELEMENT_NUMBER=COL_ELEMENT_NUMBERS(element_idx)
-              IF(COLUMN_ELEMENT_NUMBER>=1.AND.COLUMN_ELEMENT_NUMBER<=ELEMENTS_TOPOLOGY%TOTAL_NUMBER_OF_ELEMENTS) THEN
-                SELECT CASE(COLS_FIELD_VARIABLE%COMPONENTS(component_idx)%INTERPOLATION_TYPE)
-                CASE(FIELD_CONSTANT_INTERPOLATION)
-                  local_ny=COLS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%CONSTANT_PARAM2DOF_MAP
-                  global_ny=COLS_FIELD_VARIABLE%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_ny)
-                  ELEMENT_MATRIX%NUMBER_OF_COLUMNS=ELEMENT_MATRIX%NUMBER_OF_COLUMNS+1
-                  ELEMENT_MATRIX%COLUMN_DOFS(ELEMENT_MATRIX%NUMBER_OF_COLUMNS)=global_ny
-                CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
-                  local_ny=COLS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
-                    & ELEMENTS(COLUMN_ELEMENT_NUMBER)
-                  global_ny=COLS_FIELD_VARIABLE%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_ny)
-                  ELEMENT_MATRIX%NUMBER_OF_COLUMNS=ELEMENT_MATRIX%NUMBER_OF_COLUMNS+1
-                  ELEMENT_MATRIX%COLUMN_DOFS(ELEMENT_MATRIX%NUMBER_OF_COLUMNS)=global_ny
-                CASE(FIELD_NODE_BASED_INTERPOLATION)
-                  BASIS=>ELEMENTS_TOPOLOGY%ELEMENTS(COLUMN_ELEMENT_NUMBER)%BASIS
-                  DO node_idx=1,BASIS%NUMBER_OF_NODES
-                    node=ELEMENTS_TOPOLOGY%ELEMENTS(COLUMN_ELEMENT_NUMBER)%ELEMENT_NODES(node_idx)
-                    DO derivative_idx=1,BASIS%NUMBER_OF_DERIVATIVES(node_idx)
-                      derivative=ELEMENTS_TOPOLOGY%ELEMENTS(COLUMN_ELEMENT_NUMBER)%ELEMENT_DERIVATIVES(1,derivative_idx,node_idx)
-                      version=ELEMENTS_TOPOLOGY%ELEMENTS(COLUMN_ELEMENT_NUMBER)%ELEMENT_DERIVATIVES(2,derivative_idx,node_idx)
-                      local_ny=COLS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node)% &
-                        & DERIVATIVES(derivative)%VERSIONS(version)
+              DO elementIdx=1,SIZE(COLUMN_ELEMENT_NUMBERS)
+                colElementNumber=COLUMN_ELEMENT_NUMBERS(elementIdx)
+                IF(colElementNumber>=1.AND.colElementNumber<=ELEMENTS_TOPOLOGY%TOTAL_NUMBER_OF_ELEMENTS) THEN
+                  SELECT CASE(COLS_FIELD_VARIABLE%COMPONENTS(component_idx)%INTERPOLATION_TYPE)
+                  CASE(FIELD_CONSTANT_INTERPOLATION)
+                    local_ny=COLS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%CONSTANT_PARAM2DOF_MAP
+                    global_ny=COLS_FIELD_VARIABLE%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_ny)
+                    ELEMENT_MATRIX%NUMBER_OF_COLUMNS=ELEMENT_MATRIX%NUMBER_OF_COLUMNS+1
+                    ELEMENT_MATRIX%COLUMN_DOFS(ELEMENT_MATRIX%NUMBER_OF_COLUMNS)=global_ny
+                  CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
+                    local_ny=COLS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%ELEMENT_PARAM2DOF_MAP% &
+                      & ELEMENTS(colElementNumber)
+                    global_ny=COLS_FIELD_VARIABLE%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_ny)
+                    ELEMENT_MATRIX%NUMBER_OF_COLUMNS=ELEMENT_MATRIX%NUMBER_OF_COLUMNS+1
+                    ELEMENT_MATRIX%COLUMN_DOFS(ELEMENT_MATRIX%NUMBER_OF_COLUMNS)=global_ny
+                  CASE(FIELD_NODE_BASED_INTERPOLATION)
+                    BASIS=>ELEMENTS_TOPOLOGY%ELEMENTS(colElementNumber)%BASIS
+                    DO node_idx=1,BASIS%NUMBER_OF_NODES
+                      node=ELEMENTS_TOPOLOGY%ELEMENTS(colElementNumber)%ELEMENT_NODES(node_idx)
+                      DO derivative_idx=1,BASIS%NUMBER_OF_DERIVATIVES(node_idx)
+                        derivative=ELEMENTS_TOPOLOGY%ELEMENTS(colElementNumber)%ELEMENT_DERIVATIVES(1,derivative_idx,node_idx)
+                        version=ELEMENTS_TOPOLOGY%ELEMENTS(colElementNumber)%ELEMENT_DERIVATIVES(2,derivative_idx,node_idx)
+                        local_ny=COLS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%NODE_PARAM2DOF_MAP%NODES(node)% &
+                          & DERIVATIVES(derivative)%VERSIONS(version)
+                        global_ny=COLS_FIELD_VARIABLE%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_ny)
+                        ELEMENT_MATRIX%NUMBER_OF_COLUMNS=ELEMENT_MATRIX%NUMBER_OF_COLUMNS+1
+                        ELEMENT_MATRIX%COLUMN_DOFS(ELEMENT_MATRIX%NUMBER_OF_COLUMNS)=global_ny
+                      ENDDO !derivative_idx
+                    ENDDO !node_idx
+                  CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
+                    CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
+                  CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
+                    CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
+                  CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
+                    decompositionData=>COLS_FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%DECOMPOSITION%TOPOLOGY%dataPoints
+                    DO dataPointIdx=1,decompositionData%elementDataPoint(colElementNumber)%numberOfProjectedData
+                      localDataPointNumber=decompositionData%elementDataPoint(colElementNumber)% &
+                        & dataIndices(dataPointIdx)%localNumber
+                      local_ny=COLS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%DATA_POINT_PARAM2DOF_MAP% &
+                        & DATA_POINTS(localDataPointNumber)
                       global_ny=COLS_FIELD_VARIABLE%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_ny)
                       ELEMENT_MATRIX%NUMBER_OF_COLUMNS=ELEMENT_MATRIX%NUMBER_OF_COLUMNS+1
                       ELEMENT_MATRIX%COLUMN_DOFS(ELEMENT_MATRIX%NUMBER_OF_COLUMNS)=global_ny
-                    ENDDO !derivative_idx
-                  ENDDO !node_idx
-                CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
-                  CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
-                CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
-                  BASIS=>COLS_FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%MESH%GENERATED_MESH%REGULAR_MESH%BASES(1)%PTR
-                  TOTAL_NUMBER_OF_GAUSS_POINTS=1
-                  DO xi_idx=1,BASIS%NUMBER_OF_XI
-                    TOTAL_NUMBER_OF_GAUSS_POINTS=TOTAL_NUMBER_OF_GAUSS_POINTS*BASIS%QUADRATURE%NUMBER_OF_GAUSS_XI(xi_idx)
-                  ENDDO
-                  DO gauss_point_idx=1,TOTAL_NUMBER_OF_GAUSS_POINTS
-                    local_ny=COLS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP% &
-                      & GAUSS_POINTS(gauss_point_idx,COLUMN_ELEMENT_NUMBER)
-                    global_ny=COLS_FIELD_VARIABLE%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_ny)
-                    ELEMENT_MATRIX%NUMBER_OF_COLUMNS=ELEMENT_MATRIX%NUMBER_OF_COLUMNS+1
-                    ELEMENT_MATRIX%COLUMN_DOFS(ELEMENT_MATRIX%NUMBER_OF_COLUMNS)=global_ny
-                  ENDDO       
-                CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
-                  DATA_POINTS_TOPOLOGY=>COLS_FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%DATA_POINTS
-                  DO data_point_idx=1,DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(COLUMN_ELEMENT_NUMBER)%NUMBER_OF_PROJECTED_DATA
-                    DATA_POINT_LOCAL_NUMBER=DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(COLUMN_ELEMENT_NUMBER)% &
-                      & DATA_INDICES(data_point_idx)%LOCAL_NUMBER
-                    local_ny=COLS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%DATA_POINT_PARAM2DOF_MAP% &
-                      & DATA_POINTS(DATA_POINT_LOCAL_NUMBER)
-                    global_ny=COLS_FIELD_VARIABLE%DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(local_ny)
-                    ELEMENT_MATRIX%NUMBER_OF_COLUMNS=ELEMENT_MATRIX%NUMBER_OF_COLUMNS+1
-                    ELEMENT_MATRIX%COLUMN_DOFS(ELEMENT_MATRIX%NUMBER_OF_COLUMNS)=global_ny
-                  ENDDO !data_point_idx                  
-                CASE DEFAULT
-                  LOCAL_ERROR="The interpolation type of "// &
-                    & TRIM(NUMBER_TO_VSTRING(COLS_FIELD_VARIABLE%COMPONENTS(component_idx)%INTERPOLATION_TYPE,"*",ERR,ERROR))// &
-                    & " is invalid for component number "// &
-                    & TRIM(NUMBER_TO_VSTRING(component_idx,"*",ERR,ERROR))// &
+                    ENDDO
+                  CASE DEFAULT
+                    LOCAL_ERROR="The interpolation type of "// &
+                      & TRIM(NUMBER_TO_VSTRING(COLS_FIELD_VARIABLE%COMPONENTS(component_idx)%INTERPOLATION_TYPE,"*",ERR,ERROR))// &
+                      & " is invalid for component number "// &
+                      & TRIM(NUMBER_TO_VSTRING(component_idx,"*",ERR,ERROR))// &
+                      & " of column field variable type "// &
+                      & TRIM(NUMBER_TO_VSTRING(COLS_FIELD_VARIABLE%VARIABLE_TYPE,"*",ERR,ERROR))//"."
+                    CALL FLAG_ERROR(LOCAL_ERROR,ERR,ERROR,*999)          
+                  END SELECT
+                ELSE
+                  LOCAL_ERROR="Column element number "//TRIM(NUMBER_TO_VSTRING(colElementNumber,"*",ERR,ERROR))// &
+                    & " is invalid for component number "//TRIM(NUMBER_TO_VSTRING(component_idx,"*",ERR,ERROR))// &
                     & " of column field variable type "// &
-                    & TRIM(NUMBER_TO_VSTRING(COLS_FIELD_VARIABLE%VARIABLE_TYPE,"*",ERR,ERROR))//"."
-                  CALL FLAG_ERROR(LOCAL_ERROR,ERR,ERROR,*999)          
-                END SELECT
-              ELSE
-                LOCAL_ERROR="Column element number "//TRIM(NUMBER_TO_VSTRING(COLUMN_ELEMENT_NUMBER,"*",ERR,ERROR))// &
-                  & " is invalid for component number "//TRIM(NUMBER_TO_VSTRING(component_idx,"*",ERR,ERROR))// &
-                  & " of column field variable type "// &
-                  & TRIM(NUMBER_TO_VSTRING(COLS_FIELD_VARIABLE%VARIABLE_TYPE,"*",ERR,ERROR))// &
-                  & ". The element number must be between 1 and "// &
-                  & TRIM(NUMBER_TO_VSTRING(ELEMENTS_TOPOLOGY%TOTAL_NUMBER_OF_ELEMENTS,"*",ERR,ERROR))//"."
-                CALL FLAG_ERROR(LOCAL_ERROR,ERR,ERROR,*999)
-              ENDIF
+                    & TRIM(NUMBER_TO_VSTRING(COLS_FIELD_VARIABLE%VARIABLE_TYPE,"*",ERR,ERROR))// &
+                    & ". The element number must be between 1 and "// &
+                    & TRIM(NUMBER_TO_VSTRING(ELEMENTS_TOPOLOGY%TOTAL_NUMBER_OF_ELEMENTS,"*",ERR,ERROR))//"."
+                  CALL FLAG_ERROR(LOCAL_ERROR,ERR,ERROR,*999)
+                ENDIF
+              ENDDO !elementIdx
             ENDDO !component_idx
             ENDDO !element_idx
           ENDIF
@@ -888,57 +875,55 @@ CONTAINS
   !
 
   !>Sets up the element matrix for the row and column field variables.
-  SUBROUTINE EQUATIONS_MATRICES_ELEMENT_MATRIX_SETUP(ELEMENT_MATRIX,ROWS_FIELD_VARIABLE,COLS_FIELD_VARIABLE, &
-      & ROWS_NUMBER_OF_ELEMENTS,COLS_NUMBER_OF_ELEMENTS,ERR,ERROR,*)
+  SUBROUTINE EQUATIONS_MATRICES_ELEMENT_MATRIX_SETUP(elementMatrix,rowsFieldVariable,columnsFieldVariable,err,error,*)
 
     !Argument variables
-    TYPE(ELEMENT_MATRIX_TYPE) :: ELEMENT_MATRIX !<The element matrix to setup
-    TYPE(FIELD_VARIABLE_TYPE), POINTER :: ROWS_FIELD_VARIABLE !<A pointer to the field variable associated with the rows
-    TYPE(FIELD_VARIABLE_TYPE), POINTER :: COLS_FIELD_VARIABLE !<A pointer to the field variable associated with the columns
-    INTEGER(INTG) :: ROWS_NUMBER_OF_ELEMENTS,COLS_NUMBER_OF_ELEMENTS !Number of elements in the row and col variables whose dofs are present in this element matrix
-    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
-    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    TYPE(ELEMENT_MATRIX_TYPE) :: elementMatrix !<The element matrix to setup
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: rowsFieldVariable !<A pointer to the field variable associated with the rows
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: columnsFieldVariable !<A pointer to the field variable associated with the columns
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
-    INTEGER(INTG) :: DUMMY_ERR
-    TYPE(VARYING_STRING) :: DUMMY_ERROR
+    INTEGER(INTG) :: dummyErr, componentIdx
+    TYPE(VARYING_STRING) :: dummyError
 
-    CALL ENTERS("EQUATIONS_MATRICES_ELEMENT_MATRIX_SETUP",ERR,ERROR,*998)
+    CALL ENTERS("EQUATIONS_MATRICES_ELEMENT_MATRIX_SETUP",err,error,*998)
 
-    IF(ASSOCIATED(ROWS_FIELD_VARIABLE)) THEN
-      IF(ASSOCIATED(COLS_FIELD_VARIABLE)) THEN
-        ELEMENT_MATRIX%MAX_NUMBER_OF_ROWS=ROWS_FIELD_VARIABLE%MAX_NUMBER_OF_INTERPOLATION_PARAMETERS* &
-          & ROWS_FIELD_VARIABLE%NUMBER_OF_COMPONENTS*ROWS_NUMBER_OF_ELEMENTS
-        ELEMENT_MATRIX%MAX_NUMBER_OF_COLUMNS=COLS_FIELD_VARIABLE%MAX_NUMBER_OF_INTERPOLATION_PARAMETERS* &
-          & COLS_FIELD_VARIABLE%NUMBER_OF_COMPONENTS*COLS_NUMBER_OF_ELEMENTS
-        IF(ALLOCATED(ELEMENT_MATRIX%ROW_DOFS)) THEN
-          CALL FLAG_ERROR("Element matrix row dofs already allocated.",ERR,ERROR,*999)
+    IF(ASSOCIATED(rowsFieldVariable)) THEN
+      IF(ASSOCIATED(columnsFieldVariable)) THEN
+        elementMatrix%MAX_NUMBER_OF_ROWS=rowsFieldVariable%MAX_NUMBER_OF_INTERPOLATION_PARAMETERS* &
+          & rowsFieldVariable%NUMBER_OF_COMPONENTS
+        elementMatrix%MAX_NUMBER_OF_COLUMNS=columsFieldVariable%MAX_NUMBER_OF_INTERPOLATION_PARAMETERS* &
+          & columnsFieldVariable%NUMBER_OF_COMPONENTS
+        IF(ALLOCATED(elementMatrix%ROW_DOFS)) THEN
+          CALL FLAG_ERROR("Element matrix row dofs already allocated.",err,error,*999)
         ELSE
-          ALLOCATE(ELEMENT_MATRIX%ROW_DOFS(ELEMENT_MATRIX%MAX_NUMBER_OF_ROWS),STAT=ERR)
-          IF(ERR/=0) CALL FLAG_ERROR("Could not allocate element matrix row dofs.",ERR,ERROR,*999)
+          ALLOCATE(elementMatrix%ROW_DOFS(elementMatrix%MAX_NUMBER_OF_ROWS),STAT=err)
+          IF(ERR/=0) CALL FLAG_ERROR("Could not allocate element matrix row dofs.",err,error,*999)
         ENDIF
-        IF(ALLOCATED(ELEMENT_MATRIX%COLUMN_DOFS)) THEN
-          CALL FLAG_ERROR("Element matrix column dofs already allocated.",ERR,ERROR,*999)
+        IF(ALLOCATED(elementMatrix%COLUMN_DOFS)) THEN
+          CALL FLAG_ERROR("Element matrix column dofs already allocated.",err,error,*999)
         ELSE
-          ALLOCATE(ELEMENT_MATRIX%COLUMN_DOFS(ELEMENT_MATRIX%MAX_NUMBER_OF_COLUMNS),STAT=ERR)
-          IF(ERR/=0) CALL FLAG_ERROR("Could not allocate element matrix column dofs.",ERR,ERROR,*999)
+          ALLOCATE(elementMatrix%COLUMN_DOFS(elementMatrix%MAX_NUMBER_OF_COLUMNS),STAT=err)
+          IF(ERR/=0) CALL FLAG_ERROR("Could not allocate element matrix column dofs.",err,error,*999)
         ENDIF
-        IF(ALLOCATED(ELEMENT_MATRIX%MATRIX)) THEN
-          CALL FLAG_ERROR("Element matrix already allocated.",ERR,ERROR,*999)
+        IF(ALLOCATED(elementMatrix%MATRIX)) THEN
+          CALL FLAG_ERROR("Element matrix already allocated.",err,error,*999)
         ELSE
-          ALLOCATE(ELEMENT_MATRIX%MATRIX(ELEMENT_MATRIX%MAX_NUMBER_OF_ROWS,ELEMENT_MATRIX%MAX_NUMBER_OF_COLUMNS),STAT=ERR)
-          IF(ERR/=0) CALL FLAG_ERROR("Could not allocate element matrix.",ERR,ERROR,*999)
+          ALLOCATE(elementMatrix%MATRIX(elementMatrix%MAX_NUMBER_OF_ROWS,elementMatrix%MAX_NUMBER_OF_COLUMNS),STAT=err)
+          IF(ERR/=0) CALL FLAG_ERROR("Could not allocate element matrix.",err,error,*999)
         ENDIF
       ELSE
-        CALL FLAG_ERROR("Columns field variable is not associated.",ERR,ERROR,*999)
+        CALL FLAG_ERROR("Columns field variable is not associated.",err,error,*999)
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Rows field variable is not associated.",ERR,ERROR,*999)
+      CALL FLAG_ERROR("Rows field variable is not associated.",err,error,*999)
     ENDIF
     
     CALL EXITS("EQUATIONS_MATRICES_ELEMENT_MATRIX_SETUP")
     RETURN
-999 CALL EQUATIONS_MATRICES_ELEMENT_MATRIX_FINALISE(ELEMENT_MATRIX,DUMMY_ERR,DUMMY_ERROR,*998)
-998 CALL ERRORS("EQUATIONS_MATRICES_ELEMENT_MATRIX_SETUP",ERR,ERROR)
+999 CALL EQUATIONS_MATRICES_ELEMENT_MATRIX_FINALISE(elementMatrix,dummyErr,dummyError,*998)
+998 CALL ERRORS("EQUATIONS_MATRICES_ELEMENT_MATRIX_SETUP",err,error)
     CALL EXITS("EQUATIONS_MATRICES_ELEMENT_MATRIX_SETUP")
     RETURN 1
   END SUBROUTINE EQUATIONS_MATRICES_ELEMENT_MATRIX_SETUP
@@ -959,11 +944,10 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
-    INTEGER(INTG) :: component_idx,derivative,derivative_idx,local_ny,node,node_idx,version,xi_idx,gauss_point_idx,data_point_idx
-    INTEGER(INTG) :: TOTAL_NUMBER_OF_GAUSS_POINTS,DATA_POINT_LOCAL_NUMBER
+    INTEGER(INTG) :: component_idx,derivative,derivative_idx,local_ny,node,node_idx,version,dataPointIdx,localDataPointNumber
     TYPE(BASIS_TYPE), POINTER :: BASIS
     TYPE(DOMAIN_ELEMENTS_TYPE), POINTER :: ELEMENTS_TOPOLOGY
-    TYPE(DOMAIN_DATA_POINTS_TYPE), POINTER :: DATA_POINTS_TOPOLOGY
+    TYPE(DecompositionDataPointsType), POINTER :: decompositionData
     TYPE(VARYING_STRING) :: LOCAL_ERROR
     
     CALL ENTERS("EQUATIONS_MATRICES_ELEMENT_VECTOR_CALCULATE",ERR,ERROR,*999)
@@ -1001,27 +985,17 @@ CONTAINS
             CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
               CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
             CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
-              BASIS=>ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%MESH%GENERATED_MESH%REGULAR_MESH%BASES(1)%PTR
-              TOTAL_NUMBER_OF_GAUSS_POINTS=1
-              DO xi_idx=1,BASIS%NUMBER_OF_XI
-                TOTAL_NUMBER_OF_GAUSS_POINTS=TOTAL_NUMBER_OF_GAUSS_POINTS*BASIS%QUADRATURE%NUMBER_OF_GAUSS_XI(xi_idx)
-              ENDDO
-              DO gauss_point_idx=1,TOTAL_NUMBER_OF_GAUSS_POINTS
-                local_ny=ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%GAUSS_POINT_PARAM2DOF_MAP% &
-                  & GAUSS_POINTS(gauss_point_idx,ELEMENT_NUMBER)
-                ELEMENT_VECTOR%NUMBER_OF_ROWS=ELEMENT_VECTOR%NUMBER_OF_ROWS+1
-                ELEMENT_VECTOR%ROW_DOFS(ELEMENT_VECTOR%NUMBER_OF_ROWS)=local_ny
-              ENDDO   
+              CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
             CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
-              DATA_POINTS_TOPOLOGY=>ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%DATA_POINTS
-              DO data_point_idx=1,DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(ELEMENT_NUMBER)%NUMBER_OF_PROJECTED_DATA
-                DATA_POINT_LOCAL_NUMBER=DATA_POINTS_TOPOLOGY%ELEMENT_DATA_POINTS(ELEMENT_NUMBER)% &
-                  & DATA_INDICES(data_point_idx)%LOCAL_NUMBER
+              decompositionData=>ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%DECOMPOSITION%TOPOLOGY%dataPoints
+              DO dataPointIdx=1,decompositionData%elementDataPoint(ELEMENT_NUMBER)%numberOfProjectedData
+                localDataPointNumber=decompositionData%elementDataPoint(ELEMENT_NUMBER)% &
+                  & dataIndices(dataPointIdx)%localNumber
                 local_ny=ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%DATA_POINT_PARAM2DOF_MAP% &
-                  & DATA_POINTS(DATA_POINT_LOCAL_NUMBER)
+                  & DATA_POINTS(localDataPointNumber)
                 ELEMENT_VECTOR%NUMBER_OF_ROWS=ELEMENT_VECTOR%NUMBER_OF_ROWS+1
                 ELEMENT_VECTOR%ROW_DOFS(ELEMENT_VECTOR%NUMBER_OF_ROWS)=local_ny
-              ENDDO !data_point_idx                         
+              ENDDO
             CASE DEFAULT
               LOCAL_ERROR="The interpolation type of "// &
                 & TRIM(NUMBER_TO_VSTRING(ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%INTERPOLATION_TYPE,"*",ERR,ERROR))// &
@@ -1110,42 +1084,45 @@ CONTAINS
   !
 
   !>Sets up the element vector for the row field variables.
-  SUBROUTINE EQUATIONS_MATRICES_ELEMENT_VECTOR_SETUP(ELEMENT_VECTOR,ROWS_FIELD_VARIABLE,ERR,ERROR,*)
+  SUBROUTINE EQUATIONS_MATRICES_ELEMENT_VECTOR_SETUP(elementVector,rowsFieldVariable,err,error,*)
 
     !Argument variables
-    TYPE(ELEMENT_VECTOR_TYPE) :: ELEMENT_VECTOR !<The element vector to setup
-    TYPE(FIELD_VARIABLE_TYPE), POINTER :: ROWS_FIELD_VARIABLE !<A pointer to the field variable associated with the rows
-    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code
-    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
+    TYPE(ELEMENT_VECTOR_TYPE) :: elementVector !<The element vector to setup
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: rowsFieldVariable !<A pointer to the field variable associated with the rows
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
-    INTEGER(INTG) :: DUMMY_ERR
-    TYPE(VARYING_STRING) :: DUMMY_ERROR
+    INTEGER(INTG) :: DUMMY_ERR,componentIdx
+    TYPE(VARYING_STRING) :: dummyError
 
-    CALL ENTERS("EQUATIONS_MATRICES_ELEMENT_VECTOR_SETUP",ERR,ERROR,*998)
+    CALL ENTERS("EQUATIONS_MATRICES_ELEMENT_VECTOR_SETUP",err,error,*998)
 
-    IF(ASSOCIATED(ROWS_FIELD_VARIABLE)) THEN
-      ELEMENT_VECTOR%MAX_NUMBER_OF_ROWS=ROWS_FIELD_VARIABLE%MAX_NUMBER_OF_INTERPOLATION_PARAMETERS* &
-        & ROWS_FIELD_VARIABLE%NUMBER_OF_COMPONENTS
-      IF(ALLOCATED(ELEMENT_VECTOR%ROW_DOFS)) THEN
-        CALL FLAG_ERROR("Element vector row dofs is already allocated.",ERR,ERROR,*999)
+    IF(ASSOCIATED(rowsFieldVariable)) THEN
+      elementVector%MAX_NUMBER_OF_ROWS = 0
+      DO componentIdx=1,rowsFieldVariable%NUMBER_OF_COMPONENTS
+        elementVector%MAX_NUMBER_OF_ROWS=elementVector%MAX_NUMBER_OF_ROWS+ &
+          & rowsFieldVariable%COMPONENTS(componentIdx)%MAX_NUMBER_OF_INTERPOLATION_PARAMETERS
+      ENDDO
+      IF(ALLOCATED(elementVector%ROW_DOFS)) THEN
+        CALL FLAG_ERROR("Element vector row dofs is already allocated.",err,error,*999)
       ELSE
-        ALLOCATE(ELEMENT_VECTOR%ROW_DOFS(ELEMENT_VECTOR%MAX_NUMBER_OF_ROWS),STAT=ERR)
-        IF(ERR/=0) CALL FLAG_ERROR("Could not allocate element vector row dofs.",ERR,ERROR,*999)
+        ALLOCATE(elementVector%ROW_DOFS(elementVector%MAX_NUMBER_OF_ROWS),STAT=err)
+        IF(ERR/=0) CALL FLAG_ERROR("Could not allocate element vector row dofs.",err,error,*999)
       ENDIF
-      IF(ALLOCATED(ELEMENT_VECTOR%VECTOR)) THEN
-        CALL FLAG_ERROR("Element vector vector already allocated.",ERR,ERROR,*999)
+      IF(ALLOCATED(elementVector%VECTOR)) THEN
+        CALL FLAG_ERROR("Element vector vector already allocated.",err,error,*999)
       ELSE
-        ALLOCATE(ELEMENT_VECTOR%VECTOR(ELEMENT_VECTOR%MAX_NUMBER_OF_ROWS),STAT=ERR)
-        IF(ERR/=0) CALL FLAG_ERROR("Could not allocate element vector vector.",ERR,ERROR,*999)
+        ALLOCATE(elementVector%VECTOR(elementVector%MAX_NUMBER_OF_ROWS),STAT=err)
+        IF(ERR/=0) CALL FLAG_ERROR("Could not allocate element vector vector.",err,error,*999)
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Rows field variable is not associated.",ERR,ERROR,*999)
+      CALL FLAG_ERROR("Rows field variable is not associated.",err,error,*999)
     ENDIF
     
     CALL EXITS("EQUATIONS_MATRICES_ELEMENT_VECTOR_SETUP")
     RETURN
-999 CALL EQUATIONS_MATRICES_ELEMENT_VECTOR_FINALISE(ELEMENT_VECTOR,DUMMY_ERR,DUMMY_ERROR,*998)
-998 CALL ERRORS("EQUATIONS_MATRICES_ELEMENT_VECTOR_SETUP",ERR,ERROR)
+999 CALL EQUATIONS_MATRICES_ELEMENT_VECTOR_FINALISE(elementVector,DUMMY_ERR,dummyError,*998)
+998 CALL ERRORS("EQUATIONS_MATRICES_ELEMENT_VECTOR_SETUP",err,error)
     CALL EXITS("EQUATIONS_MATRICES_ELEMENT_VECTOR_SETUP")
     RETURN 1
   END SUBROUTINE EQUATIONS_MATRICES_ELEMENT_VECTOR_SETUP
@@ -1345,7 +1322,7 @@ CONTAINS
                 ELEMENT_NUMBERS=ELEMENT_NUMBER
                 FIELD_VARIABLE=>DYNAMIC_MAPPING%EQUATIONS_MATRIX_TO_VAR_MAPS(matrix_idx)%VARIABLE
                 CALL EQUATIONS_MATRICES_ELEMENT_MATRIX_CALCULATE(EQUATIONS_MATRIX%ELEMENT_MATRIX,EQUATIONS_MATRIX%UPDATE_MATRIX, &
-                  & ELEMENT_NUMBERS,ELEMENT_NUMBERS,FIELD_VARIABLE,FIELD_VARIABLE,ERR,ERROR,*999)
+                  & [ELEMENT_NUMBER],[ELEMENT_NUMBER],FIELD_VARIABLE,FIELD_VARIABLE,ERR,ERROR,*999)
               ELSE
                 LOCAL_ERROR="Equations matrix for dynamic matrix number "//TRIM(NUMBER_TO_VSTRING(matrix_idx,"*",ERR,ERROR))// &
                   & " is not associated."
@@ -1392,7 +1369,7 @@ CONTAINS
                 ELEMENT_NUMBERS=ELEMENT_NUMBER
                 COL_FIELD_VARIABLE=>NONLINEAR_MAPPING%JACOBIAN_TO_VAR_MAP(matrix_idx)%VARIABLE
                 CALL EQUATIONS_MATRICES_ELEMENT_MATRIX_CALCULATE(JACOBIAN_MATRIX%ELEMENT_JACOBIAN,JACOBIAN_MATRIX%UPDATE_JACOBIAN, &
-                  & ELEMENT_NUMBERS,ELEMENT_NUMBERS,FIELD_VARIABLE,COL_FIELD_VARIABLE,ERR,ERROR,*999)
+                  & [ELEMENT_NUMBER],[ELEMENT_NUMBER],FIELD_VARIABLE,COL_FIELD_VARIABLE,ERR,ERROR,*999)
               ELSE
                 CALL FLAG_ERROR("Jacobian matrix is not associated.",ERR,ERROR,*999)
               ENDIF
@@ -1564,7 +1541,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     INTEGER(INTG) :: matrix_idx
-    INTEGER(INTG) :: ROWS_NUMBER_OF_ELEMENTS,COLS_NUMBER_OF_ELEMENTS !Number of elements in the row and col variables whose dofs are present in this element matrix
+    INTEGER(INTG) :: rowsNumberOfElements,colsNumberOfElements !Number of elements in the row and col variables whose dofs are present in the element matrix
     TYPE(EQUATIONS_JACOBIAN_TYPE), POINTER :: JACOBIAN_MATRIX
     TYPE(EQUATIONS_MAPPING_TYPE), POINTER :: EQUATIONS_MAPPING
     TYPE(EQUATIONS_MAPPING_DYNAMIC_TYPE), POINTER :: DYNAMIC_MAPPING
@@ -1583,6 +1560,8 @@ CONTAINS
     CALL ENTERS("EQUATIONS_MATRICES_ELEMENT_INITIALISE",ERR,ERROR,*999)
 
     IF(ASSOCIATED(EQUATIONS_MATRICES)) THEN
+      rowsNumberOfElements=1
+      colsNumberOfElements=1
       EQUATIONS_MAPPING=>EQUATIONS_MATRICES%EQUATIONS_MAPPING
       ROWS_NUMBER_OF_ELEMENTS=1
       COLS_NUMBER_OF_ELEMENTS=1
@@ -1597,7 +1576,7 @@ CONTAINS
               IF(ASSOCIATED(EQUATIONS_MATRIX)) THEN
                 FIELD_VARIABLE=>DYNAMIC_MAPPING%EQUATIONS_MATRIX_TO_VAR_MAPS(matrix_idx)%VARIABLE
                 CALL EQUATIONS_MATRICES_ELEMENT_MATRIX_SETUP(EQUATIONS_MATRIX%ELEMENT_MATRIX,FIELD_VARIABLE,FIELD_VARIABLE, &
-                  & ROWS_NUMBER_OF_ELEMENTS,COLS_NUMBER_OF_ELEMENTS,ERR,ERROR,*999)
+                  & rowsNumberOfElements,colsNumberOfElements,ERR,ERROR,*999)
               ELSE
                 LOCAL_ERROR="Equations dynamic matrix number "//TRIM(NUMBER_TO_VSTRING(matrix_idx,"*",ERR,ERROR))// &
                   & " is not associated."
@@ -1640,7 +1619,7 @@ CONTAINS
               IF(ASSOCIATED(JACOBIAN_MATRIX)) THEN
                 COL_FIELD_VARIABLE=>NONLINEAR_MAPPING%JACOBIAN_TO_VAR_MAP(matrix_idx)%VARIABLE
                 CALL EQUATIONS_MATRICES_ELEMENT_MATRIX_SETUP(JACOBIAN_MATRIX%ELEMENT_JACOBIAN,FIELD_VARIABLE,COL_FIELD_VARIABLE, &
-                  & ROWS_NUMBER_OF_ELEMENTS,COLS_NUMBER_OF_ELEMENTS,ERR,ERROR,*999)
+                  & rowsNumberOfElements,colsNumberOfElements,ERR,ERROR,*999)
               ELSE
                 CALL FLAG_ERROR("Jacobian matrix is not associated.",ERR,ERROR,*999)
               ENDIF
