@@ -659,7 +659,6 @@ CONTAINS
                 ENDIF
               ENDDO !elementIdx
             ENDDO !component_idx
-            ENDDO !element_idx
           ELSE
             !Row and column variables are different
             !Row mapping
@@ -726,7 +725,6 @@ CONTAINS
                 ENDIF
               ENDDO !elementIdx
             ENDDO !component_idx
-            ENDDO !element_idx
             !Column mapping
             DO component_idx=1,COLS_FIELD_VARIABLE%NUMBER_OF_COMPONENTS
               ELEMENTS_TOPOLOGY=>COLS_FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%TOPOLOGY%ELEMENTS
@@ -794,7 +792,6 @@ CONTAINS
                 ENDIF
               ENDDO !elementIdx
             ENDDO !component_idx
-            ENDDO !element_idx
           ENDIF
           ELEMENT_MATRIX%MATRIX=0.0_DP
         ENDIF
@@ -875,12 +872,15 @@ CONTAINS
   !
 
   !>Sets up the element matrix for the row and column field variables.
-  SUBROUTINE EQUATIONS_MATRICES_ELEMENT_MATRIX_SETUP(elementMatrix,rowsFieldVariable,columnsFieldVariable,err,error,*)
+  SUBROUTINE EQUATIONS_MATRICES_ELEMENT_MATRIX_SETUP(elementMatrix,rowsFieldVariable,columnsFieldVariable, &
+    & rowsNumberOfElements,colsNumberOfElements,err,error,*)
 
     !Argument variables
     TYPE(ELEMENT_MATRIX_TYPE) :: elementMatrix !<The element matrix to setup
     TYPE(FIELD_VARIABLE_TYPE), POINTER :: rowsFieldVariable !<A pointer to the field variable associated with the rows
     TYPE(FIELD_VARIABLE_TYPE), POINTER :: columnsFieldVariable !<A pointer to the field variable associated with the columns
+    INTEGER(INTG), INTENT(IN)  :: rowsNumberOfElements !<Number of elements in the row variables whose dofs are present in this element matrix
+    INTEGER(INTG), INTENT(IN)  :: colsNumberOfElements !<Number of elements in the col variables whose dofs are present in this element matrix
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
@@ -892,9 +892,9 @@ CONTAINS
     IF(ASSOCIATED(rowsFieldVariable)) THEN
       IF(ASSOCIATED(columnsFieldVariable)) THEN
         elementMatrix%MAX_NUMBER_OF_ROWS=rowsFieldVariable%MAX_NUMBER_OF_INTERPOLATION_PARAMETERS* &
-          & rowsFieldVariable%NUMBER_OF_COMPONENTS
-        elementMatrix%MAX_NUMBER_OF_COLUMNS=columsFieldVariable%MAX_NUMBER_OF_INTERPOLATION_PARAMETERS* &
-          & columnsFieldVariable%NUMBER_OF_COMPONENTS
+          & rowsFieldVariable%NUMBER_OF_COMPONENTS*rowsNumberOfElements
+        elementMatrix%MAX_NUMBER_OF_COLUMNS=columnsFieldVariable%MAX_NUMBER_OF_INTERPOLATION_PARAMETERS* &
+          & columnsFieldVariable%NUMBER_OF_COMPONENTS*colsNumberOfElements
         IF(ALLOCATED(elementMatrix%ROW_DOFS)) THEN
           CALL FLAG_ERROR("Element matrix row dofs already allocated.",err,error,*999)
         ELSE
@@ -1563,8 +1563,6 @@ CONTAINS
       rowsNumberOfElements=1
       colsNumberOfElements=1
       EQUATIONS_MAPPING=>EQUATIONS_MATRICES%EQUATIONS_MAPPING
-      ROWS_NUMBER_OF_ELEMENTS=1
-      COLS_NUMBER_OF_ELEMENTS=1
       IF(ASSOCIATED(EQUATIONS_MAPPING)) THEN
         DYNAMIC_MATRICES=>EQUATIONS_MATRICES%DYNAMIC_MATRICES
         IF(ASSOCIATED(DYNAMIC_MATRICES)) THEN
@@ -1597,7 +1595,7 @@ CONTAINS
               IF(ASSOCIATED(EQUATIONS_MATRIX)) THEN
                 FIELD_VARIABLE=>LINEAR_MAPPING%EQUATIONS_MATRIX_TO_VAR_MAPS(matrix_idx)%VARIABLE
                 CALL EQUATIONS_MATRICES_ELEMENT_MATRIX_SETUP(EQUATIONS_MATRIX%ELEMENT_MATRIX,FIELD_VARIABLE,FIELD_VARIABLE, &
-                  & ROWS_NUMBER_OF_ELEMENTS,COLS_NUMBER_OF_ELEMENTS,ERR,ERROR,*999)
+                  & rowsNumberOfElements,colsNumberOfElements,ERR,ERROR,*999)
               ELSE
                 LOCAL_ERROR="Equations linear matrix number "//TRIM(NUMBER_TO_VSTRING(matrix_idx,"*",ERR,ERROR))// &
                   & " is not associated."

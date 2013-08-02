@@ -1353,7 +1353,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: SOLVER_EQUATIONS  !<A pointer to the solver equations
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: SOLVER_MAPPING !<A pointer to the solver mapping
+    TYPE(SolverMappingType), POINTER :: solverMapping !<A pointer to the solver mapping
     TYPE(SOLVER_MATRICES_TYPE), POINTER :: SOLVER_MATRICES
     TYPE(SOLVER_MATRIX_TYPE), POINTER :: SOLVER_MATRIX
     TYPE(SOLVER_TYPE), POINTER :: SOLVER_NAVIER_STOKES  !<A pointer to the solvers
@@ -1375,10 +1375,10 @@ CONTAINS
           CASE(PROBLEM_STATIC_NAVIER_STOKES_SUBTYPE,PROBLEM_LAPLACE_NAVIER_STOKES_SUBTYPE)
              SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
              IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
-               SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
-               IF(ASSOCIATED(SOLVER_MAPPING)) THEN
+               solverMapping=>SOLVER_EQUATIONS%SOLVER_MAPPING
+               IF(ASSOCIATED(solverMapping)) THEN
                  ! TODO: Set up for multiple equations sets
-                 EQUATIONS_SET=>SOLVER_MAPPING%EQUATIONS_SETS(1)%PTR
+                 EQUATIONS_SET=>solverMapping%equationsSets(1)%ptr
                  IF(ASSOCIATED(EQUATIONS_SET)) THEN
                    EQUATIONS_ANALYTIC=>EQUATIONS_SET%ANALYTIC
                    IF(ASSOCIATED(EQUATIONS_ANALYTIC)) THEN
@@ -1406,11 +1406,11 @@ CONTAINS
               !--- Set explicitly 'SOLVER_MATRIX%UPDATE_MATRIX=.TRUE.'
               SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
               IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
-                SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
-                IF(ASSOCIATED(SOLVER_MAPPING)) THEN
+                solverMapping=>SOLVER_EQUATIONS%SOLVER_MAPPING
+                IF(ASSOCIATED(solverMapping)) THEN
                   SOLVER_MATRICES=>SOLVER_EQUATIONS%SOLVER_MATRICES
                   IF(ASSOCIATED(SOLVER_MATRICES)) THEN
-                    DO solver_matrix_idx=1,SOLVER_MAPPING%NUMBER_OF_SOLVER_MATRICES
+                    DO solver_matrix_idx=1,solverMapping%numberOfSolverMatrices
                       SOLVER_MATRIX=>SOLVER_MATRICES%MATRICES(solver_matrix_idx)%PTR
                       IF(ASSOCIATED(SOLVER_MATRIX)) THEN
                         SOLVER_MATRIX%UPDATE_MATRIX=.TRUE.
@@ -4259,7 +4259,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local Variables
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: SOLVER_EQUATIONS  !<A pointer to the solver equations
-    TYPE(SolverMappingType), POINTER :: SOLVER_MAPPING !<A pointer to the solver mapping
+    TYPE(SolverMappingType), POINTER :: solverMapping !<A pointer to the solver mapping
     TYPE(EQUATIONS_SET_TYPE), POINTER :: EQUATIONS_SET !<A pointer to the equations set
     TYPE(EQUATIONS_TYPE), POINTER :: EQUATIONS
     TYPE(EQUATIONS_MAPPING_TYPE), POINTER :: EQUATIONS_MAPPING
@@ -4309,7 +4309,7 @@ CONTAINS
             & PROBLEM_TRANSIENT_SUPG_NAVIER_STOKES_SUBTYPE)
             SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
             IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
-              SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
+              solverMapping=>SOLVER_EQUATIONS%SOLVER_MAPPING
               EQUATIONS=>SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(1)%EQUATIONS
               IF(ASSOCIATED(EQUATIONS)) THEN
                 EQUATIONS_SET=>EQUATIONS%EQUATIONS_SET

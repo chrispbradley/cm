@@ -2173,13 +2173,8 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     TYPE(INTERFACE_CONDITIONS_TYPE), POINTER :: INTERFACE_CONDITIONS !<A pointer back to the interface conditions.
     TYPE(INTERFACE_TYPE), POINTER :: INTERFACE !<A pointer back to the interface.
     INTEGER(INTG) :: METHOD !<An integer which denotes the interface condition method. \see INTERFACE_CONDITIONS_Methods,INTERFACE_CONDITIONS
-<<<<<<< HEAD
     INTEGER(INTG) :: OPERATOR !<An integer which denotes whether type of interface operator. \see INTERFACE_CONDITIONS_Operator,INTERFACE_CONDITIONS
-    !INTEGER(INTG) :: CONNECTIVITY !<An integer which denotes whether type of connectivity. \see INTERFACE_CONDITIONS_Connectivity,INTERFACE_CONDITIONS
-=======
-    INTEGER(INTG) :: OPERATOR !<An integer which denotes the type of interface operator. \see INTERFACE_CONDITIONS_Operator,INTERFACE_CONDITIONS
     INTEGER(INTG) :: integrationType !<An integer which denotes the integration type. \see INTERFACE_CONDITIONS_IntegrationType,INTERFACE_CONDITIONS
->>>>>>> 9b4ed6d02384f24d5b76c9251bfb2ac90f710fc9
     TYPE(INTERFACE_GEOMETRY_TYPE) :: GEOMETRY !<The geometry information for the interface condition.
     TYPE(INTERFACE_PENALTY_TYPE), POINTER :: PENALTY !<A pointer to the interface condition penalty information if there are any for this interface condition.
     TYPE(INTERFACE_LAGRANGE_TYPE), POINTER :: LAGRANGE !<A pointer to the interface condition Lagrange multipler information if there are any for this interface condition.
@@ -2222,31 +2217,6 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
   END TYPE INTERFACE_MESH_CONNECTIVITY_TYPE
   
   !>Contains information on a data connectivity point 
-<<<<<<< HEAD
-  TYPE INTERFACE_POINT_CONNECTIVITY_TYPE
-    INTEGER(INTG) :: COUPLED_MESH_ELEMENT_NUMBER !<GLOBAL_MESH_ELEMENT_NUMBERS(connectivity_point_idx) coupled mesh element number
-    INTEGER(INTG) :: COUPLED_MESH_CONTACT_NUMBER !<LOCAL_MESH_CONTACT_NUMBERS(connectivity_point_idx) contact line/face number
-    INTEGER(INTG) :: COUPLED_MESH_CONTACT_XI_NORMAL !< LOCAL_MESH_LINE_XI_NORMAL(connectivity_point_idx) contact line/face normal xi direction
-    REAL(DP), ALLOCATABLE :: XI(:,:) !<XI(xi_idx,mesh_component) !\todo Comment
-  END TYPE INTERFACE_POINT_CONNECTIVITY_TYPE
-  
-  TYPE INTERFACE_POINTS_CONNECTIVITY_COUPLED_ELEMENTS_TYPE
-    INTEGER(INTG) :: NUMBER_OF_COUPLED_MESH_ELEMENTS !<Total number of coupled mesh elements that the data points in this interface elements are projected to
-    INTEGER(INTG), ALLOCATABLE :: ELEMENT_NUMBERS(:) !<element numbers
-  END TYPE INTERFACE_POINTS_CONNECTIVITY_COUPLED_ELEMENTS_TYPE
-    
-  !>Contains information on the data point coupling between meshes in the an interface
-  TYPE INTERFACE_POINTS_CONNECTIVITY_TYPE
-    TYPE(INTERFACE_TYPE), POINTER :: INTERFACE !<A pointer back to the interface for the coupled mesh connectivity
-    TYPE(MESH_TYPE), POINTER :: INTERFACE_MESH
-    LOGICAL :: POINTS_CONNECTIVITY_FINISHED !<Is .TRUE. if the coupled mesh data points connectivity has finished being created, .FALSE. if not.
-    INTEGER(INTG) :: NUMBER_OF_DATA_POINTS !<Is the number of data points in the interface
-    INTEGER(INTG) :: NUMBER_OF_ELEMENTS !<Number of element in the interface mesh
-    INTEGER(INTG) :: NUMBER_INT_DOM !<Is the number of domains coupled via the interface
-    TYPE(INTERFACE_POINT_CONNECTIVITY_TYPE), ALLOCATABLE :: POINTS_CONNECTIVITY(:,:) !<POINTS_CONNECTIVITY(point_index,coupled_mesh_idx)
-    TYPE(INTERFACE_POINTS_CONNECTIVITY_COUPLED_ELEMENTS_TYPE), ALLOCATABLE :: COUPLED_MESH_ELEMENTS(:,:) !<COUPLED_MESH_ELEMENTS(interface_element_idx,coupled_mesh_idx)
-  END TYPE INTERFACE_POINTS_CONNECTIVITY_TYPE
-=======
   TYPE InterfacePointConnectivityType
     INTEGER(INTG) :: coupledMeshElementNumber !<The element number this point is connected to in the coupled mesh
     INTEGER(INTG) :: elementLineFaceNumber !<The local connected face/line number in the coupled mesh
@@ -2269,7 +2239,6 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     TYPE(InterfaceCoupledElementsType), ALLOCATABLE :: coupledElements(:,:) !<coupledElements(interfaceElementIdx,coupledMeshIdx). The coupled mesh elements that are connected to each interface element.
     INTEGER(INTG), ALLOCATABLE :: maxNumberOfCoupledElements(:) !<maxNumberOfCoupledElements(coupledMeshIdx). The maximum number of coupled elements to an interface element in coupledMeshIdx'th mesh
   END TYPE InterfacePointsConnectivityType
->>>>>>> 9b4ed6d02384f24d5b76c9251bfb2ac90f710fc9
  
   !>Contains information for the interface data.
   TYPE INTERFACE_TYPE
@@ -2282,13 +2251,8 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     TYPE(REGION_TYPE), POINTER :: PARENT_REGION !<A point to the parent region containing the interface.
     INTEGER(INTG) :: NUMBER_OF_COUPLED_MESHES !<The number of coupled meshes in the interface.
     TYPE(MESH_PTR_TYPE), POINTER :: COUPLED_MESHES(:) !<COUPLED_MESHES(mesh_idx). COUPLED_MESHES(mesh_idx)%PTR is the pointer to the mesh_idx'th mesh involved in the interface.
-<<<<<<< HEAD
-    TYPE(INTERFACE_MESH_CONNECTIVITY_TYPE), POINTER :: MESH_CONNECTIVITY !<A pointer to the meshes connectivity the interface.  
-    TYPE(INTERFACE_POINTS_CONNECTIVITY_TYPE), POINTER :: POINTS_CONNECTIVITY !<A pointer to the data points connectivity the interface.
-=======
     TYPE(INTERFACE_MESH_CONNECTIVITY_TYPE), POINTER :: MESH_CONNECTIVITY !<A pointer to the meshes connectivity the interface.
     TYPE(InterfacePointsConnectivityType), POINTER :: pointsConnectivity !<A pointer to the points connectivity the interface.
->>>>>>> 9b4ed6d02384f24d5b76c9251bfb2ac90f710fc9
     TYPE(DATA_POINTS_TYPE), POINTER :: DATA_POINTS  !<A pointer to the data points defined in an interface.          
     TYPE(NODES_TYPE), POINTER :: NODES !<A pointer to the nodes in an interface
     TYPE(MESHES_TYPE), POINTER :: MESHES !<A pointer to the mesh in an interface.
@@ -2971,7 +2935,6 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     INTEGER(INTG), ALLOCATABLE :: equationsColNumbers(:) !<equationsColNumbers(i). The i'th equations column number in the equation set the solver column is mapped to.
     REAL(DP), ALLOCATABLE :: couplingCoefficients(:) !<couplingCoefficients(i). The i'th coupling coefficient for solver column mapping
 !!TODO: Maybe split this into a linear and a nonlinear part? The only problem is that would probably use about the same memory???
-<<<<<<< HEAD
     INTEGER(INTG) :: jacobianColNumber !<The Jacbian column number in the equations set that the solver column is mapped to.
     REAL(DP) :: jacobianCouplingCoefficient !<The coupling coefficient for the solver column to Jacobian column mapping.
   END TYPE SolverColToStaticEquationsMapType
@@ -2986,22 +2949,6 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     REAL(DP), ALLOCATABLE :: variableCoefficient(:) !<variableCoefficient(equationIdx). The mulitplicative coefficient for the mapping to the equationIdx'th equations
     REAL(DP), ALLOCATABLE :: additiveConstant(:) !<additiveConstant(equationIdx). The additive constant for the mapping to the equationIdx'th equations
   END TYPE SolverDofToVariableMapType
-=======
-    INTEGER(INTG) :: JACOBIAN_COL_NUMBER !<The Jacobian column number in the equations set that the solver column is mapped to.
-    REAL(DP) :: JACOBIAN_COUPLING_COEFFICIENT !<The coupling coefficient for the solver column to Jacobian column mapping.
-  END TYPE SOLVER_COL_TO_STATIC_EQUATIONS_MAP_TYPE
-
-  !>Contains information about mapping the solver dof to the field variable dofs in the equations set.
-  TYPE SOLVER_DOF_TO_VARIABLE_MAP_TYPE
-    INTEGER(INTG) :: NUMBER_OF_EQUATION_DOFS !<The number of equation dofs this solver dof is mapped to
-    INTEGER(INTG), ALLOCATABLE :: EQUATIONS_TYPES(:) !<EQUATION_TYPES(equation_idx). The type of equation of the equation_idx'th dof that the solver dof is mapped to.
-    INTEGER(INTG), ALLOCATABLE :: EQUATIONS_INDICES(:) !<EQUATIONS_INDICES(equation_idx). The index of either the equations set or interface condition of the equation_idx'th dof that this solver dof is mapped to.
-    TYPE(FIELD_VARIABLE_PTR_TYPE), ALLOCATABLE :: VARIABLE(:) !<VARIABLE(equation_idx)%PTR is a pointer to the field variable that the solver dof is mapped to in the equation_idx'th equation
-    INTEGER(INTG), ALLOCATABLE :: VARIABLE_DOF(:) !<VARIABLE_DOF(equation_idx). The variable dof number that the solver dof is mapped to in the equation_idx'th equation
-    REAL(DP), ALLOCATABLE :: VARIABLE_COEFFICIENT(:) !<VARIABLE_COEFFICIENT(equation_idx). The mulitplicative coefficient for the mapping to the equation_idx'th equations
-    REAL(DP), ALLOCATABLE :: ADDITIVE_CONSTANT(:) !<ADDITIVE_CONSTANT(equation_idx). The additive constant for the mapping to the equation_idx'th equations
-  END TYPE SOLVER_DOF_TO_VARIABLE_MAP_TYPE
->>>>>>> 9b4ed6d02384f24d5b76c9251bfb2ac90f710fc9
   
   !>Contains information about the mappings from a solver matrix to the equations in an equations set
   TYPE SolverColToEquationsSetMapType
@@ -3043,7 +2990,6 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
   END TYPE SolverColToEquationsMapsType
 
   !>Contains information on the mappings from a solver row to the equations.
-<<<<<<< HEAD
   TYPE SolverRowToEquationsMapsType
     INTEGER(INTG) :: numberOfEquationsSets !<The number of equations sets the solver row is mapped to. If the rows are interface rows then this will be zero.
     INTEGER(INTG) :: interfaceConditionIndex !<The interface condition index that the solver row is mapped to. If the rows are from an equations set then this will be zero.
@@ -3052,16 +2998,6 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     REAL(DP), ALLOCATABLE :: couplingCoefficients(:) !<couplingCoefficients(i). The i'th coupling coefficient for the solver row to equations mapping
   END TYPE SolverRowToEquationsMapsType
   
-=======
-  TYPE SOLVER_ROW_TO_EQUATIONS_MAPS_TYPE
-    INTEGER(INTG) :: NUMBER_OF_EQUATIONS_SET_ROWS !<The number of equations set rows the solver row is mapped to. If the rows are interface rows then this will be zero.
-    INTEGER(INTG) :: INTERFACE_CONDITION_INDEX !<The interface condition index that the solver row is mapped to. If the rows are from an equations set then this will be zero.
-    INTEGER(INTG), ALLOCATABLE :: EQUATIONS_INDEX(:) !<EQUATIONS_INDEX(i). If the rows are equations set rows then this is the index of the equations set that the i'th equations set row belongs to. If the rows are interface rows this will not be allocated.
-    INTEGER(INTG), ALLOCATABLE :: ROWCOL_NUMBER(:) !<ROWCOL_NUMBER(i). If the rows are equations set rows the i'th equations row number that the solver row is mapped to. If the rows are interface rows then the i'th column number that the solver row is mapped to.
-    REAL(DP), ALLOCATABLE :: COUPLING_COEFFICIENTS(:) !<COUPLING_COEFFICIENTS(i). The i'th coupling coefficient for the solver row to equations mapping
-  END TYPE SOLVER_ROW_TO_EQUATIONS_MAPS_TYPE
-
->>>>>>> 9b4ed6d02384f24d5b76c9251bfb2ac90f710fc9
   !>Contains information about the cached create values for a solver mapping
   TYPE SolverMapping_CreateValuesCacheType
     TYPE(LIST_TYPE), POINTER :: equationsRowVariablesList !<The list of equations variables in the solver mapping rows.
@@ -3087,17 +3023,10 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
   END TYPE SolverMapping_VariableType
 
   !>Contains information on the variables involved in a solver matrix
-<<<<<<< HEAD
   TYPE SolverMapping_VariablesType
     INTEGER(INTG) :: numberOfVariables !<The number of variables involved in the solver matrix.
     TYPE(SolverMapping_VariableType), ALLOCATABLE :: variables(:) !<variables(variableIdx). The variable information for the variableIdx'th variable involved in the solver matrix.
   END TYPE SolverMapping_VariablesType
-  
-=======
-  TYPE SOLVER_MAPPING_VARIABLES_TYPE
-    INTEGER(INTG) :: NUMBER_OF_VARIABLES !<The number of variables involved in the solver matrix.
-    TYPE(SOLVER_MAPPING_VARIABLE_TYPE), ALLOCATABLE :: VARIABLES(:) !<VARIABLES(variable_idx). The variable information for the variable_idx'th variable involved in the solver matrix.
-  END TYPE SOLVER_MAPPING_VARIABLES_TYPE
 
   !>Describes the coupled rows or columns in the solver mapping
   TYPE SolverMappingDofCouplingsType
@@ -3106,7 +3035,6 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     TYPE(BoundaryConditionsCoupledDofsPtrType), ALLOCATABLE :: dofCouplings(:) !<dofCouplings(couplingIdx) is a pointer to the coupled DOF information for the couplingIdx'th coupling in the solver rows or columns.
   END TYPE SolverMappingDofCouplingsType
 
->>>>>>> 9b4ed6d02384f24d5b76c9251bfb2ac90f710fc9
   !>Contains information on the solver mapping between the global equation sets and the solver matrices.
   TYPE SolverMappingType
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: solverEquations !<A pointer to the solver equations for this mapping.

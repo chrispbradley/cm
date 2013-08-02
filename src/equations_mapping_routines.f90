@@ -851,7 +851,7 @@ CONTAINS
                 !Check that the LHS has been set, if not default appropriately
                 IF(createValuesCache%lhsVariableType/=0) THEN
                   !Check that LHS variable is used
-                  lhsIsUsed=lhsIsUsed.OR.createValuesCache%lhsVariableType==createValuesCache%DYNAMIC_VARIABLE_TYPE
+                  lhsIsUsed=createValuesCache%lhsVariableType==createValuesCache%DYNAMIC_VARIABLE_TYPE
                   IF(.NOT.lhsIsUsed) THEN
                     DO matrixIdx=1,createValuesCache%NUMBER_OF_LINEAR_EQUATIONS_MATRICES
                       IF(createValuesCache%lhsVariableType==createValuesCache%LINEAR_MATRIX_VARIABLE_TYPES(matrixIdx)) THEN

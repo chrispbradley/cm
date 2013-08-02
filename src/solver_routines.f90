@@ -10128,11 +10128,12 @@ CONTAINS
       & solverMatrixIdx,residualVariableDof,variableBoundaryCondition,variableType,equationsMatrixIdx2, &
       & variableIdx,variableGlobalDof,variableDof,equationsRowNumber2,equationsMatrixNumber,dependentVariableType, &
       & equationsColumnNumber,dirichletRow,dirichletIdx
+    LOGICAL :: hasIntegratedValues
     REAL(SP) :: systemElapsed,systemTime1(1),systemTime2(1),userElapsed,userTime1(1),userTime2(1)
     REAL(DP) :: dampingMatrixCoefficient,deltaT,dynamicValue,firstUpdateFactor,residualValue, &
       & linearValue,linearValueSum,massMatrixCoefficient,rhsValue,rowCouplingCoefficient,previousResidualValue, &
       & secondUpdateFactor,sourceValue,stiffnessMatrixCoefficient,value,jacobianMatrixCoefficient,alphaValue, &
-      & matrixValue,dynamicDisplacementFactor,dynamicVelocityFactor,dynamicAccelerationFactor
+      & matrixValue,dynamicDisplacementFactor,dynamicVelocityFactor,dynamicAccelerationFactor,rhsIntegratedValue
     REAL(DP), POINTER :: fieldValuesVector(:),previousValuesVector(:),previousVelocityVector(:), &
       & previousAccelerationVector(:),rhsParameters(:),previousResidualParameters(:)
     TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: boundaryConditions
@@ -10600,8 +10601,8 @@ CONTAINS
   !!TODO: what if the equations set doesn't have a RHS vector???
                                         rhsVariable=>rhsMapping%RHS_VARIABLE
                                         rhsDomainMapping=>rhsVariable%DOMAIN_MAPPING
-                                        CALL FIELD_PARAMETER_SET_CREATED(rhsVariable%FIELD,RHS_VARIABLE_TYPE, &
-                                          & FIELD_INTEGRATED_NEUMANN_SET_TYPE,HAS_INTEGRATED_VALUES,ERR,ERROR,*999)
+                                        CALL FIELD_PARAMETER_SET_CREATED(rhsVariable%FIELD,rhsVariableType, &
+                                          & FIELD_INTEGRATED_NEUMANN_SET_TYPE,hasIntegratedValues,ERR,ERROR,*999)
                                         equationsRhsVector=>rhsVector%vector
                                         CALL BOUNDARY_CONDITIONS_VARIABLE_GET(boundaryConditions,rhsVariable, &
                                           & rhsBoundaryConditions,err,error,*999)
@@ -10720,12 +10721,12 @@ CONTAINS
                                               !Get the equations RHS values
                                               CALL DistributedVector_ValuesGet(equationsRhsVector,equationsRowNumber, &
                                                 & rhsValue,err,error,*999)
-                                              IF(HAS_INTEGRATED_VALUES) THEN
+                                              IF(hasIntegratedValues) THEN
                                                 !Add any Neumann integrated values, b = f + N q
-                                                CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(rhsVariable%FIELD,RHS_VARIABLE_TYPE, &
-                                                  & FIELD_INTEGRATED_NEUMANN_SET_TYPE,rhs_variable_dof,RHS_INTEGRATED_VALUE, &
-                                                  & ERR,ERROR,*999)
-                                                rhsValue=rhsValue+RHS_INTEGRATED_VALUE
+                                                CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(rhsVariable%FIELD,rhsVariableType, &
+                                                  & FIELD_INTEGRATED_NEUMANN_SET_TYPE,rhsVariableDof,rhsIntegratedValue, &
+                                                  & err,error,*999)
+                                                rhsValue=rhsValue+rhsIntegratedValue
                                               END IF
                                               !Loop over the solver rows associated with this equations set row
                                               DO solverRowIdx=1,solverMapping%equationsSetToSolverMap(equationsSetIdx)% &
@@ -10953,12 +10954,12 @@ CONTAINS
                                                 rowCouplingCoefficient=solverMapping%equationsSetToSolverMap( &
                                                   & equationsSetIdx)%equationsRowToSolverRowsMaps(equationsRowNumber)% &
                                                   & couplingCoefficients(solverRowNumber)
-                                                IF(HAS_INTEGRATED_VALUES) THEN
+                                                IF(hasIntegratedValues) THEN
                                                   !Add any Neumann integrated values, b = f + N q
-                                                  CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(rhsVariable%FIELD,RHS_VARIABLE_TYPE, &
-                                                    & FIELD_INTEGRATED_NEUMANN_SET_TYPE,rhsVariableDof,RHS_INTEGRATED_VALUE, &
+                                                  CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(rhsVariable%field,rhsVariableType, &
+                                                    & FIELD_INTEGRATED_NEUMANN_SET_TYPE,rhsVariableDof,rhsIntegratedValue, &
                                                     & ERR,ERROR,*999)
-                                                  value=value+RHS_INTEGRATED_VALUE*row_coupling_coefficient
+                                                  value=value+rhsIntegratedValue*rowCouplingCoefficient
                                                 END IF
                                                 CALL DistributedVector_ValuesAdd(solverRhsVector,solverRowNumber,value, &
                                                   & err,error,*999)
@@ -12027,7 +12028,7 @@ CONTAINS
                                             value=rhsParameters(rhsVariableDof)
                                             IF(hasIntegratedValues) THEN
                                               !Add any Neumann integrated values, b = f + N q
-                                              CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(rhsVariable%FIELD,RHS_VARIABLE_TYPE, &
+                                              CALL FIELD_PARAMETER_SET_GET_LOCAL_DOF(rhsVariable%FIELD,rhsVariableType, &
                                                 & FIELD_INTEGRATED_NEUMANN_SET_TYPE,rhsVariableDof,rhsIntegratedValue, &
                                                 & ERR,ERROR,*999)
                                               value=value+rhsIntegratedValue
@@ -12240,9 +12241,11 @@ CONTAINS
                                   ENDIF
                                   IF(ASSOCIATED(sourceMapping)) THEN
                                     CALL DistributedVector_DataRestore(distributedSourceVector,sourceData,err,error,*999)
-                                    CALL Field_ParameterSetDataRestore(dependentField,variableType,FIELD_VALUES_SET_TYPE, &
+                                    DO variableIdx=1,linearMapping%NUMBER_OF_LINEAR_MATRIX_VARIABLES
+                                      variableType=linearMapping%LINEAR_MATRIX_VARIABLE_TYPES(variableIdx)
+                                      CALL Field_ParameterSetDataRestore(dependentField,variableType,FIELD_VALUES_SET_TYPE, &
                                         & dependentParameters(variableIdx)%ptr,err,error,*999)
-                                    ENDDO !variable_idx
+                                    ENDDO !variableIdx
                                     IF(ALLOCATED(dependentParameters)) DEALLOCATE(dependentParameters)
                                   ENDIF
                                 ELSE
