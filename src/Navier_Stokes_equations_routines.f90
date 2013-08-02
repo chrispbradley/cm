@@ -4310,7 +4310,7 @@ CONTAINS
             SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
             IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
               solverMapping=>SOLVER_EQUATIONS%SOLVER_MAPPING
-              EQUATIONS=>SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(1)%EQUATIONS
+              EQUATIONS=>solverMapping%equationsSetToSolverMap(1)%equations
               IF(ASSOCIATED(EQUATIONS)) THEN
                 EQUATIONS_SET=>EQUATIONS%EQUATIONS_SET
                 IF(ASSOCIATED(EQUATIONS_SET%ANALYTIC)) THEN
@@ -4738,9 +4738,9 @@ CONTAINS
           CASE(PROBLEM_1DTRANSIENT_NAVIER_STOKES_SUBTYPE)
             SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
             IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
-              SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
-              IF(ASSOCIATED(SOLVER_MAPPING)) THEN
-                EQUATIONS=>SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(1)%EQUATIONS
+              solverMapping=>SOLVER_EQUATIONS%SOLVER_MAPPING
+              IF(ASSOCIATED(solverMapping)) THEN
+                EQUATIONS=>solverMapping%equationsSetToSolverMap(1)%equations
                 IF(ASSOCIATED(EQUATIONS)) THEN
                   EQUATIONS_SET=>EQUATIONS%EQUATIONS_SET
                   IF(ASSOCIATED(EQUATIONS_SET)) THEN
@@ -4816,8 +4816,8 @@ CONTAINS
             !Pre solve for the linear solver
             SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
             IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
-              SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
-              EQUATIONS=>SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(1)%EQUATIONS
+              solverMapping=>SOLVER_EQUATIONS%SOLVER_MAPPING
+              equations=>solverMapping%equationsSetToSolverMap(1)%equations
               IF(ASSOCIATED(EQUATIONS)) THEN
                 EQUATIONS_SET=>EQUATIONS%EQUATIONS_SET
                 IF(ASSOCIATED(EQUATIONS_SET)) THEN
@@ -4897,8 +4897,8 @@ CONTAINS
              CALL WRITE_STRING(GENERAL_OUTPUT_TYPE,"Mesh movement change boundary conditions... ",ERR,ERROR,*999)
               SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
               IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
-                SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
-                EQUATIONS=>SOLVER_MAPPING%equationsSetToSolverMap(1)%EQUATIONS
+                solverMapping=>SOLVER_EQUATIONS%SOLVER_MAPPING
+                equations=>solverMapping%equationsSetToSolverMap(1)%equations
                 IF(ASSOCIATED(EQUATIONS)) THEN
                   EQUATIONS_SET=>EQUATIONS%EQUATIONS_SET
                   IF(ASSOCIATED(EQUATIONS_SET)) THEN
@@ -4985,8 +4985,8 @@ CONTAINS
               CALL WRITE_STRING(GENERAL_OUTPUT_TYPE,"Mesh movement change boundary conditions... ",ERR,ERROR,*999)
               SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
               IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
-                SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
-                EQUATIONS=>SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(1)%EQUATIONS
+                solverMapping=>SOLVER_EQUATIONS%SOLVER_MAPPING
+                equations=>solverMapping%equationsSetToSolverMap(1)%equations
                 IF(ASSOCIATED(EQUATIONS)) THEN
                   EQUATIONS_SET=>EQUATIONS%EQUATIONS_SET
                   IF(ASSOCIATED(EQUATIONS_SET)) THEN
@@ -5066,8 +5066,8 @@ CONTAINS
              CALL WRITE_STRING(GENERAL_OUTPUT_TYPE,"Mesh movement change boundary conditions... ",ERR,ERROR,*999)
               SOLVER_EQUATIONS=>SOLVER%SOLVER_EQUATIONS
               IF(ASSOCIATED(SOLVER_EQUATIONS)) THEN
-                SOLVER_MAPPING=>SOLVER_EQUATIONS%SOLVER_MAPPING
-                EQUATIONS=>SOLVER_MAPPING%EQUATIONS_SET_TO_SOLVER_MAP(1)%EQUATIONS
+                solverMapping=>SOLVER_EQUATIONS%SOLVER_MAPPING
+                equations=>solverMapping%equationsSetToSolverMap(1)%equations
                 IF(ASSOCIATED(EQUATIONS)) THEN
                   EQUATIONS_SET=>EQUATIONS%EQUATIONS_SET
                   IF(ASSOCIATED(EQUATIONS_SET)) THEN
