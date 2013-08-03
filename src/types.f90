@@ -548,6 +548,14 @@ MODULE TYPES
     INTEGER(INTG), ALLOCATABLE :: NUMBER_OF_ELEMENTS_XI(:) !<NUMBER_OF_ELEMENTS_XI(xi_idx). The number of elements in the xi_idx'th Xi direction for the mesh.
   END TYPE GENERATED_MESH_REGULAR_TYPE
 
+  !>Contains information on a generated stochastic tree mesh
+  TYPE GeneratedMesh_StochasticTreeType
+    TYPE(GENERATED_MESH_TYPE), POINTER :: generatedMesh !<A pointer to the generated mesh
+    TYPE(BASIS_PTR_TYPE), ALLOCATABLE :: bases(:) !<The pointers to the bases used in the stochastic tree mesh.
+    INTEGER(INTG) :: coordinateDimension !<The number of coordinates for the stochastic tree mesh.
+    REAL(DP), ALLOCATABLE :: Origin(:) !<origin(CoordinateIdx). The position of the origin (first) corner of the stochastic tree mesh
+  END TYPE GeneratedMesh_StochasticTreeType
+
   !>Contains information of a generated cylinder mesh
   !>Allows only a 3D cylinder mesh with xi directions (r,theta,z)
   TYPE GENERATED_MESH_CYLINDER_TYPE
@@ -582,6 +590,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     TYPE(INTERFACE_TYPE), POINTER :: INTERFACE !<A pointer to the interface containing the generated mesh. If the generated mesh is in a region rather than an interface then this pointer will be NULL and the interface pointer should be used.
     INTEGER(INTG) :: GENERATED_TYPE !<The type of the generated mesh. \see GENERATED_MESH_ROUTINES_GeneratedMeshTypes,GENERATED_MESH_ROUTINES
     TYPE(GENERATED_MESH_REGULAR_TYPE), POINTER :: REGULAR_MESH !<A pointer to the regular generated mesh information if the generated mesh is a regular mesh, NULL if not.
+    TYPE(GeneratedMesh_StochasticTreeType), POINTER :: stochasticTreeMesh !<A pointer to the stochastic tree generated mesh information if the generated mesh is a tree mesh, NULL if not.
     TYPE(GENERATED_MESH_CYLINDER_TYPE), POINTER :: CYLINDER_MESH !<A pointer to the cylinder generate mesh information if the generated mesh is a cylinder mesh, NULL if not.
     TYPE(GENERATED_MESH_ELLIPSOID_TYPE), POINTER :: ELLIPSOID_MESH !<A pointer to the ellipsoid generate mesh information if the generated mesh is a ellipsoid mesh, NULL if not.
     TYPE(MESH_TYPE), POINTER :: MESH !<A pointer to the mesh that has been generated.
