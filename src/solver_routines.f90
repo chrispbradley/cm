@@ -11944,15 +11944,6 @@ CONTAINS
                                       CALL BOUNDARY_CONDITIONS_VARIABLE_GET(boundaryConditions,rhsVariable, &
                                         & rhsBoundaryConditions,err,error,*999)
                                       
-                                      IF(ASSOCIATED(rhsBoundaryConditions)) THEN
-                                        
-                                        !Call SOLVER_NEUMANN_CALCULATE to check whether any Neumann boundary conditions
-                                        !have been set if set then Neumann Boundary Condition calculate routines are called
-                                        CALL SOLVER_NEUMANN_CALCULATE(rhsMapping,boundaryConditions,equationsMapping, &
-                                          & dependentField,err,error,*999)
-                                      ELSE
-                                        CALL FlagError("RHS boundary conditions is not associated.",err,error,*999)
-                                      ENDIF
                                     ELSE
                                       CALL FlagError("RHS variable is not associated.",err,error,*999)
                                     ENDIF
