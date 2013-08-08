@@ -137,9 +137,8 @@ CONTAINS
       & numberOfInterfaceRows,numberOfInterfaceVariables,numberOfGlobalSolverDofs,numberOfGlobalSolverRows, &
       & numberOfLinearEquationsMatrices,numberOfLocalSolverDofs,numberOfLocalSolverRows,numberOfRankCols, &
       & numberOfRankRows,numberOfVariables,numberColEquationsCols,numberRowEquationsRows,rank,rankIdx,rowEquationsRowIdx, &
-      & rowIdx,rowListItem(4),rowRank,solverGlobalDof, &
-      & solverMatrixIdx,solverVariableIdx, totalNumberOfLocalSolverDofs,variableIdx,variableListItem(3),variablePositionIdx, &
-      & variableType
+      & rowIdx,rowListItem(4),rowRank,solverGlobalDof,solverMatrixIdx,solverVariableIdx,solverVariableIdxTemp, &
+      & tempOffset,totalNumberOfLocalSolverDofs,variableIdx,variableListItem(3),variablePositionIdx,variableType
     INTEGER(INTG), ALLOCATABLE :: equationsSetVariables(:,:),equationsVariables(:,:),interfaceEquationsList(:,:), &
       & interfaceVariables(:,:),rankGlobalRowsList(:,:),rankGlobalColsList(:,:),solverLocalDof(:)
     INTEGER(INTG), ALLOCATABLE :: numberOfVariableGlobalSolverDofs(:),numberOfVariableLocalSolverDofs(:), &
@@ -615,7 +614,7 @@ CONTAINS
                     IF(ASSOCIATED(colDofsMapping)) THEN                    
                       !\todo Lagrange variable type set to the first variable type for now
                       variableType=1
-                      lagrangeVariable=>lagrangeField%variableTypeMap(variableType)%ptr
+                      lagrangeVariable=>lagrangeField%VARIABLE_TYPE_MAP(variableType)%ptr
                       CALL BOUNDARY_CONDITIONS_VARIABLE_GET(boundaryConditions,lagrangeVariable,boundaryConditionsVariable, &
                         & err,error,*999)
                       IF(ASSOCIATED(boundaryConditionsVariable)) THEN
@@ -630,7 +629,7 @@ CONTAINS
                             ENDIF
                           ENDDO !rankIdx
                           IF(columnRank>=0) THEN
-                            globalDof=globalColumns
+                            globalDof=globalColumn
                             includeColumn=boundaryConditionsVariable%DOF_TYPES(globalDof)==BOUNDARY_CONDITION_DOF_FREE
                             rowListItem(1)=globalColumn
                             rowListItem(2)=localColumn
@@ -1050,7 +1049,7 @@ CONTAINS
                     CASE(INTERFACE_CONDITION_PENALTY_METHOD)
                       !Set up the solver row <-> interface row mappings
                       !Penalty matrix is the last interface matrix
-                      interfaceMatrixIdx=interfaceMapping%numberOfInterfaceMatrices
+                      interfaceMatrixIdx=interfaceMapping%NUMBER_OF_INTERFACE_MATRICES
                       !Set the mappings
                       solverMapping%interfaceConditionToSolverMap(interfaceConditionIdx)% &
                         & interfaceToSolverMatrixMapsIm(interfaceMatrixIdx)%interfaceRowToSolverRowsMap(localColumn)% &
@@ -2241,14 +2240,14 @@ CONTAINS
                 
                 DO solverVariableIdx=1,solverMapping%columnVariablesList(solverMatrixIdx)%numberOfVariables
                   
-                  IF (solverMapping%numberOfInterfaceConditionsS>0) THEN
+                  IF (solverMapping%numberOfInterfaceConditions>0) THEN
                     ! Ensure that the dof_offset is calculated as a sum of the number of dofs in the diagonal entries of the solver
                     ! matrix (ie the sum of the number of solver dofs in each equation set).
                     ! Note that this may not work when running problems in parallel, however, note that interfaces can not currently
                     ! be used in parallel either, and the following code only executes if there are interface conditions present.
                     tempOffset = 0
                     DO solverVariableIdxTemp=1,solverVariableIdx
-                      DO globaDof=1,SIZE(dofMap(solverVariableIdxTemp)%ptr)
+                      DO globalDof=1,SIZE(dofMap(solverVariableIdxTemp)%ptr)
                         IF (dofMap(solverVariableIdxTemp)%PTR(globalDof)>0) THEN
                           tempOffset=tempOffset+1
                         ENDIF
@@ -5335,7 +5334,8 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
-    INTEGER(INTG) :: equationsMatrixIdx,equationsSetIdx,interfaceConditionIdx,interfaceMatrixIdx,listItem(2)
+    INTEGER(INTG) :: equationsMatrixIdx,equationsSetIdx,interfaceConditionIdx,interfaceMatrixIdx,listItem(2), &
+      & numberOfInterfaceMatrices
     LOGICAL :: equationsSetFound,variableFound
     TYPE(EQUATIONS_SET_TYPE), POINTER :: equationsSet
     TYPE(FIELD_VARIABLE_TYPE), POINTER :: dependentVariable
@@ -5373,7 +5373,7 @@ CONTAINS
                         CASE(INTERFACE_CONDITION_PENALTY_METHOD)
                           numberOfInterfaceMatrices=interfaceMapping%NUMBER_OF_INTERFACE_MATRICES-1
                         CASE DEFAULT
-                          LOCAL_ERROR="The interface condition method of "// &
+                          localError="The interface condition method of "// &
                             & TRIM(NumberToVstring(interfaceCondition%method,"*",err,error))//" is invalid."
                           CALL FlagError(localError,err,error,*999)
                         ENDSELECT

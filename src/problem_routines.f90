@@ -3321,7 +3321,7 @@ CONTAINS
     TYPE(PROBLEM_TYPE), POINTER :: problem
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: nonlinearSolver
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: solverEquations
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: solverMapping
+    TYPE(SolverMappingType), POINTER :: solverMapping
     TYPE(INTERFACE_CONDITION_TYPE), POINTER :: interfaceCondition
     TYPE(INTERFACE_TYPE), POINTER :: interface
     LOGICAL :: reproject
@@ -3368,8 +3368,8 @@ CONTAINS
                   IF(ASSOCIATED(solverEquations)) THEN
                     solverMapping=>solverEquations%SOLVER_MAPPING
                     IF(ASSOCIATED(solverMapping)) THEN
-                      DO interfaceConditionIdx=1,solverMapping%NUMBER_OF_INTERFACE_CONDITIONS
-                        interfaceCondition=>solverMapping%INTERFACE_CONDITIONS(interfaceConditionIdx)%PTR
+                      DO interfaceConditionIdx=1,solverMapping%numberOfInterfaceConditions
+                        interfaceCondition=>solverMapping%interfaceConditions(interfaceConditionIdx)%ptr
                         IF(ASSOCIATED(interfaceCondition)) THEN
                           IF(interfaceCondition%OPERATOR==INTERFACE_CONDITION_FLS_CONTACT_REPROJECT_OPERATOR .OR. &
                               & interfaceCondition%OPERATOR==INTERFACE_CONDITION_FLS_CONTACT_OPERATOR) THEN !Only reproject for contact operator
@@ -3467,7 +3467,7 @@ CONTAINS
     INTEGER(INTG) :: equationsSetIdx,load_step
     LOGICAL :: dirExists
     TYPE(REGION_TYPE), POINTER :: region !<A pointer to region to output the fields for
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: solverMapping 
+    TYPE(SolverMappingType), POINTER :: solverMapping 
     TYPE(FIELDS_TYPE), POINTER :: fields
     TYPE(VARYING_STRING) :: fileName,method,directory
     
@@ -3539,8 +3539,8 @@ CONTAINS
             WRITE(*,'(1X,''  LoadStep: '',I4)') load_step
             WRITE(*,'(1X,''    Iteration: '',I4)') iterationNumber
 
-            DO equationsSetIdx=1,solverMapping%NUMBER_OF_EQUATIONS_SETS
-              region=>solverMapping%EQUATIONS_SETS(equationsSetIdx)%PTR%REGION
+            DO equationsSetIdx=1,solverMapping%numberOfEquationsSets
+              region=>solverMapping%equationsSets(equationsSetIdx)%ptr%region
               IF(ASSOCIATED(region))THEN
                 NULLIFY(fields)
                 fields=>region%FIELDS
@@ -3580,9 +3580,9 @@ CONTAINS
 
           IF(DIAGNOSTICS1) THEN
             IUNIT = 300
-            DO interfaceConditionIdx=1,solverMapping%NUMBER_OF_INTERFACE_CONDITIONS
-              interfaceCondition=>solverMapping%INTERFACE_CONDITIONS(interfaceConditionIdx)%PTR
-              interface=>solverMapping%INTERFACE_CONDITIONS(interfaceConditionIdx)%PTR%interface
+            DO interfaceConditionIdx=1,solverMapping%numberOfInterfaceConditions
+              interfaceCondition=>solverMapping%interfaceConditions(interfaceConditionIdx)%ptr
+              interface=>solverMapping%interfaceConditions(interfaceConditionIdx)%ptr%interface
               pointsConnectivity=>interface%pointsConnectivity
               interfaceDatapoints=>interface%DATA_POINTS
               IF(ASSOCIATED(pointsConnectivity)) THEN

@@ -5773,7 +5773,7 @@ CONTAINS
     TYPE(SOLVERS_TYPE), POINTER :: solvers
     TYPE(SOLVER_TYPE), POINTER :: solver
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: solverEquations
-    TYPE(SOLVER_MAPPING_TYPE), POINTER :: solverMapping
+    TYPE(SolverMappingType), POINTER :: solverMapping
     TYPE(REGION_TYPE), POINTER :: region
     TYPE(FIELDS_TYPE), POINTER :: fields
     INTEGER(INTG) :: solverIdx,equationsSetIdx,incrementIdx
@@ -5794,10 +5794,10 @@ CONTAINS
               IF(ASSOCIATED(solverEquations)) THEN
                 solverMapping=>SOLVER%SOLVER_EQUATIONS%SOLVER_MAPPING
                 IF(ASSOCIATED(solverMapping)) THEN
-                  DO equationsSetIdx=1,solverMapping%NUMBER_OF_EQUATIONS_SETS
-                    region=>solverMapping%EQUATIONS_SETS(equationsSetIdx)%PTR%REGION
+                  DO equationsSetIdx=1,solverMapping%numberOfEquationsSets
+                    region=>solverMapping%equationsSets(equationsSetIdx)%ptr%region
                     NULLIFY(fields)
-                    fields=>region%FIELDS
+                    fields=>region%fields
                     directory="results_load/"
                     INQUIRE(FILE=CHAR(directory),EXIST=dirExist)
                     IF(.NOT.dirExist) THEN

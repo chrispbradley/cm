@@ -16041,8 +16041,8 @@ CONTAINS
       CASE(SOLVER_NONLINEAR_SQP)
         !Do nothing
       CASE DEFAULT
-        LOCAL_ERROR="The nonlinear solver type of "// &
-          & TRIM(NumberToVString(NONLINEAR_SOLVER%NONLINEAR_SOLVE_TYPE,"*",ERR,ERROR))// &
+        localError="The nonlinear solver type of "// &
+          & TRIM(NumberToVString(nonlinearSolver%NONLINEAR_SOLVE_TYPE,"*",err,error))// &
           & " is invalid."
         CALL FlagError(localError,err,error,*999)
       END SELECT

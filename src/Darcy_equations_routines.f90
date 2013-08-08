@@ -7868,10 +7868,6 @@ CONTAINS
                       element_node_idx_2=DEPENDENT_BASIS%NODE_NUMBERS_IN_LOCAL_FACE(face_node_idx_2,element_face_idx) !nn
 
                       DO face_node_derivative_idx_2=1,FACE_BASIS%NUMBER_OF_DERIVATIVES(face_node_idx_2) !nkf
-<<<<<<< HEAD
-=======
-
->>>>>>> 556840fba16db718f7056446f22deced0bd92b06
                         element_node_derivative_idx_2=DEPENDENT_BASIS%DERIVATIVE_NUMBERS_IN_LOCAL_FACE(face_node_derivative_idx_2, &
                           & face_node_idx_2, element_face_idx)
 
