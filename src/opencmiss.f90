@@ -4476,12 +4476,6 @@ MODULE OPENCMISS
     MODULE PROCEDURE CMISSInterfaceCondition_OperatorSetObj
   END INTERFACE !CMISSInterfaceCondition_OperatorSet
   
-  !>Sets incremental translations for frictionless contact
-  INTERFACE CMISSInterfaceCondition_TranslationsSet
-    MODULE PROCEDURE CMISSInterfaceCondition_TranslationsSetNumber
-    MODULE PROCEDURE CMISSInterfaceCondition_TranslationsSetObj
-  END INTERFACE !CMISSInterfaceCondition_TranslationsSet
-
   !>Returns the sparsity for interface equations.
   INTERFACE CMISSInterfaceEquations_SparsityGet
     MODULE PROCEDURE CMISSInterfaceEquations_SparsityGetNumber
@@ -4533,8 +4527,6 @@ MODULE OPENCMISS
 
   PUBLIC CMISSInterfaceCondition_MethodGet,CMISSInterfaceCondition_MethodSet
   
-  PUBLIC CMISSInterfaceCondition_TranslationsSet
-
   PUBLIC CMISSInterfaceCondition_OperatorGet,CMISSInterfaceCondition_OperatorSet
 
   PUBLIC CMISSInterfaceEquations_SparsityGet,CMISSInterfaceEquations_SparsitySet
@@ -37821,94 +37813,6 @@ CONTAINS
   !  
   !================================================================================================================================
   !  
-  
-  !>Sets the xi coordinate mapping between the interface and xi coordinates in a coupled region mesh
-  SUBROUTINE CMISSInterfaceMeshConnectivity_ElementXiContactSetNumber(regionUserNumber,interfaceUserNumber,InterfaceElementNumber, & 
-    &  coupledMeshIndexNumber,coupledMeshElementNumber,LocalLineNumber,LocalNodeNumber,componentNumber,xi,Err)
-  
-    !Argument variables
-    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the interface to start the creation of the meshes connectivity.
-    INTEGER(INTG), INTENT(IN) :: interfaceUserNumber !<The user number of the interface to start the creation of the meshes connectivity for.
-    INTEGER(INTG), INTENT(IN) :: InterfaceElementNumber !<The element number of the interface mesh
-    INTEGER(INTG), INTENT(IN) :: coupledMeshIndexNumber !<The index number to the coupled mesh
-    INTEGER(INTG), INTENT(IN) :: coupledMeshElementNumber !<The number of elements
-    INTEGER(INTG), INTENT(IN) :: LocalLineNumber !<The local line number of the couple mesh element
-    INTEGER(INTG), INTENT(IN) :: LocalNodeNumber !<The number of elements
-    INTEGER(INTG), INTENT(IN) :: ComponentNumber !<The number of elements
-    REAL(DP), INTENT(IN) :: Xi(:)
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    !Local variables
-    TYPE(INTERFACE_TYPE), POINTER :: INTERFACE
-    TYPE(REGION_TYPE), POINTER :: REGION
-    TYPE(VARYING_STRING) :: LOCAL_ERROR
-    
-    CALL ENTERS("CMISSInterfaceMeshConnectivity_ElementXiContactSetNumber",Err,ERROR,*999)
- 
-    NULLIFY(REGION)
-    NULLIFY(INTERFACE)
-    CALL REGION_USER_NUMBER_FIND(regionUserNumber,REGION,Err,ERROR,*999)
-    IF(ASSOCIATED(REGION)) THEN
-      CALL INTERFACE_USER_NUMBER_FIND(interfaceUserNumber,REGION,INTERFACE,Err,ERROR,*999)
-      IF(ASSOCIATED(INTERFACE)) THEN
-        CALL INTERFACE_MESH_CONNECTIVITY_ELEMENT_XI_CONTACT_SET(INTERFACE%MESH_CONNECTIVITY,InterfaceElementNumber, &
-         & coupledMeshIndexNumber,coupledMeshElementNumber,LocalLineNumber,LocalNodeNumber,componentNumber,xi,Err,ERROR,*999)
-      ELSE
-        LOCAL_ERROR="An interface with an user number of "//TRIM(NUMBER_TO_VSTRING(interfaceUserNumber,"*",Err,ERROR))// &
-          & " does not exist on the region with an user number of "//TRIM(NUMBER_TO_VSTRING(regionUserNumber,"*",Err,ERROR))//"."
-        CALL FLAG_ERROR(LOCAL_ERROR,Err,ERROR,*999)
-      ENDIF
-    ELSE
-      LOCAL_ERROR="A region with an user number of "//TRIM(NUMBER_TO_VSTRING(regionUserNumber,"*",Err,ERROR))// &
-        & " does not exist."
-      CALL FLAG_ERROR(LOCAL_ERROR,Err,ERROR,*999)
-    ENDIF
-
-    CALL EXITS("CMISSInterfaceMeshConnectivity_ElementXiContactSetNumber")
-    RETURN
-999 CALL ERRORS("CMISSInterfaceMeshConnectivity_ElementXiContactSetNumber",Err,ERROR)
-    CALL EXITS("CMISSInterfaceMeshConnectivity_ElementXiContactSetNumber")
-    CALL CMISS_HANDLE_ERROR(Err,ERROR)
-    RETURN
-    
-  END SUBROUTINE CMISSInterfaceMeshConnectivity_ElementXiContactSetNumber
-
-  !  
-  !================================================================================================================================
-  ! 
-   
-  !>Sets the xi coordinate mapping between the interface and xi coordinates in a coupled region mesh
-  SUBROUTINE CMISSInterfaceMeshConnectivity_ElementXiContactSetObj(InterfaceMeshConnectivity,InterfaceElementNumber, & 
-    &  coupledMeshIndexNumber,coupledMeshElementNumber,LocalLineNumber,LocalNodeNumber,componentNumber,xi,Err)
-  
-    !Argument variables
-    TYPE(CMISSInterfaceMeshConnectivityType), INTENT(IN) :: InterfaceMeshConnectivity !<The interface to start the creation of the meshes connectivity for
-    INTEGER(INTG), INTENT(IN) :: InterfaceElementNumber !<The element number of the interface mesh
-    INTEGER(INTG), INTENT(IN) :: coupledMeshIndexNumber !<The index number to the coupled mesh
-    INTEGER(INTG), INTENT(IN) :: coupledMeshElementNumber !<The number of elements
-    INTEGER(INTG), INTENT(IN) :: LocalLineNumber !<The local line number of the couple mesh element
-    INTEGER(INTG), INTENT(IN) :: LocalNodeNumber !<The number of elements
-    INTEGER(INTG), INTENT(IN) :: ComponentNumber !<The number of elements
-    REAL(DP), INTENT(IN) :: Xi(:)
-    INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
-    !Local variables
-  
-    CALL ENTERS("CMISSInterfaceMeshConnectivity_ElementXiContactSetObj",Err,ERROR,*999)
- 
-    CALL INTERFACE_MESH_CONNECTIVITY_ELEMENT_XI_CONTACT_SET(InterfaceMeshConnectivity%MESH_CONNECTIVITY,InterfaceElementNumber, &
-         & coupledMeshIndexNumber,coupledMeshElementNumber,LocalLineNumber,LocalNodeNumber,componentNumber,xi,Err,ERROR,*999)
-
-    CALL EXITS("CMISSInterfaceMeshConnectivity_ElementXiContactSetObj")
-    RETURN
-999 CALL ERRORS("CMISSInterfaceMeshConnectivity_ElementXiContactSetObj",Err,ERROR)
-    CALL EXITS("CMISSInterfaceMeshConnectivity_ElementXiContactSetObj")
-    CALL CMISS_HANDLE_ERROR(Err,ERROR)
-    RETURN
-    
-  END SUBROUTINE CMISSInterfaceMeshConnectivity_ElementXiContactSetObj
-
-  !  
-  !================================================================================================================================
-  !  
   !>Sets the connectivity between an element in a coupled mesh to an element in the interface mesh
   SUBROUTINE CMISSInterfaceMeshConnectivity_ElementNumberSetObj(interfaceMeshConnectivity,interfaceElementNumber, &
      &  coupledMeshIndexNumber,coupledMeshElementNumber,err)
@@ -40366,97 +40270,6 @@ CONTAINS
 
   END SUBROUTINE CMISSInterfaceCondition_OperatorSetObj
   
-  !
-  !================================================================================================================================
-  !
-
-  !>Sets the translations for frictionless contact
-  SUBROUTINE CMISSInterfaceCondition_TranslationsSetNumber(regionUserNumber,interfaceUserNumber,interfaceConditionUserNumber, &
-    & loadIncrementNumber,coupledMeshIndex,translations,err)
-
-    !Argument variables
-    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the interface containing the interface condition to set the operator for.
-    INTEGER(INTG), INTENT(IN) :: interfaceUserNumber !<The user number of the interface containing the interface condition to set the operator for.
-    INTEGER(INTG), INTENT(IN) :: interfaceConditionUserNumber !<The user number of the interface condition to set the operator for.
-    INTEGER(INTG), INTENT(IN) :: loadIncrementNumber !<The load increment number to set the translations for
-    INTEGER(INTG), INTENT(IN) :: coupledMeshIndex !<The number of the coupled mesh/ dependent field to set the translations for
-    REAL(DP), INTENT(IN) :: translations(:) !<The translation components
-    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
-    !Local variables
-    TYPE(INTERFACE_TYPE), POINTER :: INTERFACE
-    TYPE(INTERFACE_CONDITION_TYPE), POINTER :: INTERFACE_CONDITION
-    TYPE(REGION_TYPE), POINTER :: REGION
-    TYPE(VARYING_STRING) :: LOCAL_ERROR
-
-    CALL ENTERS("CMISSInterfaceCondition_TranslationsSetNumber",err,error,*999)
-
-    NULLIFY(REGION)
-    NULLIFY(INTERFACE)
-    NULLIFY(INTERFACE_CONDITION)
-    CALL REGION_USER_NUMBER_FIND(regionUserNumber,REGION,err,error,*999)
-    IF(ASSOCIATED(REGION)) THEN
-      CALL INTERFACE_USER_NUMBER_FIND(interfaceUserNumber,REGION,INTERFACE,err,error,*999)
-      IF(ASSOCIATED(INTERFACE)) THEN
-        CALL INTERFACE_CONDITION_USER_NUMBER_FIND(interfaceConditionUserNumber,INTERFACE,INTERFACE_CONDITION,err,error,*999)
-        IF(ASSOCIATED(INTERFACE_CONDITION)) THEN
-          CALL INTERFACE_CONDITION_TRANSLATION_INCREMENT_SET(INTERFACE_CONDITION,loadIncrementNumber,coupledMeshIndex, &
-            & translations,err,error,*999)
-        ELSE
-          LOCAL_ERROR="An interface condition with an user number of "// &
-            & TRIM(NUMBER_TO_VSTRING(interfaceConditionUserNumber,"*",err,error))// &
-            & " does not exist on the interface with a user number of "// &
-            & TRIM(NUMBER_TO_VSTRING(interfaceUserNumber,"*",err,error))// &
-            & " defined on a region with a user number of "//TRIM(NUMBER_TO_VSTRING(regionUserNumber,"*",err,error))//"."
-          CALL FLAG_ERROR(LOCAL_ERROR,err,error,*999)
-        END IF
-      ELSE
-        LOCAL_ERROR="An interface with an user number of "//TRIM(NUMBER_TO_VSTRING(interfaceUserNumber,"*",err,error))// &
-          & " does not exist on region number "//TRIM(NUMBER_TO_VSTRING(regionUserNumber,"*",err,error))//"."
-        CALL FLAG_ERROR(LOCAL_ERROR,err,error,*999)
-      END IF
-    ELSE
-      LOCAL_ERROR="A region with an user number of "//TRIM(NUMBER_TO_VSTRING(regionUserNumber,"*",err,error))//" does not exist."
-      CALL FLAG_ERROR(LOCAL_ERROR,err,error,*999)
-    END IF
-
-    CALL EXITS("CMISSInterfaceCondition_TranslationsSetNumber")
-    RETURN
-999 CALL ERRORS("CMISSInterfaceCondition_TranslationsSetNumber",err,error)
-    CALL EXITS("CMISSInterfaceCondition_TranslationsSetNumber")
-    CALL CMISS_HANDLE_ERROR(err,error)
-    RETURN
-
-  END SUBROUTINE CMISSInterfaceCondition_TranslationsSetNumber
-
-  !
-  !================================================================================================================================
-  !
-
-  !>Sets the translations for frictionless contact
-  SUBROUTINE CMISSInterfaceCondition_TranslationsSetObj(interfaceCondition,loadIncrementNumber,coupledMeshIndex,translations,err)
-
-    !Argument variables
-    TYPE(CMISSInterfaceConditionType), INTENT(IN) :: interfaceCondition !<The interface condition to set the operator for.
-    INTEGER(INTG), INTENT(IN) :: loadIncrementNumber !<The load increment number to set the translations for
-    INTEGER(INTG), INTENT(IN) :: coupledMeshIndex !<The number of the coupled mesh/ dependent field to set the translations for
-    REAL(DP), INTENT(IN) :: translations(:) !<The translation components
-    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
-    !Local variables
-
-    CALL ENTERS("CMISSInterfaceCondition_TranslationsSetObj",err,error,*999)
-
-    CALL INTERFACE_CONDITION_TRANSLATION_INCREMENT_SET(interfaceCondition%INTERFACE_CONDITION,loadIncrementNumber, &
-      & coupledMeshIndex,translations,err,error,*999)
-
-    CALL EXITS("CMISSInterfaceCondition_TranslationsSetObj")
-    RETURN
-999 CALL ERRORS("CMISSInterfaceCondition_TranslationsSetObj",err,error)
-    CALL EXITS("CMISSInterfaceCondition_TranslationsSetObj")
-    CALL CMISS_HANDLE_ERROR(err,error)
-    RETURN
-
-  END SUBROUTINE CMISSInterfaceCondition_TranslationsSetObj
-
   !
   !================================================================================================================================
   !

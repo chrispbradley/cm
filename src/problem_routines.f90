@@ -1916,15 +1916,6 @@ CONTAINS
             & MAXIMUM_NUMBER_OF_ITERATIONS,ERR,ERROR,*999)
         ENDDO !equations_set_idx
         
-        !Apply translation to frictionless contact problem and change boundary conditions accordingly.
-        DO interface_condition_idx=1,SOLVER_MAPPING%numberOfInterfaceConditions
-          INTERFACE_CONDITION=>SOLVER_MAPPING%interfaceConditions(interface_condition_idx)%PTR
-          IF(INTERFACE_CONDITION%OPERATOR==INTERFACE_CONDITION_FRICTIONLESS_CONTACT_OPERATOR) THEN
-            !IF()
-            CALL INTERFACE_CONDITION_TRANSLATION_INCREMENT_APPLY(INTERFACE_CONDITION,ITERATION_NUMBER, &
-              & MAXIMUM_NUMBER_OF_ITERATIONS,ERR,ERROR,*999)
-          ENDIF
-        ENDDO
       ELSE
         CALL FLAG_ERROR("Solver equations solver mapping is not associated.",ERR,ERROR,*999)
       ENDIF
