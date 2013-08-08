@@ -3678,8 +3678,8 @@ CONTAINS
                 ENDIF
               ENDIF
               variable_idx=variable_idx+1
-            ENDDO
-          ENDIF
+            ENDIF
+          ENDDO
         ENDIF
       ELSE
         CALL FLAG_ERROR("Field variable is not associated.",ERR,ERROR,*999)
