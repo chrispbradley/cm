@@ -545,6 +545,9 @@ CONTAINS
                                   IF(dofConstraints%numberOfConstraints>0) THEN
                                     IF(ALLOCATED(dofConstraints%dofCouplings)) THEN
                                       IF(ASSOCIATED(dofConstraints%dofCouplings(globalDof)%ptr)) THEN
+                                        !This equations row is the owner of a solver row that is mapped to
+                                        !multiple other equations rows, add it to the list of global row
+                                        !couplings and remember the index into the global list for this solver row
                                         CALL SolverDofCouplings_AddCoupling(rowCouplings, &
                                           & dofConstraints%dofCouplings(globalDof)%ptr, &
                                           & globalDofCouplingNumber,err,error,*999)
@@ -569,6 +572,7 @@ CONTAINS
                               ELSE
                                 rowListItem(3)=0
                               ENDIF !include row
+                              rowListItem(4)=globalDofCouplingNumber
                               CALL List_ItemAdd(rankGlobalRowsLists(equationsIdx,rowRank)%ptr,rowListItem,err,error,*999)
                             ELSE
                               CALL FlagError("Global row is not owned by a domain.",err,error,*999)
@@ -602,41 +606,51 @@ CONTAINS
             interfaceCondition=>solverMapping%interfaceConditions(interfaceConditionIdx)%ptr
             IF(ASSOCIATED(interfaceCondition)) THEN
               SELECT CASE(interfaceCondition%method)
-              CASE(INTERFACE_CONDITION_LAGRANGE_MULTIPLIERS_METHOD)
+              CASE(INTERFACE_CONDITION_LAGRANGE_MULTIPLIERS_METHOD,INTERFACE_CONDITION_PENALTY_METHOD)
                 interfaceEquations=>interfaceCondition%INTERFACE_EQUATIONS
                 IF(ASSOCIATED(interfaceEquations)) THEN
                   interfaceMapping=>interfaceEquations%INTERFACE_MAPPING
                   IF(ASSOCIATED(interfaceMapping)) THEN
                     colDofsMapping=>interfaceMapping%COLUMN_DOFS_MAPPING
                     IF(ASSOCIATED(colDofsMapping)) THEN                    
-                      DO globalColumn=1,interfaceMapping%NUMBER_OF_GLOBAL_COLUMNS
-                        !Find the rank that owns this global column
-                        columnRank=-1
-                        DO rankIdx=1,colDofsMapping%GLOBAL_TO_LOCAL_MAP(globalColumn)%NUMBER_OF_DOMAINS
-                          IF(colDofsMapping%GLOBAL_TO_LOCAL_MAP(globalColumn)%LOCAL_TYPE(rankIdx)/=DOMAIN_LOCAL_GHOST) THEN
-                            columnRank=colDofsMapping%GLOBAL_TO_LOCAL_MAP(globalColumn)%DOMAIN_NUMBER(rankIdx)
-                            localColumn=colDofsMapping%GLOBAL_TO_LOCAL_MAP(globalColumn)%LOCAL_NUMBER(rankIdx)
-                            EXIT
-                          ENDIF
-                        ENDDO !rankIdx
-                        IF(columnRank>=0) THEN
-                          includeColumn=.TRUE.
-                          rowListItem(1)=globalColumn
-                          rowListItem(2)=localColumn
-                          IF(includeColumn) THEN
-                            rowListItem(3)=1
-                            numberOfGlobalSolverRows=numberOfGlobalSolverRows+1
-                            !Don't need to worry about ghosted rows.
-                            IF(columnRank==myrank) numberOfLocalSolverRows=numberOfLocalSolverRows+1 !1-1 mapping
+                      !\todo Lagrange variable type set to the first variable type for now
+                      variableType=1
+                      lagrangeVariable=>lagrangeField%variableTypeMap(variableType)%ptr
+                      CALL BOUNDARY_CONDITIONS_VARIABLE_GET(boundaryConditions,lagrangeVariable,boundaryConditionsVariable, &
+                        & err,error,*999)
+                      IF(ASSOCIATED(boundaryConditionsVariable)) THEN
+                        DO globalColumn=1,interfaceMapping%NUMBER_OF_GLOBAL_COLUMNS
+                          !Find the rank that owns this global column
+                          columnRank=-1
+                          DO rankIdx=1,colDofsMapping%GLOBAL_TO_LOCAL_MAP(globalColumn)%NUMBER_OF_DOMAINS
+                            IF(colDofsMapping%GLOBAL_TO_LOCAL_MAP(globalColumn)%LOCAL_TYPE(rankIdx)/=DOMAIN_LOCAL_GHOST) THEN
+                              columnRank=colDofsMapping%GLOBAL_TO_LOCAL_MAP(globalColumn)%DOMAIN_NUMBER(rankIdx)
+                              localColumn=colDofsMapping%GLOBAL_TO_LOCAL_MAP(globalColumn)%LOCAL_NUMBER(rankIdx)
+                              EXIT
+                            ENDIF
+                          ENDDO !rankIdx
+                          IF(columnRank>=0) THEN
+                            globalDof=globalColumns
+                            includeColumn=boundaryConditionsVariable%DOF_TYPES(globalDof)==BOUNDARY_CONDITION_DOF_FREE
+                            rowListItem(1)=globalColumn
+                            rowListItem(2)=localColumn
+                            IF(includeColumn) THEN
+                              rowListItem(3)=1
+                              numberOfGlobalSolverRows=numberOfGlobalSolverRows+1
+                              !Don't need to worry about ghosted rows.
+                              IF(columnRank==myrank) numberOfLocalSolverRows=numberOfLocalSolverRows+1 !1-1 mapping
+                            ELSE
+                              rowListItem(3)=0                          
+                            ENDIF !include column
+                            rowListItem(4)=0
+                            CALL List_ItemAdd(rankGlobalRowsLists(equationsIdx,columnRank)%ptr,rowListItem,err,error,*999)
                           ELSE
-                            rowListItem(3)=0                          
-                          ENDIF !include column
-                          rowListItem(4)=0
-                          CALL List_ItemAdd(rankGlobalRowsLists(equationsIdx,columnRank)%ptr,rowListItem,err,error,*999)
-                        ELSE
-                          CALL FlagError("Global row is not owned by a domain.",err,error,*999)
-                        ENDIF
-                      ENDDO !globalColumn
+                            CALL FlagError("Global row is not owned by a domain.",err,error,*999)
+                          ENDIF
+                        ENDDO !globalColumn
+                      ELSE
+                        CALL FlagError("Boundary condition variable is not associated.",err,error,*999)
+                      ENDIF
                     ELSE
                       CALL FlagError("Interface condition column degree of freedom mappings is not associated.",err,error,*999)
                     ENDIF
@@ -647,8 +661,6 @@ CONTAINS
                   CALL FlagError("Interface condition interface equations is not associated.",err,error,*999)
                 ENDIF
               CASE(INTERFACE_CONDITION_AUGMENTED_LAGRANGE_METHOD)
-                CALL FlagError("Not implemented.",err,error,*999)
-              CASE(INTERFACE_CONDITION_PENALTY_METHOD)
                 CALL FlagError("Not implemented.",err,error,*999)
               CASE(INTERFACE_CONDITION_POINT_TO_POINT_METHOD)
                 CALL FlagError("Not implemented.",err,error,*999)
@@ -998,9 +1010,10 @@ CONTAINS
                   !If this is my rank then set up the solver->equations and equations->solver row mappings
                   IF(rank==myrank) THEN
                     !Set the interface column/row -> solver row mappings
-                    !Note that for populating SOLVER_MAPPING%SOLVER_ROW_TO_EQUATIONS_ROWS_MAP(NUMBER_OF_LOCAL_SOLVER_ROWS)%ROWCOL_NUMBER(i)
+                    !Note that for populating solverMapping%solverRowToEquationsRowsMap(numberOfLocalSolverRows)%rowColNumber(i)
                     !If the row are equations set rows this is the i'th row number that the solver row is mapped to.
-                    !If the rows are interface rows (which is the case here) then this is the i'th column number that the solver row is mapped to.
+                    !If the rows are interface rows (which is the case here) then this is the i'th column number that the solver
+                    !row is mapped to.
                     !Initialise
                     CALL SolverMapping_SolverRowToEquationsMapsInitialise(solverMapping%solverRowToEquationsRowsMap( &
                       & numberOfLocalSolverRows),err,error,*999)
@@ -1033,6 +1046,16 @@ CONTAINS
                     !Set the interface column -> solver row mappings
                     solverMapping%interfaceConditionToSolverMap(interfaceConditionIdx)% &
                       & interfaceColumnToSolverRowsMaps(localColumn)%numberOfSolverRows=0
+                    SELECT CASE(interfaceCondition%method)
+                    CASE(INTERFACE_CONDITION_PENALTY_METHOD)
+                      !Set up the solver row <-> interface row mappings
+                      !Penalty matrix is the last interface matrix
+                      interfaceMatrixIdx=interfaceMapping%numberOfInterfaceMatrices
+                      !Set the mappings
+                      solverMapping%interfaceConditionToSolverMap(interfaceConditionIdx)% &
+                        & interfaceToSolverMatrixMapsIm(interfaceMatrixIdx)%interfaceRowToSolverRowsMap(localColumn)% &
+                        & numberOfSolverRows=0
+                    ENDSELECT
                   ENDIF
                 ENDIF
               ENDDO !globalRowIdx
@@ -1523,60 +1546,69 @@ CONTAINS
                     CALL List_ItemAdd(variablesList(variablePositionIdx)%ptr,variableListItem,err,error,*999)
                     colDofsMapping=>lagrangeVariable%DOMAIN_MAPPING
                     IF(ASSOCIATED(colDofsMapping)) THEN
-                      solverMapping%interfaceConditionToSolverMap(interfaceConditionIdx)% &
-                        & interfaceToSolverMatrixMapsSm(solverMatrixIdx)%lagrangeVariableType=variableType
-                      solverMapping%interfaceConditionToSolverMap(interfaceConditionIdx)% &
-                        & interfaceToSolverMatrixMapsSm(solverMatrixIdx)%lagrangeVariable=>lagrangeVariable
-                      !Allocate the variable to solver col maps arrays
-                      ALLOCATE(solverMapping%interfaceConditionToSolverMap(interfaceConditionIdx)% &
-                        & interfaceToSolverMatrixMapsSm(solverMatrixIdx)%lagrangeVariableToSolverColMap% &
-                        & columnNumbers(lagrangeVariable%TOTAL_NUMBER_OF_DOFS),STAT=err)
-                      IF(err/=0) CALL FlagError("Could not allocate variables to solver column maps column numbers.", &
+                      CALL BOUNDARY_CONDITIONS_VARIABLE_GET(boundaryConditions,lagrangeVariable,boundaryConditionsVariable, &
                         & err,error,*999)
-                      ALLOCATE(solverMapping%interfaceConditionToSolverMap(interfaceConditionIdx)% &
-                        & interfaceToSolverMatrixMapsSm(solverMatrixIdx)%lagrangeVariableToSolverColMap% &
-                        & couplingCoefficients(lagrangeVariable%TOTAL_NUMBER_OF_DOFS),STAT=err)
-                      IF(err/=0) CALL FlagError("Could not allocate variables to solver column maps coupling coefficients.", &
-                        & err,error,*999)
-                      ALLOCATE(solverMapping%interfaceConditionToSolverMap(interfaceConditionIdx)% &
+                      IF(ASSOCIATED(boundaryConditionsVariable)) THEN
+                        solverMapping%interfaceConditionToSolverMap(interfaceConditionIdx)% &
+                          & interfaceToSolverMatrixMapsSm(solverMatrixIdx)%lagrangeVariableType=variableType
+                        solverMapping%interfaceConditionToSolverMap(interfaceConditionIdx)% &
+                          & interfaceToSolverMatrixMapsSm(solverMatrixIdx)%lagrangeVariable=>lagrangeVariable
+                        !Allocate the variable to solver col maps arrays
+                        ALLOCATE(solverMapping%interfaceConditionToSolverMap(interfaceConditionIdx)% &
+                          & interfaceToSolverMatrixMapsSm(solverMatrixIdx)%lagrangeVariableToSolverColMap% &
+                          & columnNumbers(lagrangeVariable%TOTAL_NUMBER_OF_DOFS),STAT=err)
+                        IF(err/=0) CALL FlagError("Could not allocate variables to solver column maps column numbers.", &
+                          & err,error,*999)
+                        ALLOCATE(solverMapping%interfaceConditionToSolverMap(interfaceConditionIdx)% &
+                          & interfaceToSolverMatrixMapsSm(solverMatrixIdx)%lagrangeVariableToSolverColMap% &
+                          & couplingCoefficients(lagrangeVariable%TOTAL_NUMBER_OF_DOFS),STAT=err)
+                        IF(err/=0) CALL FlagError("Could not allocate variables to solver column maps coupling coefficients.", &
+                          & err,error,*999)
+                        ALLOCATE(solverMapping%interfaceConditionToSolverMap(interfaceConditionIdx)% &
                         & interfaceToSolverMatrixMapsSm(solverMatrixIdx)%lagrangeVariableToSolverColMap% &
                         & additiveConstants(lagrangeVariable%TOTAL_NUMBER_OF_DOFS),STAT=err)
-                      IF(err/=0) CALL FlagError("Could not allocate variables to solver column maps additive constants.", &
-                        & err,error,*999)
-                      DO equationsIdx2=1,solverMapping%interfaceConditionToSolverMap(interfaceConditionIdx)% &
-                        & numberOfEquationsSets
-                        equationsSetIdx=solverMapping%interfaceConditionToSolverMap(interfaceConditionIdx)% &
-                          & interfaceToSolverMatrixMapsEquations(equationsIdx2)%equationsSetIndex
-                        interfaceMatrixIdx=solverMapping%interfaceConditionToSolverMap(interfaceConditionIdx)% &
-                          & interfaceToSolverMatrixMapsEquations(equationsIdx2)%interfaceMatrixIndex
-                        !Set the sub-matrix information
-                        subMatrixInformation(1,equationsSetIdx,variablePositionIdx)=SOLVER_MAPPING_EQUATIONS_INTERFACE_CONDITION
-                        subMatrixInformation(2,equationsSetIdx,variablePositionIdx)=interfaceConditionIdx
-                        subMatrixInformation(3,equationsSetIdx,variablePositionIdx)=interfaceMatrixIdx
-                        !Loop over the global dofs for this variable.
-                        DO globalDof=1,lagrangeVariable%NUMBER_OF_GLOBAL_DOFS
-                          DO rankIdx=1,colDofsMapping%GLOBAL_TO_LOCAL_MAP(globalDof)%NUMBER_OF_DOMAINS
-                            localDof=colDofsMapping%GLOBAL_TO_LOCAL_MAP(globalDof)%LOCAL_NUMBER(rankIdx)
-                            dofType=colDofsMapping%GLOBAL_TO_LOCAL_MAP(globalDof)%LOCAL_TYPE(rankIdx)
-                            columnRank=colDofsMapping%GLOBAL_TO_LOCAL_MAP(globalDof)%DOMAIN_NUMBER(rankIdx)
-                            !For now include Lagrange column
-                            includeColumn=.TRUE.
-                            columnListItem(1)=globalDof
-                            columnListItem(2)=localDof
-                            columnListItem(5)=0
-                            IF(dofType/=DOMAIN_LOCAL_GHOST) THEN
-                              !DOF is not a ghost dof
-                              IF(includeColumn) THEN
-                                columnListItem(3)=1
-                                IF(.NOT.variableProcessed(variablePositionIdx)) THEN
-                                  numberOfVariableGlobalSolverDofs(variablePositionIdx)= &
-                                    & numberOfVariableGlobalSolverDofs(variablePositionIdx)+1
-                                  IF(columnRank==myrank) THEN
-                                    numberOfVariableLocalSolverDofs(variablePositionIdx)= &
-                                      & numberOfVariableLocalSolverDofs(variablePositionIdx)+1
-                                    totalNumberOfVariableLocalSolverDofs(variablePositionIdx)= &
-                                      & totalNumberOfVariableLocalSolverDofs(variablePositionIdx)+1
+                        IF(err/=0) CALL FlagError("Could not allocate variables to solver column maps additive constants.", &
+                          & err,error,*999)
+                        DO equationsIdx2=1,solverMapping%interfaceConditionToSolverMap(interfaceConditionIdx)% &
+                          & numberOfEquationsSets
+                          equationsSetIdx=solverMapping%interfaceConditionToSolverMap(interfaceConditionIdx)% &
+                            & interfaceToSolverMatrixMapsEquations(equationsIdx2)%equationsSetIndex
+                          interfaceMatrixIdx=solverMapping%interfaceConditionToSolverMap(interfaceConditionIdx)% &
+                            & interfaceToSolverMatrixMapsEquations(equationsIdx2)%interfaceMatrixIndex
+                          !Set the sub-matrix information
+                          subMatrixInformation(1,equationsSetIdx,variablePositionIdx)=SOLVER_MAPPING_EQUATIONS_INTERFACE_CONDITION
+                          subMatrixInformation(2,equationsSetIdx,variablePositionIdx)=interfaceConditionIdx
+                          subMatrixInformation(3,equationsSetIdx,variablePositionIdx)=interfaceMatrixIdx
+                          !Loop over the global dofs for this variable.
+                          DO globalDof=1,lagrangeVariable%NUMBER_OF_GLOBAL_DOFS
+                            DO rankIdx=1,colDofsMapping%GLOBAL_TO_LOCAL_MAP(globalDof)%NUMBER_OF_DOMAINS
+                              localDof=colDofsMapping%GLOBAL_TO_LOCAL_MAP(globalDof)%LOCAL_NUMBER(rankIdx)
+                              dofType=colDofsMapping%GLOBAL_TO_LOCAL_MAP(globalDof)%LOCAL_TYPE(rankIdx)
+                              columnRank=colDofsMapping%GLOBAL_TO_LOCAL_MAP(globalDof)%DOMAIN_NUMBER(rankIdx)
+                              !For now include Lagrange column
+                              includeColumn=.TRUE.
+                              columnListItem(1)=globalDof
+                              columnListItem(2)=localDof
+                              columnListItem(5)=0
+                              IF(dofType/=DOMAIN_LOCAL_GHOST) THEN
+                                !DOF is not a ghost dof
+                                IF(includeColumn) THEN
+                                  columnListItem(3)=1
+                                  IF(.NOT.variableProcessed(variablePositionIdx)) THEN
+                                    numberOfVariableGlobalSolverDofs(variablePositionIdx)= &
+                                      & numberOfVariableGlobalSolverDofs(variablePositionIdx)+1
+                                    IF(columnRank==myrank) THEN
+                                      numberOfVariableLocalSolverDofs(variablePositionIdx)= &
+                                        & numberOfVariableLocalSolverDofs(variablePositionIdx)+1
+                                      totalNumberOfVariableLocalSolverDofs(variablePositionIdx)= &
+                                        & totalNumberOfVariableLocalSolverDofs(variablePositionIdx)+1
+                                    ENDIF
+                                  ELSE
+                                    columnListItem(3)=0
                                   ENDIF
+                                  columnListItem(4)=variableIdx
+                                  CALL List_ItemAdd(rankGlobalColsLists(1,equationsSetIdx,variablePositionIdx, &
+                                    & columnRank)%ptr,columnListItem,err,error,*999)
                                 ELSE
                                   columnListItem(3)=0
                                 ENDIF
@@ -1584,30 +1616,27 @@ CONTAINS
                                 CALL List_ItemAdd(rankGlobalColsLists(1,equationsSetIdx,variablePositionIdx, &
                                   & columnRank)%ptr,columnListItem,err,error,*999)
                               ELSE
-                                columnListItem(3)=0
-                              ENDIF
-                              columnListItem(4)=variableIdx
-                              CALL List_ItemAdd(rankGlobalColsLists(1,equationsSetIdx,variablePositionIdx, &
-                                & columnRank)%ptr,columnListItem,err,error,*999)
-                            ELSE
-                              !DOF is a ghost dof
-                              IF(includeColumn) THEN
-                                columnListItem(3)=1
-                                IF(.NOT.variableProcessed(variablePositionIdx)) THEN
-                                  IF(columnRank==myrank) totalNumberOfVariableLocalSolverDofs(variablePositionIdx)= &
-                                    & totalNumberOfVariableLocalSolverDofs(variablePositionIdx)+1
+                                !DOF is a ghost dof
+                                IF(includeColumn) THEN
+                                  columnListItem(3)=1
+                                  IF(.NOT.variableProcessed(variablePositionIdx)) THEN
+                                    IF(columnRank==myrank) totalNumberOfVariableLocalSolverDofs(variablePositionIdx)= &
+                                      & totalNumberOfVariableLocalSolverDofs(variablePositionIdx)+1
+                                  ENDIF
+                                ELSE
+                                  columnListItem(3)=0
                                 ENDIF
-                              ELSE
-                                columnListItem(3)=0
+                                columnListItem(4)=variableIdx
+                                CALL List_ItemAdd(rankGlobalColsLists(2,equationsSetIdx,variablePositionIdx, &
+                                  & columnRank)%ptr,columnListItem,err,error,*999)
                               ENDIF
-                              columnListItem(4)=variableIdx
-                              CALL List_ItemAdd(rankGlobalColsLists(2,equationsSetIdx,variablePositionIdx, &
-                                & columnRank)%ptr,columnListItem,err,error,*999)
-                            ENDIF
-                          ENDDO !rankIdx
-                        ENDDO !globalDof
-                        variableProcessed(variablePositionIdx)=.TRUE.
-                      ENDDO !equationsIdx2
+                            ENDDO !rankIdx
+                          ENDDO !globalDof
+                          variableProcessed(variablePositionIdx)=.TRUE.
+                        ENDDO !equationsIdx2
+                      ELSE
+                        CALL FLAG_ERROR("Boundary condition variable not associated.",ERR,ERROR,*999)
+                      ENDIF
                     ELSE
                       CALL FlagError("Columns degree of freedom mapping is not associated.",err,error,*999)
                     ENDIF
@@ -2212,8 +2241,25 @@ CONTAINS
                 
                 DO solverVariableIdx=1,solverMapping%columnVariablesList(solverMatrixIdx)%numberOfVariables
                   
-                  globalDofsOffset=solverGlobalDof
-                  localDofsOffset=solverLocalDof(rank)
+                  IF (solverMapping%numberOfInterfaceConditionsS>0) THEN
+                    ! Ensure that the dof_offset is calculated as a sum of the number of dofs in the diagonal entries of the solver
+                    ! matrix (ie the sum of the number of solver dofs in each equation set).
+                    ! Note that this may not work when running problems in parallel, however, note that interfaces can not currently
+                    ! be used in parallel either, and the following code only executes if there are interface conditions present.
+                    tempOffset = 0
+                    DO solverVariableIdxTemp=1,solverVariableIdx
+                      DO globaDof=1,SIZE(dofMap(solverVariableIdxTemp)%ptr)
+                        IF (dofMap(solverVariableIdxTemp)%PTR(globalDof)>0) THEN
+                          tempOffset=tempOffset+1
+                        ENDIF
+                      ENDDO
+                    ENDDO
+                    globalDofsOffset=tempOffset
+                    localDofsOffset=tempOffset
+                  ELSE
+                    globalDofsOffset=solverGlobalDof
+                    localDofsOffset=solverLocalDof(rank)
+                  ENDIF
                   
                   variableType=solverMapping%columnVariablesList(solverMatrixIdx)%variables(solverVariableIdx)%variableType
                   
@@ -5321,7 +5367,17 @@ CONTAINS
                     CASE(INTERFACE_CONDITION_LAGRANGE_MULTIPLIERS_METHOD,INTERFACE_CONDITION_PENALTY_METHOD)
                       interfaceDependent=>interfaceCondition%DEPENDENT
                       IF(ASSOCIATED(interfaceDependent)) THEN
-                        DO interfaceMatrixIdx=1,interfaceMapping%NUMBER_OF_INTERFACE_MATRICES
+                        SELECT CASE(interfaceCondition%method)
+                        CASE(INTERFACE_CONDITION_LAGRANGE_MULTIPLIERS_METHOD)
+                          numberOfInterfaceMatrices=interfaceMapping%NUMBER_OF_INTERFACE_MATRICES
+                        CASE(INTERFACE_CONDITION_PENALTY_METHOD)
+                          numberOfInterfaceMatrices=interfaceMapping%NUMBER_OF_INTERFACE_MATRICES-1
+                        CASE DEFAULT
+                          LOCAL_ERROR="The interface condition method of "// &
+                            & TRIM(NumberToVstring(interfaceCondition%method,"*",err,error))//" is invalid."
+                          CALL FlagError(localError,err,error,*999)
+                        ENDSELECT
+                        DO interfaceMatrixIdx=1,numberOfInterfaceMatrices
                           equationsSet=>interfaceMapping%INTERFACE_MATRIX_ROWS_TO_VAR_MAPS(interfaceMatrixIdx)%EQUATIONS_SET
                           IF(ASSOCIATED(equationsSet)) THEN
                             equationsSetFound=.FALSE.

@@ -214,7 +214,7 @@ CONTAINS
                 !The pointers below have been checked for association above.
                 SELECT CASE(INTERFACE_CONDITION%METHOD)
                 CASE(INTERFACE_CONDITION_PENALTY_METHOD)
-                  !Sets up the Lagrange-Lagrange (Penalty) interface matrix mapping and calculate the row mappings
+                  !Sets up the Lagrange-(Penalty) interface matrix mapping and calculate the row mappings
                   matrix_idx = INTERFACE_MAPPING%NUMBER_OF_INTERFACE_MATRICES !last of the interface matrices
                   !Initialise and setup the interface matrix
                   CALL INTERFACE_MAPPING_MATRIX_TO_VAR_MAP_INITIALISE(INTERFACE_MAPPING,matrix_idx,ERR,ERROR,*999)
@@ -899,10 +899,10 @@ CONTAINS
             INTERFACE_CONDITION=>INTERFACE_EQUATIONS%INTERFACE_CONDITION
             IF(ASSOCIATED(INTERFACE_CONDITION)) THEN
               SELECT CASE(INTERFACE_CONDITION%METHOD)
-              CASE(INTERFACE_CONDITION_LAGRANGE_MULTIPLIERS_METHOD)
+              CASE(INTERFACE_CONDITION_LAGRANGE_MULTIPLIERS_METHOD,INTERFACE_CONDITION_PENALTY_METHOD)
                 !Check that the number of supplied coefficients matches the number of interface matrices
                 IF(SIZE(MATRIX_COEFFICIENTS,1)==CREATE_VALUES_CACHE%NUMBER_OF_INTERFACE_MATRICES) THEN
-                  CREATE_VALUES_CACHE%MATRIX_COEFFICIENTS=MATRIX_COEFFICIENTS         
+                  CREATE_VALUES_CACHE%MATRIX_COEFFICIENTS=MATRIX_COEFFICIENTS
                 ELSE
                   LOCAL_ERROR="Invalid size of matrix coefficeints. The size of the supplied array ("// &
                     & TRIM(NUMBER_TO_VSTRING(SIZE(MATRIX_COEFFICIENTS,1),"*",ERR,ERROR))// &
@@ -911,8 +911,6 @@ CONTAINS
                   CALL FLAG_ERROR(LOCAL_ERROR,ERR,ERROR,*999)
                 ENDIF
               CASE(INTERFACE_CONDITION_AUGMENTED_LAGRANGE_METHOD)
-                CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
-              CASE(INTERFACE_CONDITION_PENALTY_METHOD)
                 CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
               CASE(INTERFACE_CONDITION_POINT_TO_POINT_METHOD)
                 CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
@@ -1042,7 +1040,7 @@ CONTAINS
             INTERFACE_CONDITION=>INTERFACE_EQUATIONS%INTERFACE_CONDITION
             IF(ASSOCIATED(INTERFACE_CONDITION)) THEN
               SELECT CASE(INTERFACE_CONDITION%METHOD)
-              CASE(INTERFACE_CONDITION_LAGRANGE_MULTIPLIERS_METHOD)
+              CASE(INTERFACE_CONDITION_LAGRANGE_MULTIPLIERS_METHOD,INTERFACE_CONDITION_PENALTY_METHOD)
                 !Check the size of the mesh indicies array
                 IF(SIZE(ROW_MESH_INDICES,1)==CREATE_VALUES_CACHE%NUMBER_OF_INTERFACE_MATRICES) THEN
                   !Check that mesh indices are valid.
@@ -1088,8 +1086,6 @@ CONTAINS
                   CALL FLAG_ERROR(LOCAL_ERROR,ERR,ERROR,*999)
                 ENDIF
               CASE(INTERFACE_CONDITION_AUGMENTED_LAGRANGE_METHOD)
-                CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
-              CASE(INTERFACE_CONDITION_PENALTY_METHOD)
                 CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
               CASE(INTERFACE_CONDITION_POINT_TO_POINT_METHOD)
                 CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)

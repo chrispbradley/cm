@@ -337,8 +337,13 @@ CONTAINS
                         rowsFieldVariable=>interfaceMapping%INTERFACE_MATRIX_ROWS_TO_VAR_MAPS(matrixIdx)%VARIABLE
                         colsFieldVariable=>interfaceMapping%LAGRANGE_VARIABLE !\todo: TEMPORARY: Needs generalising
                         rowsMeshIdx=interfaceMapping%INTERFACE_MATRIX_ROWS_TO_VAR_MAPS(matrixIdx)%MESH_INDEX
-                        rowsElementNumber=meshConnectivity%ELEMENT_CONNECTIVITY(interfaceElementNumber,rowsMeshIdx)% &
-                          & COUPLED_MESH_ELEMENT_NUMBER
+                        IF(ASSOCIATED(rowsFieldVariable,colsFieldVariable)) THEN
+                          ! If the rows and column variables are both the Lagrange variable (this is the diagonal matrix)
+                          rowsElementNumber=InterfaceElementNumber
+                        ELSE
+                          rowsElementNumber=meshConnectivity%ELEMENT_CONNECTIVITY(InterfaceElementNumber,rowsMeshIdx)% &
+                            & COUPLED_MESH_ELEMENT_NUMBER
+                        ENDIF
                         CALL EQUATIONS_MATRICES_ELEMENT_MATRIX_CALCULATE(interfaceMatrix%ELEMENT_MATRIX, &
                           & interfaceMatrix%UPDATE_MATRIX,[rowsElementNumber],[interfaceElementNumber],rowsFieldVariable, &
                           & colsFieldVariable,err,error,*999)
@@ -360,13 +365,23 @@ CONTAINS
                   IF(ALLOCATED(pointsConnectivity%coupledElements)) THEN
                     DO matrixIdx=1,interfaceMatrices%NUMBER_OF_INTERFACE_MATRICES
                       interfaceMatrix=>interfaceMatrices%MATRICES(matrixIdx)%PTR
-                      IF(ASSOCIATED(interfaceMatrix)) THEN !\todo: Need to separate the case for penalty matrix
-                        rowsFieldVariable=>interfaceMapping%INTERFACE_MATRIX_ROWS_TO_VAR_MAPS(matrixIdx)%VARIABLE
-                        colsFieldVariable=>interfaceMapping%LAGRANGE_VARIABLE !\todo: TEMPORARY: Needs generalising
-                        rowsMeshIdx=interfaceMapping%INTERFACE_MATRIX_ROWS_TO_VAR_MAPS(matrixIdx)%MESH_INDEX
-                        CALL EQUATIONS_MATRICES_ELEMENT_MATRIX_CALCULATE(interfaceMatrix%ELEMENT_MATRIX, &
-                          & interfaceMatrix%UPDATE_MATRIX,pointsConnectivity%coupledElements(interfaceElementNumber,rowsMeshIdx)% &
-                          & elementNumbers,[interfaceElementNumber],rowsFieldVariable,colsFieldVariable,err,error,*999)
+                      IF(ASSOCIATED(interfaceMatrix)) THEN 
+                        IF(interfaceCondition%METHOD==INTERFACE_CONDITION_PENALTY_METHOD .AND. &
+                            matrixIdx==interfaceMatrices%NUMBER_OF_INTERFACE_MATRICES) THEN
+                          rowsFieldVariable=>interfaceMapping%LAGRANGE_VARIABLE
+                          colsFieldVariable=>interfaceMapping%LAGRANGE_VARIABLE
+                          CALL EQUATIONS_MATRICES_ELEMENT_MATRIX_CALCULATE(interfaceMatrix%ELEMENT_MATRIX, &
+                            & interfaceMatrix%UPDATE_MATRIX,[InterfaceElementNumber],[InterfaceElementNumber], &
+                            & rowsFieldVariable,colsFieldVariable,err,error,*999)
+                        ELSE
+                          rowsFieldVariable=>interfaceMapping%INTERFACE_MATRIX_ROWS_TO_VAR_MAPS(matrixIdx)%VARIABLE
+                          colsFieldVariable=>interfaceMapping%LAGRANGE_VARIABLE !\todo: TEMPORARY: Needs generalising
+                          rowsMeshIdx=interfaceMapping%INTERFACE_MATRIX_ROWS_TO_VAR_MAPS(matrixIdx)%MESH_INDEX
+                          CALL EQUATIONS_MATRICES_ELEMENT_MATRIX_CALCULATE(interfaceMatrix%ELEMENT_MATRIX, &
+                            & interfaceMatrix%UPDATE_MATRIX,pointsConnectivity%coupledElements(InterfaceElementNumber, &
+                            & rowsMeshIdx)%elementNumbers,[InterfaceElementNumber],rowsFieldVariable,colsFieldVariable, &
+                            & err,error,*999)
+                        ENDIF
                       ELSE
                         localError="Interface matrix number "//TRIM(NUMBER_TO_VSTRING(matrixIdx,"*",err,error))// &
                           & " is not associated."
@@ -1058,7 +1073,7 @@ CONTAINS
                   ENDIF
                   CALL DISTRIBUTED_MATRIX_CREATE_FINISH(INTERFACE_MATRIX%MATRIX,ERR,ERROR,*999)
                   IF(INTERFACE_MATRIX%HAS_TRANSPOSE) THEN
-                    CALL DISTRIBUTED_MATRIX_CREATE_FINISH(INTERFACE_MATRIX%MATRIX_TRANSPOSE,ERR,ERROR,*999)                  
+                    CALL DISTRIBUTED_MATRIX_CREATE_FINISH(INTERFACE_MATRIX%MATRIX_TRANSPOSE,ERR,ERROR,*999)
                   ENDIF
                 ELSE
                   LOCAL_ERROR="Row domain map for interface matrix number "// &
@@ -1073,7 +1088,7 @@ CONTAINS
             ENDDO !matrix_idx
             RHS_VECTOR=>INTERFACE_MATRICES%RHS_VECTOR
             IF(ASSOCIATED(RHS_VECTOR)) THEN
-              !Set up the interface RHS vector          
+              !Set up the interface RHS vector
               CALL DISTRIBUTED_VECTOR_CREATE_START(COLUMN_DOMAIN_MAP,INTERFACE_MATRICES%RHS_VECTOR%RHS_VECTOR,ERR,ERROR,*999)
               CALL DISTRIBUTED_VECTOR_DATA_TYPE_SET(RHS_VECTOR%RHS_VECTOR,MATRIX_VECTOR_DP_TYPE,ERR,ERROR,*999)
               CALL DISTRIBUTED_VECTOR_CREATE_FINISH(RHS_VECTOR%RHS_VECTOR,ERR,ERROR,*999)

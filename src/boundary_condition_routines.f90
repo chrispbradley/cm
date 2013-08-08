@@ -172,7 +172,7 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: MPI_IERROR,SEND_COUNT,STORAGE_TYPE, NUMBER_OF_NON_ZEROS, NUMBER_OF_ROWS,COUNT
     INTEGER(INTG) :: variable_idx,dof_idx, equ_matrix_idx, dirichlet_idx, row_idx, DUMMY, LAST, DIRICHLET_DOF
-    INTEGER(INTG) :: col_idx,equations_set_idx,parameterSetIdx
+    INTEGER(INTG) :: col_idx,equations_set_idx,parameterSetIdx,interface_condition_idx,interface_matrix_idx
     INTEGER(INTG) :: pressureIdx,neumannIdx
     INTEGER(INTG), POINTER :: ROW_INDICES(:), COLUMN_INDICES(:)
     TYPE(BOUNDARY_CONDITIONS_VARIABLE_TYPE), POINTER :: BOUNDARY_CONDITION_VARIABLE
@@ -260,6 +260,7 @@ CONTAINS
                     CALL BOUNDARY_CONDITIONS_PRESSURE_INCREMENTED_INITIALISE(BOUNDARY_CONDITION_VARIABLE,ERR,ERROR,*999)
                     BOUNDARY_CONDITIONS_PRESSURE_INCREMENTED=>BOUNDARY_CONDITION_VARIABLE%PRESSURE_INCREMENTED_BOUNDARY_CONDITIONS
                   END IF
+
                   ! Set up Neumann condition information if there are any Neumann conditions
                   IF(BOUNDARY_CONDITION_VARIABLE%DOF_COUNTS(BOUNDARY_CONDITION_NEUMANN_POINT)>0.OR. &
                       & BOUNDARY_CONDITION_VARIABLE%DOF_COUNTS(BOUNDARY_CONDITION_NEUMANN_POINT_INCREMENTED)>0) THEN
@@ -3676,9 +3677,9 @@ CONTAINS
                   ENDIF
                 ENDIF
               ENDIF
-            ENDIF
-            variable_idx=variable_idx+1
-          ENDDO
+              variable_idx=variable_idx+1
+            ENDDO
+          ENDIF
         ENDIF
       ELSE
         CALL FLAG_ERROR("Field variable is not associated.",ERR,ERROR,*999)

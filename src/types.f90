@@ -2221,11 +2221,10 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
   
   !>Contains information on the mesh connectivity for a given coupled mesh element
   TYPE INTERFACE_ELEMENT_CONNECTIVITY_TYPE
-    INTEGER(INTG) :: COUPLED_MESH_ELEMENT_NUMBER !<The number of the coupled meshes element
-    REAL(DP), ALLOCATABLE :: XI(:,:,:) !<XI(xi_idx,mesh_component,element_parameter_idx) \TODO FIX !<The xi_idx'th xi connectivity of a given coupled mesh element to an interface mesh's xi_idx'th xi, interface_mesh_component_idx'th' and element_idx'th interface element
-    INTEGER(INTG) :: CONNECTED_FACE !<The coupled mesh element face number to be connected to the interface mesh
-    INTEGER(INTG) :: CONNECTED_LINE !<The coupled mesh element line number to be connected to the interface mesh
-    INTEGER(INTG) :: COUPLED_MESH_CONTACT_XI_NORMAL !< LOCAL_MESH_LINE_XI_NORMAL(connectivity_point_idx) contact line/face normal xi direction
+    INTEGER(INTG) :: COUPLED_MESH_ELEMENT_NUMBER !< The coupled mesh number to define the connectivity for.
+    REAL(DP), ALLOCATABLE :: XI(:,:,:) !<XI(xi_idx,mesh_component,element_parameter_idx) The xi_idx'th xi of a coupled mesh element to be copuled to an interface mesh's interface_mesh_component_idx'th interface_mesh_components's element_parameter_idx'th element_parameter. !\todo the XI array needs to be restructured to efficiently utilize memory when coupling bodies with 2xi directions to bodies with 3xi directions using an interface.
+    INTEGER(INTG) :: CONNECTED_FACE !<The coupled mesh element face number to be connected to the interface mesh.
+    INTEGER(INTG) :: CONNECTED_LINE !<The coupled mesh element line number to be connected to the interface mesh.
   END TYPE INTERFACE_ELEMENT_CONNECTIVITY_TYPE
 
   !>Contains information on the coupling between meshes in an interface
@@ -2250,7 +2249,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
   !Contains information on coupled mesh elements that are connected to each interface element.
   TYPE InterfaceCoupledElementsType
     INTEGER(INTG) :: numberOfCoupledElements
-    INTEGER(INTG), ALLOCATABLE :: elementNumbers(:) !<elementNumbers(elementIdx). The global numbers of the coupled mesh elements that are connected to this interface element.
+    INTEGER(INTG), ALLOCATABLE :: elementNumbers(:) !<elementNumbers(elementIdx). The global/local(if updated after decomposition) numbers of the coupled mesh elements that are connected to this interface element.
   END TYPE InterfaceCoupledElementsType
   
   !>Contains information on the data point coupling/points connectivity between meshes in the an interface
@@ -2276,7 +2275,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     TYPE(MESH_PTR_TYPE), POINTER :: COUPLED_MESHES(:) !<COUPLED_MESHES(mesh_idx). COUPLED_MESHES(mesh_idx)%PTR is the pointer to the mesh_idx'th mesh involved in the interface.
     TYPE(INTERFACE_MESH_CONNECTIVITY_TYPE), POINTER :: MESH_CONNECTIVITY !<A pointer to the meshes connectivity the interface.
     TYPE(InterfacePointsConnectivityType), POINTER :: pointsConnectivity !<A pointer to the points connectivity the interface.
-    TYPE(DATA_POINTS_TYPE), POINTER :: DATA_POINTS  !<A pointer to the data points defined in an interface.          
+    TYPE(DATA_POINTS_TYPE), POINTER :: DATA_POINTS  !<A pointer to the data points defined in an interface.
     TYPE(NODES_TYPE), POINTER :: NODES !<A pointer to the nodes in an interface
     TYPE(MESHES_TYPE), POINTER :: MESHES !<A pointer to the mesh in an interface.
     TYPE(GENERATED_MESHES_TYPE), POINTER :: GENERATED_MESHES !<A pointer to the generated meshes in an interface.
@@ -2666,6 +2665,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     TYPE(PETSC_MATFDCOLORING_TYPE) :: JACOBIAN_FDCOLORING !<The Jacobian matrix finite difference colouring
     TYPE(PETSC_SNES_TYPE) :: SNES !<The PETSc nonlinear solver object
     TYPE(PetscSnesLineSearchType) :: snesLineSearch !<The PETSc SNES line search object
+    LOGICAL :: linesearchMonitorOutput !<Flag to determine whether to enable/disable linesearch monitor output.
   END TYPE NEWTON_LINESEARCH_SOLVER_TYPE
   
   !>Contains information for a Newton trust region nonlinear solver
@@ -2678,6 +2678,12 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     TYPE(PETSC_SNES_TYPE) :: SNES !<The PETSc nonlinear solver object
   END TYPE NEWTON_TRUSTREGION_SOLVER_TYPE
 
+  !>Contains information about the convergence test for a newton solver
+  TYPE NewtonSolverConvergenceTest
+    REAL(DP) :: energyFirstIter !<The energy for the first iteration
+    REAL(DP) :: normalisedEnergy !<The normalized energy for the subsequent iterations
+  END TYPE NewtonSolverConvergenceTest
+
   !>Contains information for a Newton nonlinear solver
   TYPE NEWTON_SOLVER_TYPE
     TYPE(NONLINEAR_SOLVER_TYPE), POINTER :: NONLINEAR_SOLVER !<A pointer to the nonlinear solver
@@ -2688,9 +2694,11 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     INTEGER(INTG) :: MAXIMUM_NUMBER_OF_ITERATIONS !<The maximum number of iterations
     INTEGER(INTG) :: MAXIMUM_NUMBER_OF_FUNCTION_EVALUATIONS !<The maximum number of function evaluations
     INTEGER(INTG) :: JACOBIAN_CALCULATION_TYPE !<The type of calculation used for the Jacobian \see SOLVER_ROUTINES_JacobianCalculationTypes,SOLVER_ROUTINES
+    INTEGER(INTG) :: convergenceTestType !<The type of convergence test \see SOLVER_ROUTINES_NewtonConvergenceTestTypes,SOLVER_ROUTINES
     REAL(DP) :: ABSOLUTE_TOLERANCE !<The tolerance between the absolute decrease between the solution norm and the initial guess
     REAL(DP) :: RELATIVE_TOLERANCE !<The tolerance between the relative decrease between the solution norm and the initial guess
     REAL(DP) :: SOLUTION_TOLERANCE !<The tolerance of the change in the norm of the solution
+    TYPE(NewtonSolverConvergenceTest), POINTER :: convergenceTest !<A pointer to the newton solver convergence test 
     TYPE(NEWTON_LINESEARCH_SOLVER_TYPE), POINTER :: LINESEARCH_SOLVER !<A pointer to the Newton line search solver information
     TYPE(NEWTON_TRUSTREGION_SOLVER_TYPE), POINTER :: TRUSTREGION_SOLVER !<A pointer to the Newton trust region solver information
     TYPE(SOLVER_TYPE), POINTER :: LINEAR_SOLVER !<A pointer to the linked linear solver
@@ -2725,6 +2733,17 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     TYPE(CELLML_TYPE), POINTER :: CELLML !<A pointer to the CellML environment for the solver
     REAL(DP) :: CURRENT_TIME !<The current time value for the evaluator solver
   END TYPE CELLML_EVALUATOR_SOLVER_TYPE
+  
+  !>Contains information for a geometric transformation solver
+  TYPE GeometricTransformationSolverType
+    TYPE(SOLVER_TYPE), POINTER :: solver !<A pointer to the problem_solver
+    LOGICAL :: arbitraryPath !<.TRUE. if the transformation has an arbitrary path, .FALSE. if it's uni-directional(default)
+    INTEGER(INTG) :: numberOfIncrements !<The number of increments used to apply the transformation.
+    REAL(DP), ALLOCATABLE :: scalings(:) !scaling(loadIncrementIdx), the scaling factors for each load increment, apply the full transformation in 1 load increment if unallocated. Only allocated if there are multiple load steps and if the transformation is uni-directional.
+    REAL(DP), ALLOCATABLE :: transformationMatrices(:,:,:) !<transformationMatrices(spatialCoord+1,spatialCoord+1,incrementIdx). 4x4 matrices for 3D transformation, 3x3 for 2D transformation
+    TYPE(FIELD_TYPE), POINTER :: field !<fields to which the geometric transformations are applied 
+    INTEGER(INTG) :: fieldVariableType !<The field variable type index to transform
+  END TYPE GeometricTransformationSolverType
 
    !>A buffer type to allow for an array of pointers to a SOLVER_TYPE \see TYPES::SOLVER_TYPE
   TYPE SOLVER_PTR_TYPE
@@ -2753,7 +2772,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     TYPE(EIGENPROBLEM_SOLVER_TYPE), POINTER :: EIGENPROBLEM_SOLVER !<A pointer to the eigenproblem solver information
     TYPE(OPTIMISER_SOLVER_TYPE), POINTER :: OPTIMISER_SOLVER !<A pointer to the optimiser solver information
     TYPE(CELLML_EVALUATOR_SOLVER_TYPE), POINTER :: CELLML_EVALUATOR_SOLVER !<A pointer to the CellML solver information
-
+    TYPE(GeometricTransformationSolverType), POINTER :: geometricTransformationSolver !<A pointer to the geometric transformation solver information
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: SOLVER_EQUATIONS !<A pointer to the solver equations
     TYPE(CELLML_EQUATIONS_TYPE), POINTER :: CELLML_EQUATIONS !<A pointer to the CellML equations
     

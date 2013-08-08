@@ -1656,10 +1656,10 @@ CONTAINS
                     DO interface_condition_idx=1,SOLVER_MAPPING%numberOfInterfaceConditions
                       INTERFACE_CONDITION=>SOLVER_MAPPING%interfaceConditions(interface_condition_idx)%ptr
                       SELECT CASE(INTERFACE_CONDITION%METHOD)
-                      CASE(INTERFACE_CONDITION_LAGRANGE_MULTIPLIERS_METHOD)
+                      CASE(INTERFACE_CONDITION_LAGRANGE_MULTIPLIERS_METHOD,INTERFACE_CONDITION_PENALTY_METHOD)
                         DO interface_matrix_idx=1,SOLVER_MAPPING%interfaceConditionToSolverMap(interface_condition_idx)% &
                           & interfaceToSolverMatrixMapsSm(solver_matrix_idx)%numberOfInterfaceMatrices
-                          INTERFACE_TO_SOLVER_MAP=>SOLVER_MAPPING%interfaceConditionToSolverMap(interface_conditioN_idx)% &
+                          INTERFACE_TO_SOLVER_MAP=>SOLVER_MAPPING%interfaceConditionToSolverMap(interface_condition_idx)% &
                             & interfaceToSolverMatrixMapsSm(solver_matrix_idx)%interfaceEquationsToSolverMatrixMaps( &
                             & interface_matrix_idx)%ptr
                           IF(ASSOCIATED(INTERFACE_TO_SOLVER_MAP)) THEN
@@ -1696,8 +1696,6 @@ CONTAINS
                           ENDIF
                         ENDDO !interface_matrix_idx
                       CASE(INTERFACE_CONDITION_AUGMENTED_LAGRANGE_METHOD)
-                        CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
-                      CASE(INTERFACE_CONDITION_PENALTY_METHOD)
                         CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                       CASE(INTERFACE_CONDITION_POINT_TO_POINT_METHOD)
                         CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
@@ -2025,10 +2023,10 @@ CONTAINS
                     DO interface_condition_idx=1,SOLVER_MAPPING%numberOfInterfaceConditions
                       INTERFACE_CONDITION=>SOLVER_MAPPING%interfaceConditions(interface_condition_idx)%PTR
                       SELECT CASE(INTERFACE_CONDITION%METHOD)
-                      CASE(INTERFACE_CONDITION_LAGRANGE_MULTIPLIERS_METHOD)
+                      CASE(INTERFACE_CONDITION_LAGRANGE_MULTIPLIERS_METHOD,INTERFACE_CONDITION_PENALTY_METHOD)
                         DO interface_matrix_idx=1,SOLVER_MAPPING%interfaceConditionToSolverMap(interface_condition_idx)% &
                           & interfaceToSolverMatrixMapsSm(solver_matrix_idx)%numberOfInterfaceMatrices
-                          INTERFACE_TO_SOLVER_MAP=>SOLVER_MAPPING%interfaceConditionToSolverMap(interface_conditioN_idx)% &
+                          INTERFACE_TO_SOLVER_MAP=>SOLVER_MAPPING%interfaceConditionToSolverMap(interface_condition_idx)% &
                             & interfaceToSolverMatrixMapsSm(solver_matrix_idx)%interfaceEquationsToSolverMatrixMaps( &
                             & interface_matrix_idx)%PTR
                           INTERFACE_MATRIX=>INTERFACE_TO_SOLVER_MAP%interfaceMatrix
@@ -2212,8 +2210,6 @@ CONTAINS
                           ENDIF
                         ENDDO !interface_matrix_idx
                       CASE(INTERFACE_CONDITION_AUGMENTED_LAGRANGE_METHOD)
-                        CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
-                      CASE(INTERFACE_CONDITION_PENALTY_METHOD)
                         CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                       CASE(INTERFACE_CONDITION_POINT_TO_POINT_METHOD)
                         CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)

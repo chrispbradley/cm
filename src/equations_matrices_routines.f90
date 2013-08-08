@@ -640,8 +640,8 @@ CONTAINS
                     CALL FLAG_ERROR("Not implemented.",ERR,ERROR,*999)
                   CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
                     decompositionData=>ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%DECOMPOSITION%TOPOLOGY%dataPoints
-                    DO dataPointIdx=1,decompositionData%elementDataPoint(colElementNumber)%numberOfProjectedData
-                      localDataPointNumber=decompositionData%elementDataPoint(colElementNumber)% &
+                    DO dataPointIdx=1,decompositionData%elementDataPoint(rowElementNumber)%numberOfProjectedData
+                      localDataPointNumber=decompositionData%elementDataPoint(rowElementNumber)% &
                         & dataIndices(dataPointIdx)%localNumber
                       local_ny=ROWS_FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP%DATA_POINT_PARAM2DOF_MAP% &
                         & DATA_POINTS(localDataPointNumber)
@@ -903,10 +903,18 @@ CONTAINS
 
     IF(ASSOCIATED(rowsFieldVariable)) THEN
       IF(ASSOCIATED(columnsFieldVariable)) THEN
-        elementMatrix%MAX_NUMBER_OF_ROWS=rowsFieldVariable%MAX_NUMBER_OF_INTERPOLATION_PARAMETERS* &
-          & rowsFieldVariable%NUMBER_OF_COMPONENTS*rowsNumberOfElements
-        elementMatrix%MAX_NUMBER_OF_COLUMNS=columnsFieldVariable%MAX_NUMBER_OF_INTERPOLATION_PARAMETERS* &
-          & columnsFieldVariable%NUMBER_OF_COMPONENTS*colsNumberOfElements
+        elementMatrix%MAX_NUMBER_OF_ROWS = 0
+        DO componentIdx=1,rowsFieldVariable%NUMBER_OF_COMPONENTS
+          elementMatrix%MAX_NUMBER_OF_ROWS=elementMatrix%MAX_NUMBER_OF_ROWS+ &
+            & rowsFieldVariable%COMPONENTS(componentIdx)%MAX_NUMBER_OF_INTERPOLATION_PARAMETERS
+        ENDDO
+        elementMatrix%MAX_NUMBER_OF_ROWS=elementMatrix%MAX_NUMBER_OF_ROWS*rowsNumberOfElements
+        elementMatrix%MAX_NUMBER_OF_COLUMNS = 0
+        DO componentIdx=1,columnsFieldVariable%NUMBER_OF_COMPONENTS
+          elementMatrix%MAX_NUMBER_OF_COLUMNS=elementMatrix%MAX_NUMBER_OF_COLUMNS+ &
+            & columnsFieldVariable%COMPONENTS(componentIdx)%MAX_NUMBER_OF_INTERPOLATION_PARAMETERS
+        ENDDO
+        elementMatrix%MAX_NUMBER_OF_COLUMNS=elementMatrix%MAX_NUMBER_OF_COLUMNS*colsNumberOfElements
         IF(ALLOCATED(elementMatrix%ROW_DOFS)) THEN
           CALL FLAG_ERROR("Element matrix row dofs already allocated.",err,error,*999)
         ELSE
