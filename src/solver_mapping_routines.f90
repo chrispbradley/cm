@@ -148,7 +148,8 @@ CONTAINS
     REAL(DP) :: couplingCoefficient
     TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: boundaryConditions
     TYPE(BOUNDARY_CONDITIONS_VARIABLE_TYPE), POINTER :: boundaryConditionsVariable
-    TYPE(BoundaryConditionsCoupledDofsType), POINTER :: colEquationCols,dummyDofCoupling,rowEquationRows
+    TYPE(BoundaryConditionsCoupledDofsType), POINTER :: colEquationCols,rowEquationRows
+    TYPE(BoundaryConditionsCoupledDofsType), TARGET :: dummyDofCoupling
     TYPE(BoundaryConditionsDofConstraintsType), POINTER :: dofConstraints
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: colDomainMapping,colDofsMapping,rowDomainMapping,rowDofsMapping
     TYPE(EQUATIONS_TYPE), POINTER :: equations
@@ -176,8 +177,6 @@ CONTAINS
     TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: solverEquations
     TYPE(SolverMappingDofCouplingsType) :: columnCouplings,rowCouplings
     TYPE(VARYING_STRING) :: localError
-
-    NULLIFY(dummyDofCoupling)
 
     CALL Enters("SolverMapping_Calculate",err,error,*999)
 
@@ -528,6 +527,8 @@ CONTAINS
                             ENDDO !rankIdx
                             IF(rowRank>=0) THEN
                               includeRow=.TRUE.
+                              constrainedDof=.FALSE.
+                              globalDofCouplingNumber=0
                               dependentVariable=>lhsMapping%lhsVariable
                               CALL BOUNDARY_CONDITIONS_VARIABLE_GET(boundaryConditions,dependentVariable, &
                                 & boundaryConditionsVariable,err,error,*999)
