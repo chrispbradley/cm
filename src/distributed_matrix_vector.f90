@@ -2809,10 +2809,11 @@ CONTAINS
                           PETSC_MATRIX%OFFDIAGONAL_NUMBER_NON_ZEROS=0
                           ALLOCATE(PETSC_MATRIX%ROW_INDICES(PETSC_MATRIX%M+1),STAT=ERR)
                           IF(ERR/=0) CALL FLAG_ERROR("Could not allocate PETSc matrix row indices.",ERR,ERROR,*999)
-                          PETSC_MATRIX%ROW_INDICES=ROW_INDICES(1:PETSC_MATRIX%M+1)
+                          PETSC_MATRIX%ROW_INDICES(1:PETSC_MATRIX%M+1)=ROW_INDICES(1:PETSC_MATRIX%M+1)
                           ALLOCATE(PETSC_MATRIX%COLUMN_INDICES(PETSC_MATRIX%NUMBER_NON_ZEROS),STAT=ERR)
                           IF(ERR/=0) CALL FLAG_ERROR("Could not allocate PETSc matrix column indices.",ERR,ERROR,*999)
-                          PETSC_MATRIX%COLUMN_INDICES=COLUMN_INDICES(1:PETSC_MATRIX%NUMBER_NON_ZEROS)
+                          PETSC_MATRIX%COLUMN_INDICES(1:PETSC_MATRIX%NUMBER_NON_ZEROS)= &
+                            & COLUMN_INDICES(1:PETSC_MATRIX%NUMBER_NON_ZEROS)
                           !Check the column indices are correct and calculate number of diagonal and off-diagonal columns
                           global_row_start=ROW_DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(1)
                           global_row_finish=ROW_DOMAIN_MAPPING%LOCAL_TO_GLOBAL_MAP(PETSC_MATRIX%M)

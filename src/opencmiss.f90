@@ -21623,7 +21623,6 @@ CONTAINS
     TYPE(INTERFACE_TYPE), POINTER :: INTERFACE
     TYPE(DATA_PROJECTION_TYPE), POINTER :: DATA_PROJECTION
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    INTEGER(INTG) :: GLOBAL_NUMBER !<data projection global number
 
     CALL ENTERS("CMISSDataProjection_LabelGetCInterfaceNumber",ERR,error,*999)
 
@@ -21674,7 +21673,6 @@ CONTAINS
     TYPE(INTERFACE_TYPE), POINTER :: INTERFACE
     TYPE(DATA_PROJECTION_TYPE), POINTER :: DATA_PROJECTION
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    INTEGER(INTG) :: GLOBAL_NUMBER !<data projection global number
 
     CALL ENTERS("CMISSDataProjection_LabelGetVSInterfaceNumber",ERR,error,*999)
 
@@ -21722,7 +21720,6 @@ CONTAINS
     TYPE(REGION_TYPE), POINTER :: REGION
     TYPE(DATA_PROJECTION_TYPE), POINTER :: DATA_PROJECTION
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    INTEGER(INTG) :: GLOBAL_NUMBER !<data projection global number
 
     CALL ENTERS("CMISSDataProjection_LabelGetCRegionNumber",ERR,error,*999)
 
@@ -21762,7 +21759,6 @@ CONTAINS
     TYPE(REGION_TYPE), POINTER :: REGION
     TYPE(DATA_PROJECTION_TYPE), POINTER :: DATA_PROJECTION
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    INTEGER(INTG) :: GLOBAL_NUMBER !<data projection global number
 
     CALL ENTERS("CMISSDataProjection_LabelGetVSRegionNumber",ERR,error,*999)
 
@@ -21857,7 +21853,6 @@ CONTAINS
     TYPE(INTERFACE_TYPE), POINTER :: INTERFACE
     TYPE(DATA_PROJECTION_TYPE), POINTER :: DATA_PROJECTION
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    INTEGER(INTG) :: GLOBAL_NUMBER !<data projection global number
 
     CALL ENTERS("CMISSDataProjection_LabelSetCInterfaceNumber",ERR,error,*999)
 
@@ -21908,7 +21903,6 @@ CONTAINS
     TYPE(INTERFACE_TYPE), POINTER :: INTERFACE
     TYPE(DATA_PROJECTION_TYPE), POINTER :: DATA_PROJECTION
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    INTEGER(INTG) :: GLOBAL_NUMBER !<data projection global number
 
     CALL ENTERS("CMISSDataProjection_LabelSetVSInterfaceNumber",ERR,error,*999)
 
@@ -21956,7 +21950,6 @@ CONTAINS
     TYPE(REGION_TYPE), POINTER :: REGION
     TYPE(DATA_PROJECTION_TYPE), POINTER :: DATA_PROJECTION
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    INTEGER(INTG) :: GLOBAL_NUMBER !<data projection global number
 
     CALL ENTERS("CMISSDataProjection_LabelSetCRegionNumber",ERR,error,*999)
 
@@ -21996,7 +21989,6 @@ CONTAINS
     TYPE(REGION_TYPE), POINTER :: REGION
     TYPE(DATA_PROJECTION_TYPE), POINTER :: DATA_PROJECTION
     TYPE(VARYING_STRING) :: LOCAL_ERROR
-    INTEGER(INTG) :: GLOBAL_NUMBER !<data projection global number
 
     CALL ENTERS("CMISSDataProjection_LabelSetVSRegionNumber",ERR,error,*999)
 
@@ -42605,7 +42597,7 @@ CONTAINS
     TYPE(CMISSDataProjectionType), INTENT(IN) :: DataProjection !<The data projection
     INTEGER(INTG), INTENT(OUT) :: Err !<The error code.
     !Local variables
-   
+
     CALL ENTERS("CMISSMesh_TopologyDataPointsCalculateProjectionObj",Err,ERROR,*999)
     
     CALL Mesh_TopologyDataPointsCalculateProjection(Mesh%MESH,DataProjection%DATA_PROJECTION,Err,ERROR,*999)

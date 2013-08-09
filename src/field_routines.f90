@@ -9911,7 +9911,8 @@ CONTAINS
                   FIELD_COMPONENT%PARAM_TO_DOF_MAP%CONSTANT_PARAM2DOF_MAP=variable_local_ny
                   !Adjust the offsets
                   VARIABLE_GLOBAL_DOFS_OFFSET=VARIABLE_GLOBAL_DOFS_OFFSET+1
-                  VARIABLE_LOCAL_DOFS_OFFSETS=VARIABLE_LOCAL_DOFS_OFFSETS+1
+                  VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                    & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+1
                 ENDIF
               CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
                 DOMAIN=>FIELD_COMPONENT%DOMAIN
@@ -9961,15 +9962,18 @@ CONTAINS
                   stop_idx=elementsMapping%NUMBER_OF_LOCAL
                   !Adjust the local and ghost offsets
                   IF(component_idx>1) &
-                    & VARIABLE_GHOST_DOFS_OFFSETS=VARIABLE_GHOST_DOFS_OFFSETS+elementsMapping%NUMBER_OF_DOMAIN_LOCAL
-                  VARIABLE_LOCAL_DOFS_OFFSETS=VARIABLE_LOCAL_DOFS_OFFSETS+ &
+                    & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                    & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+elementsMapping%NUMBER_OF_DOMAIN_LOCAL
+                  VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                    & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+ &
                     & elementsMapping%NUMBER_OF_DOMAIN_LOCAL+elementsMapping%NUMBER_OF_DOMAIN_GHOST
                 ELSE
                   !Handle global dofs domain mapping. For the second pass adjust the local dof numbers to ensure that the ghost
                   !dofs are at the end of the local dofs.
                   !Adjust the ghost offsets
                   IF(component_idx>1) &
-                    & VARIABLE_GHOST_DOFS_OFFSETS=VARIABLE_GHOST_DOFS_OFFSETS-elementsMapping%NUMBER_OF_DOMAIN_LOCAL
+                    & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                    & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)-elementsMapping%NUMBER_OF_DOMAIN_LOCAL
                   DO ny=1,elementsMapping%NUMBER_OF_GLOBAL
                     !Adjust variable mapping local numbers
                     IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
@@ -9993,7 +9997,8 @@ CONTAINS
                   start_idx=elementsMapping%NUMBER_OF_LOCAL+1
                   stop_idx=elementsMapping%TOTAL_NUMBER_OF_LOCAL
                   !Adjust the local offsets
-                  VARIABLE_LOCAL_DOFS_OFFSETS=VARIABLE_LOCAL_DOFS_OFFSETS-elementsMapping%NUMBER_OF_DOMAIN_GHOST
+                  VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                    & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)-elementsMapping%NUMBER_OF_DOMAIN_GHOST
                 ENDIF
                 !Adjust the global offset
                 VARIABLE_GLOBAL_DOFS_OFFSET=VARIABLE_GLOBAL_DOFS_OFFSET+elementsMapping%NUMBER_OF_GLOBAL
@@ -10071,15 +10076,18 @@ CONTAINS
                   stop_idx=DOFS_MAPPING%NUMBER_OF_LOCAL
                   !Adjust the local and ghost offsets
                   IF(component_idx>1) &
-                    & VARIABLE_GHOST_DOFS_OFFSETS=VARIABLE_GHOST_DOFS_OFFSETS+DOFS_MAPPING%NUMBER_OF_DOMAIN_LOCAL
-                  VARIABLE_LOCAL_DOFS_OFFSETS=VARIABLE_LOCAL_DOFS_OFFSETS+ &
+                    & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                    & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+DOFS_MAPPING%NUMBER_OF_DOMAIN_LOCAL
+                  VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                    & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+ &
                     & DOFS_MAPPING%NUMBER_OF_DOMAIN_LOCAL+DOFS_MAPPING%NUMBER_OF_DOMAIN_GHOST
                 ELSE
                   !Handle global dofs domain mapping. For the second pass adjust the local dof numbers to ensure that the ghost
                   !dofs are at the end of the local dofs.
                   !Adjust the ghost offsets
                   IF(component_idx>1) &
-                    VARIABLE_GHOST_DOFS_OFFSETS=VARIABLE_GHOST_DOFS_OFFSETS-DOFS_MAPPING%NUMBER_OF_DOMAIN_LOCAL
+                    VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                    & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)-DOFS_MAPPING%NUMBER_OF_DOMAIN_LOCAL
                   DO ny=1,DOFS_MAPPING%NUMBER_OF_GLOBAL
                     !Adjust variable mapping local numbers
                     IF(ASSOCIATED(FIELD_VARIABLE_DOFS_MAPPING)) THEN
@@ -10103,7 +10111,8 @@ CONTAINS
                   start_idx=DOFS_MAPPING%NUMBER_OF_LOCAL+1
                   stop_idx=DOFS_MAPPING%TOTAL_NUMBER_OF_LOCAL
                   !Adjust the local offsets
-                  VARIABLE_LOCAL_DOFS_OFFSETS=VARIABLE_LOCAL_DOFS_OFFSETS-DOFS_MAPPING%NUMBER_OF_DOMAIN_GHOST
+                  VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                    & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)-DOFS_MAPPING%NUMBER_OF_DOMAIN_GHOST
                 ENDIF
                 !Adjust the global offset
                 VARIABLE_GLOBAL_DOFS_OFFSET=VARIABLE_GLOBAL_DOFS_OFFSET+DOFS_MAPPING%NUMBER_OF_GLOBAL
@@ -10182,15 +10191,20 @@ CONTAINS
                   stop_idx=elementsMapping%NUMBER_OF_LOCAL
                   !Adjust the local and ghost offsets
                   IF(component_idx>1) &
-                    & VARIABLE_GHOST_DOFS_OFFSETS=VARIABLE_GHOST_DOFS_OFFSETS+elementsMapping%NUMBER_OF_DOMAIN_LOCAL*MAX_NGP
-                  VARIABLE_LOCAL_DOFS_OFFSETS=VARIABLE_LOCAL_DOFS_OFFSETS+ &
+                    & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                    & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+ &
+                    & elementsMapping%NUMBER_OF_DOMAIN_LOCAL*MAX_NGP
+                  VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                    & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+ &
                     & (elementsMapping%NUMBER_OF_DOMAIN_LOCAL+elementsMapping%NUMBER_OF_DOMAIN_GHOST)*MAX_NGP
                 ELSE !domain_type_idx==2 --> ghosts
                   !Handle global dofs domain mapping. For the second pass adjust the local dof numbers to ensure that the ghost
                   !dofs are at the end of the local dofs.
                   !Adjust the ghost offsets
                   IF(component_idx>1) &
-                    VARIABLE_GHOST_DOFS_OFFSETS=VARIABLE_GHOST_DOFS_OFFSETS-elementsMapping%NUMBER_OF_DOMAIN_LOCAL*MAX_NGP
+                    VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                    & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)- &
+                    & elementsMapping%NUMBER_OF_DOMAIN_LOCAL*MAX_NGP
                   DO ny=1,elementsMapping%NUMBER_OF_GLOBAL
                    DO gp=1,MAX_NGP !
                     !Adjust variable mapping local numbers
@@ -10216,7 +10230,9 @@ CONTAINS
                   start_idx=elementsMapping%NUMBER_OF_LOCAL+1
                   stop_idx=elementsMapping%TOTAL_NUMBER_OF_LOCAL
                   !Adjust the local offsets
-                  VARIABLE_LOCAL_DOFS_OFFSETS=VARIABLE_LOCAL_DOFS_OFFSETS-elementsMapping%NUMBER_OF_DOMAIN_GHOST*MAX_NGP
+                  VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                    & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)- &
+                    & elementsMapping%NUMBER_OF_DOMAIN_GHOST*MAX_NGP
                 ENDIF ! 2 passes for normal, ghost 
                 !Adjust the global offset
                 VARIABLE_GLOBAL_DOFS_OFFSET=VARIABLE_GLOBAL_DOFS_OFFSET+elementsMapping%NUMBER_OF_GLOBAL*MAX_NGP
@@ -10253,7 +10269,7 @@ CONTAINS
                   ALLOCATE(ghostDataParamCount(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1),STAT=ERR)
                   IF(ERR/=0) CALL FLAG_ERROR("Could not allocate data point parameter ghost count.",ERR,ERROR,*999)
                   localDataParamCount=0
-                  ghostDataParamCount=decompositionTopology%dataPoints%numberOfDomainLocal
+                  ghostDataParamCount(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)=decompositionTopology%dataPoints%numberOfDomainLocal
                   !Looping through global elements and data points in the elements
                   variable_global_ny=VARIABLE_GLOBAL_DOFS_OFFSET
                   DO elementIdx=1,elementsMapping%NUMBER_OF_GLOBAL
@@ -10302,16 +10318,21 @@ CONTAINS
                   stop_idx=elementsMapping%NUMBER_OF_LOCAL !the end idx for local elements
                   !Adjust the local and ghost offsets
                   IF(component_idx>1) THEN
-                    VARIABLE_GHOST_DOFS_OFFSETS=VARIABLE_GHOST_DOFS_OFFSETS+decompositionTopology%dataPoints%numberOfDomainLocal
+                    VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                      & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+ &
+                      & decompositionTopology%dataPoints%numberOfDomainLocal
                   ENDIF
-                  VARIABLE_LOCAL_DOFS_OFFSETS=VARIABLE_LOCAL_DOFS_OFFSETS+ &
+                  VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                    & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+ &
                     & decompositionTopology%dataPoints%numberOfDomainLocal+decompositionTopology%dataPoints%numberOfDomainGhost
                 ELSE  ! domain_type_idx == 2 -> ghosts
                   !Handle global dofs domain mapping. For the second pass adjust the local dof numbers to ensure that the ghost
                   !dofs are at the end of the local dofs.
                   !Adjust the ghost offsets
                   IF(component_idx>1) THEN
-                    VARIABLE_GHOST_DOFS_OFFSETS=VARIABLE_GHOST_DOFS_OFFSETS-decompositionTopology%dataPoints%numberOfDomainLocal
+                    VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                      & VARIABLE_GHOST_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)- &
+                      & decompositionTopology%dataPoints%numberOfDomainLocal
                   ENDIF
                   !Looping through global elements and data points in the elements
                   variable_global_ny=VARIABLE_GLOBAL_DOFS_OFFSET
@@ -10337,7 +10358,9 @@ CONTAINS
                     ENDDO !dataPointIdx
                   ENDDO !elementIdx 
                   !Adjust the local offsets
-                  VARIABLE_LOCAL_DOFS_OFFSETS=VARIABLE_LOCAL_DOFS_OFFSETS-decompositionTopology%dataPoints%numberOfDomainGhost
+                  VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                    & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)- &
+                    & decompositionTopology%dataPoints%numberOfDomainGhost
                   start_idx=elementsMapping%NUMBER_OF_LOCAL+1 !The start index for ghost elements
                   stop_idx=elementsMapping%TOTAL_NUMBER_OF_LOCAL !The end index for local elements
                 ENDIF 
@@ -10421,7 +10444,8 @@ CONTAINS
                 FIELD_COMPONENT%PARAM_TO_DOF_MAP%CONSTANT_PARAM2DOF_MAP=variable_local_ny
                 !Adjust the offsets
                 VARIABLE_GLOBAL_DOFS_OFFSET=VARIABLE_GLOBAL_DOFS_OFFSET+1
-                VARIABLE_LOCAL_DOFS_OFFSETS=VARIABLE_LOCAL_DOFS_OFFSETS+1
+                VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                  & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+1
               ENDDO !component_idx
             CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
               DO component_idx=1,FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS
@@ -10501,7 +10525,9 @@ CONTAINS
                   ENDDO !component_idx
                 ENDDO !element_idx
                 !Adjust the offsets
-                VARIABLE_LOCAL_DOFS_OFFSETS=VARIABLE_LOCAL_DOFS_OFFSETS+FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS* &
+                VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                  &  VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+ &
+                  & FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS* &
                   & elementsMapping%NUMBER_OF_DOMAIN_LOCAL
                 IF(domain_type_idx==1) THEN
                   VARIABLE_GLOBAL_DOFS_OFFSET=VARIABLE_GLOBAL_DOFS_OFFSET+FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS* &
@@ -10612,7 +10638,9 @@ CONTAINS
                   ENDDO !component_idx
                 ENDDO !ny
                 !Adjust the offsets
-                VARIABLE_LOCAL_DOFS_OFFSETS=VARIABLE_LOCAL_DOFS_OFFSETS+FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS* &
+                VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                  & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+ &
+                  & FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS* &
                   & DOFS_MAPPING%NUMBER_OF_DOMAIN_LOCAL
                 IF(domain_type_idx==1) THEN
                   VARIABLE_GLOBAL_DOFS_OFFSET=VARIABLE_GLOBAL_DOFS_OFFSET+FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS* &
@@ -10709,7 +10737,9 @@ CONTAINS
                   ENDDO !gauss_point_idx
                 ENDDO !ny
                 !Adjust the offsets
-                VARIABLE_LOCAL_DOFS_OFFSETS=VARIABLE_LOCAL_DOFS_OFFSETS+FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS* &
+                VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)= &
+                  & VARIABLE_LOCAL_DOFS_OFFSETS(0:DECOMPOSITION%NUMBER_OF_DOMAINS-1)+ &
+                  & FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS* &
                   & DOFS_MAPPING%NUMBER_OF_DOMAIN_LOCAL*MAX_NGP
                 IF(domain_type_idx==1) THEN
                   VARIABLE_GLOBAL_DOFS_OFFSET=VARIABLE_GLOBAL_DOFS_OFFSET+FIELD%VARIABLES(variable_idx)%NUMBER_OF_COMPONENTS* &
@@ -12547,7 +12577,8 @@ CONTAINS
               IF(FIELD%NUMBER_OF_VARIABLES/=NUMBER_OF_VARIABLES) THEN
                 ALLOCATE(OLD_VARIABLE_TYPES(FIELD%NUMBER_OF_VARIABLES),STAT=ERR)
                 IF(ERR/=0) CALL FLAG_ERROR("Could not allocate old variable types.",ERR,ERROR,*999)
-                OLD_VARIABLE_TYPES=FIELD%CREATE_VALUES_CACHE%VARIABLE_TYPES
+                OLD_VARIABLE_TYPES(1:FIELD%NUMBER_OF_VARIABLES)=FIELD%CREATE_VALUES_CACHE%VARIABLE_TYPES(1: &
+                  & FIELD%NUMBER_OF_VARIABLES)
                 DEALLOCATE(FIELD%CREATE_VALUES_CACHE%VARIABLE_TYPES)
                 ALLOCATE(FIELD%CREATE_VALUES_CACHE%VARIABLE_TYPES(NUMBER_OF_VARIABLES),STAT=ERR)
                 IF(ERR/=0) CALL FLAG_ERROR("Could not allocate variable types.",ERR,ERROR,*999)
@@ -28042,7 +28073,7 @@ CONTAINS
               IF(ERR/=0) CALL FLAG_ERROR("Could not allocate old mesh component number.",ERR,ERROR,*999)
               ALLOCATE(OLD_MESH_COMPONENT_NUMBER_LOCKED(NUMBER_OF_COMPONENTS,FIELD_NUMBER_OF_VARIABLE_TYPES),STAT=ERR)
               IF(ERR/=0) CALL FLAG_ERROR("Could not allocate old mesh component number locked.",ERR,ERROR,*999)
-              OLD_VARIABLE_TYPES=FIELD%CREATE_VALUES_CACHE%VARIABLE_TYPES
+              OLD_VARIABLE_TYPES(1:FIELD%NUMBER_OF_VARIABLES)=FIELD%CREATE_VALUES_CACHE%VARIABLE_TYPES(1:FIELD%NUMBER_OF_VARIABLES)
               OLD_LABELS=FIELD%CREATE_VALUES_CACHE%VARIABLE_LABELS
               OLD_LABELS_LOCKED=FIELD%CREATE_VALUES_CACHE%VARIABLE_LABELS_LOCKED
               OLD_DIMENSION=FIELD%CREATE_VALUES_CACHE%DIMENSION
@@ -28053,10 +28084,14 @@ CONTAINS
               OLD_DOF_ORDER_TYPES_LOCKED=FIELD%CREATE_VALUES_CACHE%DOF_ORDER_TYPES_LOCKED
               OLD_NUMBER_OF_COMPONENTS=FIELD%CREATE_VALUES_CACHE%NUMBER_OF_COMPONENTS
               OLD_NUMBER_OF_COMPONENTS_LOCKED=FIELD%CREATE_VALUES_CACHE%NUMBER_OF_COMPONENTS_LOCKED
-              OLD_INTERPOLATION_TYPE=FIELD%CREATE_VALUES_CACHE%INTERPOLATION_TYPE
-              OLD_INTERPOLATION_TYPE_LOCKED=FIELD%CREATE_VALUES_CACHE%INTERPOLATION_TYPE_LOCKED
-              OLD_MESH_COMPONENT_NUMBER=FIELD%CREATE_VALUES_CACHE%MESH_COMPONENT_NUMBER
-              OLD_MESH_COMPONENT_NUMBER_LOCKED=FIELD%CREATE_VALUES_CACHE%MESH_COMPONENT_NUMBER_LOCKED
+              OLD_INTERPOLATION_TYPE(1:NUMBER_OF_COMPONENTS,1:FIELD_NUMBER_OF_VARIABLE_TYPES)= &
+                & FIELD%CREATE_VALUES_CACHE%INTERPOLATION_TYPE(1:NUMBER_OF_COMPONENTS,1:FIELD_NUMBER_OF_VARIABLE_TYPES)
+              OLD_INTERPOLATION_TYPE_LOCKED(1:NUMBER_OF_COMPONENTS,1:FIELD_NUMBER_OF_VARIABLE_TYPES)= &
+                & FIELD%CREATE_VALUES_CACHE%INTERPOLATION_TYPE_LOCKED(1:NUMBER_OF_COMPONENTS,1:FIELD_NUMBER_OF_VARIABLE_TYPES)
+              OLD_MESH_COMPONENT_NUMBER(1:NUMBER_OF_COMPONENTS,1:FIELD_NUMBER_OF_VARIABLE_TYPES)= &
+                & FIELD%CREATE_VALUES_CACHE%MESH_COMPONENT_NUMBER(1:NUMBER_OF_COMPONENTS,1:FIELD_NUMBER_OF_VARIABLE_TYPES)
+              OLD_MESH_COMPONENT_NUMBER_LOCKED(1:NUMBER_OF_COMPONENTS,1:FIELD_NUMBER_OF_VARIABLE_TYPES)= &
+                & FIELD%CREATE_VALUES_CACHE%MESH_COMPONENT_NUMBER_LOCKED(1:NUMBER_OF_COMPONENTS,1:FIELD_NUMBER_OF_VARIABLE_TYPES)
               FIELD%CREATE_VALUES_CACHE%VARIABLE_TYPES=0
               FIELD%CREATE_VALUES_CACHE%VARIABLE_LABELS=""
               FIELD%CREATE_VALUES_CACHE%VARIABLE_LABELS_LOCKED=.FALSE.
@@ -28093,7 +28128,7 @@ CONTAINS
                 FIELD%CREATE_VALUES_CACHE%MESH_COMPONENT_NUMBER_LOCKED(:,variable_type)=OLD_MESH_COMPONENT_NUMBER_LOCKED(:, &
                   & old_variable_type)
               ENDDO !variable_idx
-              FIELD%CREATE_VALUES_CACHE%VARIABLE_TYPES=VARIABLE_TYPES
+              FIELD%CREATE_VALUES_CACHE%VARIABLE_TYPES(1:SIZE(VARIABLE_TYPES,1))=VARIABLE_TYPES(1:SIZE(VARIABLE_TYPES,1))
               DEALLOCATE(OLD_VARIABLE_TYPES)
               DEALLOCATE(OLD_INTERPOLATION_TYPE)
               DEALLOCATE(OLD_INTERPOLATION_TYPE_LOCKED)

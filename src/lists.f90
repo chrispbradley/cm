@@ -4954,8 +4954,8 @@ CONTAINS
       ELSE
         ! 'long' lists - make copies of the arrays
         ALLOCATE(LONG_ARRAY(SIZE_LONGER),SHORT_ARRAY(SIZE_SHORTER))
-        LONG_ARRAY=LONGER
-        SHORT_ARRAY=SHORTER
+        LONG_ARRAY(1:SIZE_LONGER)=LONGER(1:SIZE_LONGER)
+        SHORT_ARRAY(1:SIZE_SHORTER)=SHORTER(1:SIZE_SHORTER)
         ! sort both arrays
         CALL LIST_SORT(LONG_ARRAY,err,error,*999)
         CALL LIST_SORT(SHORT_ARRAY,err,error,*999)
@@ -4979,7 +4979,7 @@ CONTAINS
       ENDIF ! long or short lists
       ! cut the array down to size
       ALLOCATE(C(NUMBER_OF_MATCHES))
-      C=MATCHES(1:NUMBER_OF_MATCHES)
+      C(1:NUMBER_OF_MATCHES)=MATCHES(1:NUMBER_OF_MATCHES)
       DEALLOCATE(MATCHES)
     ENDIF
 
@@ -5050,8 +5050,8 @@ CONTAINS
       ELSE
         ! 'long' lists - make copies of the arrays
         ALLOCATE(LONG_ARRAY(SIZE_LONGER),SHORT_ARRAY(SIZE_SHORTER))
-        LONG_ARRAY=LONGER
-        SHORT_ARRAY=SHORTER
+        LONG_ARRAY(1:SIZE_LONGER)=LONGER(1:SIZE_LONGER)
+        SHORT_ARRAY(1:SIZE_SHORTER)=SHORTER(1:SIZE_SHORTER)
         ! sort both arrays
         CALL LIST_SORT(LONG_ARRAY,err,error,*999)
         CALL LIST_SORT(SHORT_ARRAY,err,error,*999)
@@ -5075,7 +5075,7 @@ CONTAINS
       ENDIF ! long or short lists
       ! cut the array down to size
       ALLOCATE(C(NUMBER_OF_MATCHES))
-      C=MATCHES(1:NUMBER_OF_MATCHES)
+      C(1:NUMBER_OF_MATCHES)=MATCHES(1:NUMBER_OF_MATCHES)
       DEALLOCATE(MATCHES)
     ENDIF
 
@@ -5143,10 +5143,10 @@ CONTAINS
     ELSE
       ! 'long' arrays - sort first
       ALLOCATE(A_SORTED(SIZE_A),B_SORTED(SIZE_B))
-      A_SORTED=A
-      B_SORTED=B
-      CALL LIST_SORT(A_SORTED,err,error,*999)
-      CALL LIST_SORT(B_SORTED,err,error,*999)
+      A_SORTED(1:SIZE_A)=A(1:SIZE_A)
+      B_SORTED(1:SIZE_B)=B(1:SIZE_B)
+      CALL LIST_SORT(A_SORTED,ERR,ERROR,*999)
+      CALL LIST_SORT(B_SORTED,ERR,ERROR,*999)
       START=1
       DO I=1,SIZE_A
         DO J=1,SIZE_B
@@ -5228,10 +5228,10 @@ CONTAINS
     ELSE
       ! 'long' arrays - sort first
       ALLOCATE(A_SORTED(SIZE_A),B_SORTED(SIZE_B))
-      A_SORTED=A
-      B_SORTED=B
-      CALL LIST_SORT(A_SORTED,err,error,*999)
-      CALL LIST_SORT(B_SORTED,err,error,*999)
+      A_SORTED(1:SIZE_A)=A(1:SIZE_A)
+      B_SORTED(1:SIZE_B)=B(1:SIZE_B)
+      CALL LIST_SORT(A_SORTED,ERR,ERROR,*999)
+      CALL LIST_SORT(B_SORTED,ERR,ERROR,*999)
       START=1
       DO I=1,SIZE_A
         DO J=1,SIZE_B

@@ -4384,8 +4384,8 @@ CONTAINS
                 SELECT CASE(DEGREE)
                 CASE(SOLVER_DYNAMIC_FIRST_DEGREE,SOLVER_DYNAMIC_SECOND_DEGREE,SOLVER_DYNAMIC_THIRD_DEGREE)
                   ALLOCATE(OLD_THETA(DYNAMIC_SOLVER%DEGREE),STAT=ERR)
-                  IF(ERR/=0) CALL FLAG_ERROR("Could not allocate old theta.",err,error,*999)
-                  OLD_THETA=DYNAMIC_SOLVER%THETA
+                  IF(ERR/=0) CALL FLAG_ERROR("Could not allocate old theta.",ERR,ERROR,*999)
+                  OLD_THETA(1:DYNAMIC_SOLVER%DEGREE)=DYNAMIC_SOLVER%THETA(1:DYNAMIC_SOLVER%DEGREE)
                   IF(ALLOCATED(DYNAMIC_SOLVER%THETA)) DEALLOCATE(DYNAMIC_SOLVER%THETA)
                   ALLOCATE(DYNAMIC_SOLVER%THETA(DEGREE),STAT=ERR)
                   IF(ERR/=0) CALL FLAG_ERROR("Could not allocate theta.",err,error,*999)
@@ -7224,7 +7224,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
-    INTEGER(INTG) :: numberOfGeomComp,i
+    INTEGER(INTG) :: numberOfGeomComp
     REAL(DP) :: u,v,w,vectorLength,rotationMatrix(4,4),transformationMatrix(4,4)
 
     CALL ENTERS("Solver_GeometricTransformationRotationSet",err,error,*999)
@@ -7328,7 +7328,7 @@ CONTAINS
               & DEALLOCATE(solver%geometricTransformationSolver%scalings)
             ALLOCATE(solver%geometricTransformationSolver%scalings(SIZE(scalings)),STAT=err)
             IF(err/=0) CALL FLAG_ERROR("Could not allocate scalings for geometric transformation sovler",err,error,*999)
-            solver%geometricTransformationSolver%scalings=scalings
+            solver%geometricTransformationSolver%scalings(1:SIZE(scalings))=scalings(1:SIZE(scalings))
           ELSE
             CALL FLAG_ERROR("Number of scalings does not match the number of increments.",err,error,*999)
           ENDIF
@@ -7464,7 +7464,6 @@ CONTAINS
     TYPE(CONTROL_LOOP_TYPE), POINTER :: controlLoop
     TYPE(CONTROL_LOOP_WHILE_TYPE), POINTER :: whileLoop
     TYPE(CONTROL_LOOP_LOAD_INCREMENT_TYPE), POINTER :: loadIncrementLoop
-    TYPE(VARYING_STRING) :: localError
     INTEGER(INTG) :: dummyErr
     TYPE(VARYING_STRING) :: dummyError
 
