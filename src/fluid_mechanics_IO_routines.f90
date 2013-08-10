@@ -4418,7 +4418,7 @@ CONTAINS
 !     TYPE(VARYING_STRING):: ERROR
 
     DO I = 1,TotalNumberOfNodes
-      WRITE(*,'("Node ",(I0,4x),1000( F5.3,2x ))')I,OPENCMISS_NODE_COORD(I,1:3)
+      WRITE(*,'("Node ",(I0,4x),1000( F6.3,2x ))')I,OPENCMISS_NODE_COORD(I,1:3)
     END DO
 
   ! where are the element nodes stored -> 3 MATRICES
