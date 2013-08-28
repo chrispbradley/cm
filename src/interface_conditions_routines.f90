@@ -1523,9 +1523,8 @@ CONTAINS
                   IF (INTERFACE_DEPENDENT%FIELD_VARIABLES(dependent_variable_number)%PTR%NUMBER_OF_COMPONENTS< &
                     & INTERFACE_CONDITION%LAGRANGE%NUMBER_OF_COMPONENTS) THEN
                     INTERFACE_CONDITION%LAGRANGE%NUMBER_OF_COMPONENTS= &
-                      & INTERFACE_DEPENDENT%FIELD_VARIABLES(dependent_variable_number)%PTR%NUMBER_OF_COMPONENTS-1
+                      & INTERFACE_DEPENDENT%FIELD_VARIABLES(dependent_variable_number)%PTR%NUMBER_OF_COMPONENTS
                   ELSEIF (INTERFACE_CONDITION%LAGRANGE%NUMBER_OF_COMPONENTS==0) THEN
-                    !Temporary fix to avoid zero components
                     INTERFACE_CONDITION%LAGRANGE%NUMBER_OF_COMPONENTS= &
                       & INTERFACE_DEPENDENT%FIELD_VARIABLES(dependent_variable_number)%PTR%NUMBER_OF_COMPONENTS
                   ENDIF
