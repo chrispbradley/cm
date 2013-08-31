@@ -2204,7 +2204,6 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     TYPE(INTERFACE_DEPENDENT_TYPE), POINTER :: DEPENDENT !<A pointer to the interface condition dependent field information if there is any for this interface condition.
     TYPE(INTERFACE_EQUATIONS_TYPE), POINTER :: INTERFACE_EQUATIONS !<A pointer to the interface equations if there are any for this interface condition.
     TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: BOUNDARY_CONDITIONS !<A pointer to the boundary condition information for this interface condition.
-    REAL(DP), ALLOCATABLE :: TRANSLATIONS(:,:,:) !<TRANSLATIONS(spatial_coord_idx,increment_load_step_idx,coupled_mesh_idx)
   END TYPE INTERFACE_CONDITION_TYPE
  
   !>A buffer type to allow for an array of pointers to a INTERFACE_CONDITION_TYPE.
@@ -3041,7 +3040,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
   END TYPE SolverRowToEquationsMapsType
   
   !>Contains information about the cached create values for a solver mapping
-  TYPE SolverMapping_CreateValuesCacheType
+  TYPE SolverMappingCreateValuesCacheType
     TYPE(LIST_TYPE), POINTER :: equationsRowVariablesList !<The list of equations variables in the solver mapping rows.
     TYPE(LIST_PTR_TYPE), POINTER :: equationsColVariablesList(:) !<equationsColVariablesList(solverMatrixIdx). The list of equations variables in the solver mapping columns  for the solverMatrixIdx'th solver matrix.
     TYPE(LIST_TYPE), POINTER :: interfaceRowVariablesList !<The list of interface variables in the solver mapping rows.
@@ -3053,22 +3052,39 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     INTEGER(INTG), ALLOCATABLE :: lhsVariableType(:) !<lhsVariableType(equationsSetIdx). The variable type that is mapped to the solution LHS for the equations_set_idx'th equations set.
     INTEGER(INTG), ALLOCATABLE :: rhsVariableType(:) !<rhsVariableType(equationsSetIdx). The variable type that is mapped to the solution RHS for the equationsSetIdx'th equations set
     INTEGER, ALLOCATABLE :: sourceVariableType(:) !<sourceVariableType(equationsSetIdx). The source variable type that is mapped to the source vector for the equationsSetIdx'th equations set.
-  END TYPE SolverMapping_CreateValuesCacheType
+  END TYPE SolverMappingCreateValuesCacheType
+
+  TYPE SolverMappingVariableEquationMatrixType
+    INTEGER(INTG) :: matrixType
+    INTEGER(INTG) :: matrixNumber
+  END TYPE SolverMappingVariableEquationMatrixType
+  
+  TYPE SolverMappingVariableEquationType
+    INTEGER(INTG) :: equationType !<The type of equation that involves the solver variable  \see SolverMapping_EquationsTypes,SolverMapping
+    INTEGER(INTG) :: equationIndex !<The index of the equation set or interface condition that involves the solver variable
+    INTEGER(INTG) :: numberOfMatrices !<The number of sub-matrices that are mapped to the 
+    TYPE(SolverMappingVariableEquationMatrixType), ALLOCATABLE :: matrices(:)
+  END TYPE SolverMappingVariableEquationType
 
   !>Contains information on a variable involved in a solver matrix
-  TYPE SolverMapping_VariableType
+  TYPE SolverMappingVariableType
     TYPE(FIELD_VARIABLE_TYPE), POINTER :: variable !<A pointer to the field variable in question
     INTEGER(INTG) :: variableType !<The variable type of the variable.
     INTEGER(INTG) :: numberOfEquations !<The number of equations that involve the variable.
     INTEGER(INTG), ALLOCATABLE :: equationTypes(:) !<equationTypes(equationIdx). The type of equation (equation set or interface condition) of the equationIdx'th equation that the variable is involved with. \see SolverMapping_EquationsTypes,SolverMapping
     INTEGER(INTG), ALLOCATABLE :: equationIndices(:) !<equationIndicies(equationIdx). Either the solver mapping equation set index or the interface condition index for the equationIdx'th equation that the variable is involved with.
-  END TYPE SolverMapping_VariableType
+  END TYPE SolverMappingVariableType
+
+  !>A buffer type to allow for an array of pointers to a EquationsToSolverMapsType \see TYPES::EquationsToSolverMapsType
+  TYPE SolverMappingVariablePtrType
+    TYPE(SolverMappingVariableType), POINTER :: ptr
+  END TYPE SolverMappingVariablePtrType
 
   !>Contains information on the variables involved in a solver matrix
-  TYPE SolverMapping_VariablesType
+  TYPE SolverMappingVariablesType
     INTEGER(INTG) :: numberOfVariables !<The number of variables involved in the solver matrix.
-    TYPE(SolverMapping_VariableType), ALLOCATABLE :: variables(:) !<variables(variableIdx). The variable information for the variableIdx'th variable involved in the solver matrix.
-  END TYPE SolverMapping_VariablesType
+    TYPE(SolverMappingVariablePtrType), ALLOCATABLE :: variables(:) !<variables(variableIdx). The variable information for the variableIdx'th solver variable.
+  END TYPE SolverMappingVariablesType
 
   !>Describes the coupled rows or columns in the solver mapping
   TYPE SolverMappingDofCouplingsType

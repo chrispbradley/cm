@@ -205,6 +205,124 @@ CONTAINS
           !Allocate the column variable lists
           ALLOCATE(solverMapping%columnVariablesList(solverMapping%numberOfSolverMatrices),STAT=err)
           IF(err/=0) CALL FlagError("Could not allocate solver mapping column variables list.",err,error,*999)
+          CALL SolverMapping_VariablesInitialise(solverMapping%rowVariablesList,err,error,*999)
+          DO solverMatrixIdx=1,solverMapping%numberOfSolverMatrices
+            CALL SolverMapping_VariablesInitialise(solverMapping%columnVariablesList(solverMatrixIdx),err,error,*999)
+          ENDDO !solverMatrixIdx
+          
+          DO equationsSetIdx=1,solverMapping%numberOfEquationsSets
+            equationsSet=>solverMapping%equationsSets(equationsSetIdx)%ptr
+            IF(ASSOCIATED(equationsSet)) THEN
+              equations=>equationsSet%equations
+              IF(ASSOCIATED(equations)) THEN
+                CALL SolverMapping_EquationsSetToSolverMapInitialise(solverMapping%equationsSetToSolverMap(equationsSetIdx), &
+                  & err,error,*999)
+                solverMapping%equationsSetToSolverMap(equationsSetIdx)%equationsSetIndex=equationsSetIdx
+                solverMapping%equationsSetToSolverMap(equationsSetIdx)%solverMapping=>solverMapping
+                solverMapping%equationsSetToSolverMap(equationsSetIdx)%equations=>equations
+                dependentField=>equationsSet%dependent%DEPENDENT_FIELD
+                IF(ASSOCIATED(dependentField)) THEN
+                  lhsVariableType=solverMapping%createValuesCache%lhsVariableType(equationsSetIdx)
+                  lhsVariable=>depdendentField%VARIABLE_TYPE_MAP(lhsVariableType)%ptr
+                  IF(ASSOCIATED(lhsVariable)) THEN
+                    !See if this variable is already in the list of row variables.
+                    CALL SolverMapping_SolverVariableFindAdd(solverMapping%rowVariablesList,lhsVariable, &
+                      & SOLVER_MAPPING_EQUATIONS_EQUATIONS_SET,equationsSetIdx,err,error,*999)                    
+                    !Find column list variables
+                    equationsMapping=>equations%mapping
+                    IF(ASSOCIATED(equationsMapping)) THEN
+                      dynamicMapping=>equationsMapping%DYNAMIC_MAPPING
+                      linearMapping=>equationsMapping%LINEAR_MAPPING
+                      nonlinearMapping=>equationsMapping%NONLINEAR_MAPPING
+                      DO solverMatrixIdx=1,solverMapping%numberOfSolverMatrices
+                        IF(ASSOCIATED(dynamicMapping)) THEN
+                          dynamicVariableType=solverMapping%createValuesCache%dynamicVariableType(equationsSetIdx,solverMatrixIdx)
+                          dynamicVariable=>depdendentField%VARIABLE_TYPE_MAP(dynamicVariableType)%ptr
+                          IF(ASSOCIATED(dynamicVariable)) THEN
+                            !See if this variable is already in the list of column variables.
+                            CALL SolverMapping_SolverVariableFindAdd(solverMapping%columnVariablesList(solverMatrixIdx), &
+                              & dynamicVariable,SOLVER_MAPPING_EQUATIONS_EQUATIONS_SET,equationsSetIdx,err,error,*999)
+                          ELSE
+                            localError="Dependent field variable is not associated for dynamic variable type "// &
+                              & TRIM(NumberToVstring(dynamicVariableType,"*",err,error))//" in equations set index "// &
+                              & TRIM(NumberToVstring(equationsSetIdx,"*",err,error))//"."
+                            CALL FlagError(localError,err,error,*999)
+                          ENDIF
+                        ENDIF
+                        IF(ASSOCIATED(linearMapping)) THEN
+                          DO variableIdx=1,solverMapping%createValuesCache%matrixVariableTypes(0,equationsSetIdx,solverMatrixIdx)
+                            linearVariableType=solverMapping%createValuesCache%matrixVariableTypes(variableIdx,equationsSetIdx, &
+                              & solverMatrixIdx)
+                            linearVariable=>depdendentField%VARIABLE_TYPE_MAP(linearVariableType)%ptr
+                            IF(ASSOCIATED(linearVariable)) THEN
+                              !See if this variable is already in the list of column variables.
+                              CALL SolverMapping_SolverVariableFindAdd(solverMapping%columnVariablesList(solverMatrixIdx), &
+                                & linearVariable,SOLVER_MAPPING_EQUATIONS_EQUATIONS_SET,equationsSetIdx,err,error,*999)
+                            ELSE
+                              localError="Dependent field variable is not associated for linear variable type "// &
+                                & TRIM(NumberToVstring(linearVariableType,"*",err,error))//" in equations set index "// &
+                                & TRIM(NumberToVstring(equationsSetIdx,"*",err,error))//"."
+                              CALL FlagError(localError,err,error,*999)
+                            ENDIF
+                          ENDDO !variableIdx
+                        ENDIF
+                        IF(ASSOCIATED(nonlinearMapping)) THEN
+                          DO variableIdx=1,solverMapping%createValuesCache%residualVariableTypes(0,equationsSetIdx,solverMatrixIdx)
+                            residualVariableType=solverMapping%createValuesCache%matrixVariableTypes(variableIdx,equationsSetIdx, &
+                              & solverMatrixIdx)
+                            residualVariable=>depdendentField%VARIABLE_TYPE_MAP(residualVariableType)%ptr
+                            IF(ASSOCIATED(residualVariable)) THEN
+                              !See if this variable is already in the list of column variables.
+                              CALL SolverMapping_SolverVariableFindAdd(solverMapping%columnVariablesList(solverMatrixIdx), &
+                                & residualVariable,SOLVER_MAPPING_EQUATIONS_EQUATIONS_SET,equationsSetIdx,err,error,*999)
+                            ELSE
+                              localError="Dependent field variable is not associated for residual variable type "// &
+                                & TRIM(NumberToVstring(residualVariableType,"*",err,error))//" in equations set index "// &
+                                & TRIM(NumberToVstring(equationsSetIdx,"*",err,error))//"."
+                              CALL FlagError(localError,err,error,*999)
+                            ENDIF
+                          ENDDO !variableIdx
+                        ENDIF
+                      ENDDO !solverMatrixIdx
+                    ELSE
+                      CALL FlagError("Equations mapping is not associated.",err,error,*999)
+                    ENDIF
+                  ELSE
+                    localError="Dependent field variable is not associated for LHS variable type "// &
+                      & TRIM(NumberToVstring(lhsVariableType,"*",err,error))//" in equations set index "// &
+                      & TRIM(NumberToVstring(equationsSetIdx,"*",err,error))//"."
+                    CALL FlagError(localError,err,error,*999)
+                  ENDIF
+                ELSE
+                  CALL FlagError("Equations set dependent field is not associated.",err,error,*999)
+                ENDIF
+              ELSE
+                CALL FlagError("Equations set equations is not associated.",err,error,*999)
+              ENDIF
+            ELSE
+              CALL FlagError("Equations set is not associated.",err,error,*999)
+            ENDIF
+          ENDDO !equationsSetIdx
+          DO interfaceConditionIdx=1,solverMapping%numberOfInterfaceConditions
+            interfaceCondition=>solverMapping%interfaceConditions(interfaceConditionIdx)%PTR
+            IF(ASSOCIATED(interfaceCondition)) THEN
+              interfaceEquations=>interfaceCondition%INTERFACE_EQUATIONS
+              IF(ASSOCIATED(interfaceEquations)) THEN
+                CALL SolverMapping_InterfaceConditionToSolverMapInitialise(solverMapping%interfaceConditionToSolverMap( &
+                  & interfaceConditionIdx),err,error,*999)
+                solverMapping%interfaceConditionToSolverMap(interfaceConditionIdx)%interfaceConditionIndex= &
+                  & interfaceConditionIdx
+                solverMapping%interfaceConditionToSolverMap(interfaceConditionIdx)%solverMapping=>solverMapping
+                solverMapping%interfaceConditionToSolverMap(interfaceConditionIdx)%interfaceEquations=>interfaceEquations
+                DO interfaceMatrixIdx=1,solverMapping%createValuesCache%
+              ELSE
+                CALL FlagError("Interface condition interface equations is not associated.",err,error,*999)
+              ENDIF
+            ELSE
+              CALL FlagError("Interface condition is not associated.",err,error,*999)
+            ENDIF
+          ENDDO !interfaceConditionIdx
+                 
           !
           ! Allocate and initialise
           !
@@ -214,19 +332,23 @@ CONTAINS
           CALL List_DetachAndDestroy(solverMapping%createValuesCache%interfaceRowVariablesList%ptr, &
             & numberOfInterfaceRowVariables,interfaceRowVariables,err,error,*999)
 
+          variableProcessed=.FALSE.
+          solverVariableIdx=0
+          DO variableIdx=1,numberOfEquationsRowVariables
+
           DO equationsSetIdx=1,solverMapping%numberOfEquationsSets
             equationsSet=>solverMapping%equationsSets(equationsSetIdx)%ptr
             IF(ASSOCIATED(equationsSet)) THEN
               equations=>equationsSet%equations
               IF(ASSOCIATED(equations)) THEN
-                CALL SolverMapping_EquationsSetToSolverMapInitialise(solverMapping%equationsSetToSolverMap( &
+                 CALL SolverMapping_EquationsSetToSolverMapInitialise(solverMapping%equationsSetToSolverMap( &
                   & equationsSetIdx),err,error,*999)
                 solverMapping%equationsSetToSolverMap(equationsSetIdx)%equationsSetIndex=equationsSetIdx
                 solverMapping%equationsSetToSolverMap(equationsSetIdx)%solverMapping=>solverMapping
                 solverMapping%equationsSetToSolverMap(equationsSetIdx)%equations=>equations
                 
-          
-          !Calculate the column mappings for each solver matrix
+                
+           !Calculate the column mappings for each solver matrix
           DO solverMatrixIdx=1,solverMapping%numberOfSolverMatrices
 
             !Initialise the column variables list
@@ -6797,23 +6919,114 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Finalises the solver mapping variable and deallocates all memory.
-  SUBROUTINE SolverMapping_VariableFinalise(solverMappingVariable,err,error,*)
+  !>Adds a field variable to a list of solver variables
+  SUBROUTINE SolverMapping_SolverVariableAdd(solverVariables,variable,equationsType,equationsIdx,err,error,*)
 
     !Argument variables
-    TYPE(SolverMapping_VariableType), INTENT(INOUT) :: solverMappingVariable !<The solver mapping variable to finalise
+    TYPE(SolverMapping_VariablesType), INTENT(INOUT) :: solverVariables !<The solver variables to add the variable to
+    TYPE(FIELD_VARAIBLE_TYPE), POINTER :: variable !<The field varaible to add.
+    INTEGER(INTG), INTENT(IN) :: equationsType !<The type of equations to add \see SolverMapping_EquationsTypes,SolverMapping
+    INTEGER(INTG), INTENT(IN) :: equationsIdx !<The index of the equations to add
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code 
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+    INTEGER(INTG) :: solverVariableIdx
+    TYPE(SolverVariablePtrType), ALLOCATABLE :: newSolverVariables
+ 
+    CALL Enters("SolverMapping_SolverVariableAdd",err,error,*997)
+
+    IF(ASSOCIATED(variable)) THEN
+      ALLOCATE(newSolverVariables(solverVariables%numberOfVariables+1),STAT=err)
+      IF(err/=0) CALL FlagError("Could not allocated new solver variables.",err,error,*999)
+      DO solverVariableIdx=1,solverVariables%numberOfVariables
+        newSolverVariables(solverVariableIdx)%ptr=>solverVariables%variables(solverVariableIdx)%ptr
+      ENDDO !solverVariableIdx
+      NULLIFY(newSolverVariables(solverVariables%numberOfVariables+1)%ptr)
+      CALL SolverMapping_SolverVariableInitialise(newSolverVariables(solverVariables%numberOfVariables+1)%ptr,err,error,*999)
+      newSolverVariables(solverVariables%numberOfVariables+1)%ptr%variable=>variable
+      newSolverVariables(solverVariables%numberOfVariables+1)%ptr%variableType=>variable%TYPE
+      CALL SolverMapping_SolverVariableEquationsAdd(newSolverVariables(solverVariables%numberOfVariables+1)%ptr, &
+        & equationsType,equationsIdx,err,error,*999)
+      CALL MOVE_ALLOC(newSolverVariables,solverVariables%variables)
+      solverVariables%numberOfVariables=solverVariables%numberOfVariables+1
+    ELSE
+      CALL FlagError("Variable is not associated.",err,error,*999)
+    ENDIF
+    
+    CALL Exits("SolverMapping_SolverVariableAdd")
+    RETURN
+999 IF(ALLOCATED(newSolverVariables)) THEN
+      CALL SolverMapping_SolverVariableFinalise(newSolverVariables(solverVariables%numberOfVariables+1)%ptr,err,error,*998)
+998   DEALLOCATE(newSolverVariables)
+    ENDIF
+997 CALL Errors("SolverMapping_SolverVariableAdd",err,error)
+    CALL Exits("SolverMapping_SolverVariableAdd")
+    RETURN 1
+  END SUBROUTINE SolverMapping_SolverVariableAdd
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Adds an equations to the list of equations involving a particular solver variable.
+  SUBROUTINE SolverMapping_SolverVariableEquationsAdd(solverVariable,equationsType,equationsIdx,err,error,*)
+
+    !Argument variables
+    TYPE(SolverMapping_VariableType), INTENT(INOUT) :: solverVariable !<The solver variables to add the equations to
+    INTEGER(INTG), INTENT(IN) :: equationsType !<The type of equations to add \see SolverMapping_EquationsTypes,SolverMapping
+    INTEGER(INTG), INTENT(IN) :: equationsIdx !<The index of the equations to add
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code 
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+    INTEGER(INTG), ALLOCATABLE :: newEquationIndices,newEquationTypes
+
+    CALL Enters("SolverMapping_SolverVariableEquationsAdd",err,error,*999)
+
+    ALLOCATE(newEquationTypes(solverVariable%numberOfEquations+1),STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate new equation types.",err,error,*999)
+    ALLOCATE(newEquationIndices(solverVariable%numberOfEquations+1),STAT=err)
+    IF(err/=0) CALL FlagError("Could not allocate new equation indices.",err,error,*999)
+    newEquationTypes(1:solverVariable%numberOfEquations)=solverVariable%equationTypes(1:solverVariable%numberOfEquations)
+    newEquationIndices(1:solverVariable%numberOfEquations)=solverVariable%equationIndices(1:solverVariable%numberOfEquations)
+    newEquationTypes(solverVariable%numberOfEquations+1)=equationsType
+    newEquationIndices(solverVariable%numberOfEquations+1)=equationsIdx
+    CALL MOVE_ALLOC(newEquationTypes,solverVariable%equationTypes)
+    CALL MOVE_ALLOC(newEquationIndices,solverVariable%equationIndices)
+    solverVariable%numberOfEquations=solverVariable%numberOfEquations+1
+    
+    CALL Exits("SolverMapping_SolverVariableEquationsAdd")
+    RETURN
+999 IF(ALLOCATED(newEquationTypes)) DEALLOCATE(newEquationTypes)
+    IF(ALLOCATED(newEquationIndices)) DEALLOCATE(newEquationIndices)    
+    CALL Errors("SolverMapping_SolverVariableEquationsAdd",err,error)
+    CALL Exits("SolverMapping_SolverVariableEquationsAdd")
+    RETURN 1
+  END SUBROUTINE SolverMapping_SolverVariableEquationsAdd
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Finalises the solver mapping variable and deallocates all memory.
+  SUBROUTINE SolverMapping_VariableFinalise(solverVariable,err,error,*)
+
+    !Argument variables
+    TYPE(SolverMappingVariableType), POINTER :: solverVariable !<The solver mapping variable to finalise
     INTEGER(INTG), INTENT(OUT) :: err !<The error code 
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
 
     CALL Enters("SolverMapping_VariableFinalise",err,error,*999)
 
-    NULLIFY(solverMappingVariable%variable)
-    solverMappingVariable%variableType=0
-    solverMappingVariable%numberOfEquations=0
-    IF(ALLOCATED(solverMappingVariable%equationTypes)) DEALLOCATE(solverMappingVariable%equationTypes)
-    IF(ALLOCATED(solverMappingVariable%equationIndices)) DEALLOCATE(solverMappingVariable%equationIndices)
-       
+    IF(ASSOCIATED(solverVariable)) THEN
+      NULLIFY(solverMappingVariable%variable)
+      solverMappingVariable%variableType=0
+      solverMappingVariable%numberOfEquations=0
+      IF(ALLOCATED(solverMappingVariable%equationTypes)) DEALLOCATE(solverMappingVariable%equationTypes)
+      IF(ALLOCATED(solverMappingVariable%equationIndices)) DEALLOCATE(solverMappingVariable%equationIndices)
+      DEALLOCATE(solverVariable)
+    ENDIF
+    
     CALL Exits("SolverMapping_VariableFinalise")
     RETURN
 999 CALL Errors("SolverMapping_VariableFinalise",err,error)
@@ -6825,24 +7038,90 @@ CONTAINS
   !================================================================================================================================
   !
 
-  !>Initialises the solver mapping and deallocates all memory.
-  SUBROUTINE SolverMapping_VariableInitialise(solverMappingVariable,err,error,*)
+  !>Trys to find a field variable in a list of solver variables. If it finds the variable the it adds the equations to the
+  !>list of equations involving that solver variable. If it doesn't find the variable a new solver variable is added to the
+  !>list of solver variables.
+  SUBROUTINE SolverMapping_SolverVariableFindAdd(solverVariablesList,variable,equationsType,equationsIdx,err,error,*)
 
     !Argument variables
-    TYPE(SolverMapping_VariableType), INTENT(INOUT) :: solverMappingVariable !<The solver mapping variable to initialise
+    TYPE(SolverMappingVariablesType), INTENT(INOUT) :: solverVariablesList !<The list of solver variables to find or add to
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: variable !<The field variable to find or add
+    INTEGER(INTG), INTENT(IN) :: equationsType !<The type of equations the field variable is from \see SolverMapping_EquationsTypes,SolverMapping
+    INTEGER(INTG), INTENT(IN) :: equationsIdx !<The index of the equations the field variable is from
     INTEGER(INTG), INTENT(OUT) :: err !<The error code 
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
- 
-    CALL Enters("SolverMapping_VariableInitialise",err,error,*999)
+    INTEGER(INTG) :: solverVariableIdx
+    LOGICAL :: found
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: solverVariable
+    TYPE(VARYING_STRING) :: localError
 
-    NULLIFY(solverMappingVariable%variable)
-    solverMappingVariable%variableType=0
-    solverMappingVariable%numberOfEquations=0
+    CALL Enters("SolverMapping_SolverVariableFindAdd",err,error,*999)
+
+    IF(ASSOCIATED(variable)) THEN
+      found=.FALSE.
+      DO solverVariableIdx=1,solverVariablesList%numberOfVariables
+        solverVariable=>solverVariablesList%variables(solverVariableIdx)%variable
+        IF(ASSOCIATED(solverVariable)) THEN
+          IF(ASSOCIATED(solverVariable,variable)) THEN
+            !Found the variable, add the equations set to the list of equations involving the solver variable
+            found=.TRUE.
+            CALL SolverMapping_SolverVariableEquationsAdd(solverVariablesList%variables(solverVariableIdx), &
+              & equationsType,equationsIdx,err,error,*999)
+            EXIT
+          ENDIF
+        ELSE
+          localError="Solver variable is not associated for solver variable index "// &
+            & TRIM(NumberToVstring(variableIdx,"*",err,error))//"."
+          CALL FlagError(localError,err,error,*999)
+        ENDIF
+      ENDDO !variableIdx
+      IF(.NOT.found) THEN
+        !New solver variable, add it to the list of row variables.
+        CALL SolverMapping_SolverVariableAdd(solveVariablesList,variable,equationsType,equationsIdx,err,error,*999)
+      ENDIF
+    ELSE
+      CALL FlagError("Variable is not associated.",err,error,*999)
+    ENDIF
+    
+    CALL Exits("SolverMapping_SolverVariableFindAdd")
+    RETURN
+999 CALL Errors("SolverMapping_SolverVariableFindAdd",err,error)
+    CALL Exits("SolverMapping_SolverVariableFindAdd")
+    RETURN 1
+  END SUBROUTINE SolverMapping_SolverVariableFindAdd
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Initialises the solver mapping and deallocates all memory.
+  SUBROUTINE SolverMapping_VariableInitialise(solverVariable,err,error,*)
+
+    !Argument variables
+    TYPE(SolverMappingVariableType), POINTER :: solverVariable !<The solver mapping variable to initialise. Must not be associated on entry
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code 
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local Variables
+    INTEGER(INTG) :: dummyErr
+    TYPE(VARYING_STRING) :: dummyError
+ 
+    CALL Enters("SolverMapping_VariableInitialise",err,error,*998)
+
+    IF(ASSOCIATED(solverVariable)) THEN
+      CALL FlagError("Solver variable is already associated.",err,error,*998)
+    ELSE
+      ALLOCATE(solverVariable,STAT=err)
+      IF(err/=0) CALL FlagError("Could not allocate solver variable.",err,error,*999)
+      NULLIFY(solverMappingVariable%variable)
+      solverMappingVariable%variableType=0
+      solverMappingVariable%numberOfEquations=0
+    ENDIF
     
     CALL Exits("SolverMapping_VariableInitialise")
     RETURN
-999 CALL Errors("SolverMapping_VariableInitialise",err,error)
+999 CALL SolverMapping_VariableFinalise(solverVariable,dummyErr,dummyError,*998)
+998 CALL Errors("SolverMapping_VariableInitialise",err,error)
     CALL Exits("SolverMapping_VariableInitialise")
     RETURN 1
   END SUBROUTINE SolverMapping_VariableInitialise
@@ -6864,9 +7143,12 @@ CONTAINS
     CALL Enters("SolverMapping_VariablesFinalise",err,error,*999)
 
     solverMappingVariables%numberOfVariables=0
-    DO variableIdx=1,SIZE(solverMappingVariables%variables,1)
-      CALL SolverMapping_VariableFinalise(solverMappingVariables%variables(variableIdx),err,error,*999)
-    ENDDO !variableIdx
+    IF(ALLOCATED(solverMappingVariables%variables)) THEN
+      DO variableIdx=1,SIZE(solverMappingVariables%variables,1)
+        CALL SolverMapping_VariableFinalise(solverMappingVariables%variables(variableIdx)%ptr,err,error,*999)
+      ENDDO !variableIdx
+      DEALLOCATE(solverMappingVariables%variables)
+    ENDIF
      
     CALL Exits("SolverMapping_VariablesFinalise")
     RETURN
@@ -6882,7 +7164,10 @@ CONTAINS
   !>Initialises the solver mapping variables and deallocates all memory.
   SUBROUTINE SolverMapping_VariablesInitialise(solverMappingVariables,err,error,*)
 
-    !Argument variables
+    !Argument variables          !Allocate the column variable lists
+          ALLOCATE(solverMapping%columnVariablesList(solverMapping%numberOfSolverMatrices),STAT=err)
+          IF(err/=0) CALL FlagError("Could not allocate solver mapping column variables list.",err,error,*999)
+
     TYPE(SolverMapping_VariablesType), INTENT(OUT) :: solverMappingVariables !<The solver mapping variables to initialise
     INTEGER(INTG), INTENT(OUT) :: err !<The error code 
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
