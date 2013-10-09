@@ -126,18 +126,18 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code 
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
-    INTEGER(INTG) :: colEquationsColIdx,columnIdx,columnListItem(5),columnRank,dofIdx,dofType,dummyErr,eqnLocalDof,equationType, &
-      & equationsColumn,equationsIdx,equationsIdx2,equationsMatrix,equationsMatrixIdx,equationsRow,equationsRowNumber, &
-      & equationsSetIdx,equationsVariableListItem(3),globalColumn,globalDof,globalDofCouplingNumber,globalDofIdx, &
-      & globalDofsOffset,globalRow,globalRowIdx,interfaceColumn,interfaceColNumber, &
-      & interfaceConditionIdx,interfaceConditionIdx2,interfaceEquationsListItem(2),interfaceIdx,interfaceMatrixIdx, &
-      & interfaceRow,interfaceRowNumber,jacobianColumn,localColumn,localDof,localDofsOffset,localRow,matricesType,matrixNumber, &
+    INTEGER(INTG) :: colEquationsColIdx,columnIdx,columnListItem(5),columnRank,dofIdx,dofType,dummyErr,dynamicVariableType, &
+      & eqnLocalDof,equationType,equationsColumn,equationsIdx,equationsIdx2,equationsMatrix,equationsMatrixIdx,equationsRow, &
+      & equationsRowNumber,equationsSetIdx,equationsVariableListItem(3),globalColumn,globalDof,globalDofCouplingNumber, &
+      & globalDofIdx,globalDofsOffset,globalRow,globalRowIdx,interfaceColumn,interfaceColNumber,interfaceConditionIdx, &
+      & interfaceConditionIdx2,interfaceEquationsListItem(2),interfaceIdx,interfaceMatrixIdx,interfaceRow,interfaceRowNumber, &
+      & jacobianColumn,linearVariableType,lhsVariableType,localColumn,localDof,localDofsOffset,localRow,matricesType,matrixNumber, &
       & matrixType,matrixTypeIdx,matrixVariableIdx,myRank,numberOfColumns,numberOfDynamicEquationsMatrices, &
       & numberOfEquationsColumns,numberOfEquationsSets,numberOfEquationsVariables,numberofInterfaces,numberOfInterfaceColumns, &
       & numberOfInterfaceRows,numberOfInterfaceVariables,numberOfGlobalSolverDofs,numberOfGlobalSolverRows, &
       & numberOfLinearEquationsMatrices,numberOfLocalSolverDofs,numberOfLocalSolverRows,numberOfRankCols, &
-      & numberOfRankRows,numberOfVariables,numberColEquationsCols,numberRowEquationsRows,rank,rankIdx,rowEquationsRowIdx, &
-      & rowIdx,rowListItem(4),rowRank,solverGlobalDof,solverMatrixIdx,solverVariableIdx,solverVariableIdxTemp, &
+      & numberOfRankRows,numberOfVariables,numberColEquationsCols,numberRowEquationsRows,rank,rankIdx,residualVariableType, &
+      & rowEquationsRowIdx,rowIdx,rowListItem(4),rowRank,solverGlobalDof,solverMatrixIdx,solverVariableIdx,solverVariableIdxTemp, &
       & tempOffset,totalNumberOfLocalSolverDofs,variableIdx,variableListItem(3),variablePositionIdx,variableType
     INTEGER(INTG), ALLOCATABLE :: equationsSetVariables(:,:),equationsVariables(:,:),interfaceEquationsList(:,:), &
       & interfaceVariables(:,:),rankGlobalRowsList(:,:),rankGlobalColsList(:,:),solverLocalDof(:)
@@ -163,7 +163,8 @@ CONTAINS
     TYPE(EQUATIONS_SET_TYPE), POINTER :: equationsSet
     TYPE(EquationsToSolverMapsType), POINTER :: equationsToSolverMap
     TYPE(FIELD_TYPE), POINTER :: dependentField,LagrangeField
-    TYPE(FIELD_VARIABLE_TYPE), POINTER :: dependentVariable,lagrangeVariable,variable
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: dependentVariable,dynamicVariable,lagrangeVariable,lhsVariable,linearVariable, &
+      & residualVariable,variable
     TYPE(INTEGER_INTG_PTR_TYPE), POINTER :: dofMap(:)
     TYPE(INTERFACE_CONDITION_TYPE), POINTER :: interfaceCondition
     TYPE(INTERFACE_DEPENDENT_TYPE), POINTER :: interfaceDependent
@@ -223,21 +224,21 @@ CONTAINS
                 dependentField=>equationsSet%dependent%DEPENDENT_FIELD
                 IF(ASSOCIATED(dependentField)) THEN
                   lhsVariableType=solverMapping%createValuesCache%lhsVariableType(equationsSetIdx)
-                  lhsVariable=>depdendentField%VARIABLE_TYPE_MAP(lhsVariableType)%ptr
+                  lhsVariable=>dependentField%VARIABLE_TYPE_MAP(lhsVariableType)%ptr
                   IF(ASSOCIATED(lhsVariable)) THEN
                     !See if this variable is already in the list of row variables.
                     CALL SolverMapping_SolverVariableFindAdd(solverMapping%rowVariablesList,lhsVariable, &
                       & SOLVER_MAPPING_EQUATIONS_EQUATIONS_SET,equationsSetIdx,err,error,*999)                    
                     !Find column list variables
-                    equationsMapping=>equations%mapping
+                    equationsMapping=>equations%EQUATIONS_MAPPING
                     IF(ASSOCIATED(equationsMapping)) THEN
                       dynamicMapping=>equationsMapping%DYNAMIC_MAPPING
                       linearMapping=>equationsMapping%LINEAR_MAPPING
                       nonlinearMapping=>equationsMapping%NONLINEAR_MAPPING
                       DO solverMatrixIdx=1,solverMapping%numberOfSolverMatrices
                         IF(ASSOCIATED(dynamicMapping)) THEN
-                          dynamicVariableType=solverMapping%createValuesCache%dynamicVariableType(equationsSetIdx,solverMatrixIdx)
-                          dynamicVariable=>depdendentField%VARIABLE_TYPE_MAP(dynamicVariableType)%ptr
+                          dynamicVariableType=solverMapping%createValuesCache%dynamicVariableType(equationsSetIdx)
+                          dynamicVariable=>dependentField%VARIABLE_TYPE_MAP(dynamicVariableType)%ptr
                           IF(ASSOCIATED(dynamicVariable)) THEN
                             !See if this variable is already in the list of column variables.
                             CALL SolverMapping_SolverVariableFindAdd(solverMapping%columnVariablesList(solverMatrixIdx), &
@@ -253,7 +254,7 @@ CONTAINS
                           DO variableIdx=1,solverMapping%createValuesCache%matrixVariableTypes(0,equationsSetIdx,solverMatrixIdx)
                             linearVariableType=solverMapping%createValuesCache%matrixVariableTypes(variableIdx,equationsSetIdx, &
                               & solverMatrixIdx)
-                            linearVariable=>depdendentField%VARIABLE_TYPE_MAP(linearVariableType)%ptr
+                            linearVariable=>dependentField%VARIABLE_TYPE_MAP(linearVariableType)%ptr
                             IF(ASSOCIATED(linearVariable)) THEN
                               !See if this variable is already in the list of column variables.
                               CALL SolverMapping_SolverVariableFindAdd(solverMapping%columnVariablesList(solverMatrixIdx), &
@@ -270,7 +271,7 @@ CONTAINS
                           DO variableIdx=1,solverMapping%createValuesCache%residualVariableTypes(0,equationsSetIdx,solverMatrixIdx)
                             residualVariableType=solverMapping%createValuesCache%matrixVariableTypes(variableIdx,equationsSetIdx, &
                               & solverMatrixIdx)
-                            residualVariable=>depdendentField%VARIABLE_TYPE_MAP(residualVariableType)%ptr
+                            residualVariable=>dependentField%VARIABLE_TYPE_MAP(residualVariableType)%ptr
                             IF(ASSOCIATED(residualVariable)) THEN
                               !See if this variable is already in the list of column variables.
                               CALL SolverMapping_SolverVariableFindAdd(solverMapping%columnVariablesList(solverMatrixIdx), &
@@ -314,7 +315,6 @@ CONTAINS
                   & interfaceConditionIdx
                 solverMapping%interfaceConditionToSolverMap(interfaceConditionIdx)%solverMapping=>solverMapping
                 solverMapping%interfaceConditionToSolverMap(interfaceConditionIdx)%interfaceEquations=>interfaceEquations
-                DO interfaceMatrixIdx=1,solverMapping%createValuesCache%
               ELSE
                 CALL FlagError("Interface condition interface equations is not associated.",err,error,*999)
               ENDIF
@@ -4115,7 +4115,7 @@ CONTAINS
   SUBROUTINE SolverMapping_CreateValuesCacheFinalise(createValuesCache,err,error,*)
 
     !Argument variables
-    TYPE(SolverMapping_CreateValuesCacheType), POINTER :: createValuesCache !<A pointer to the create values cache to finalise
+    TYPE(SolverMappingCreateValuesCacheType), POINTER :: createValuesCache !<A pointer to the create values cache to finalise
     INTEGER(INTG), INTENT(OUT) :: err !<The error code 
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
@@ -6923,15 +6923,15 @@ CONTAINS
   SUBROUTINE SolverMapping_SolverVariableAdd(solverVariables,variable,equationsType,equationsIdx,err,error,*)
 
     !Argument variables
-    TYPE(SolverMapping_VariablesType), INTENT(INOUT) :: solverVariables !<The solver variables to add the variable to
-    TYPE(FIELD_VARAIBLE_TYPE), POINTER :: variable !<The field varaible to add.
+    TYPE(SolverMappingVariablesType), INTENT(INOUT) :: solverVariables !<The solver variables to add the variable to
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: variable !<The field varaible to add.
     INTEGER(INTG), INTENT(IN) :: equationsType !<The type of equations to add \see SolverMapping_EquationsTypes,SolverMapping
     INTEGER(INTG), INTENT(IN) :: equationsIdx !<The index of the equations to add
     INTEGER(INTG), INTENT(OUT) :: err !<The error code 
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
     INTEGER(INTG) :: solverVariableIdx
-    TYPE(SolverVariablePtrType), ALLOCATABLE :: newSolverVariables
+    TYPE(SolverMappingVariablePtrType), ALLOCATABLE :: newSolverVariables
  
     CALL Enters("SolverMapping_SolverVariableAdd",err,error,*997)
 
@@ -6972,7 +6972,7 @@ CONTAINS
   SUBROUTINE SolverMapping_SolverVariableEquationsAdd(solverVariable,equationsType,equationsIdx,err,error,*)
 
     !Argument variables
-    TYPE(SolverMapping_VariableType), INTENT(INOUT) :: solverVariable !<The solver variables to add the equations to
+    TYPE(SolverMappingVariableType), INTENT(INOUT) :: solverVariable !<The solver variables to add the equations to
     INTEGER(INTG), INTENT(IN) :: equationsType !<The type of equations to add \see SolverMapping_EquationsTypes,SolverMapping
     INTEGER(INTG), INTENT(IN) :: equationsIdx !<The index of the equations to add
     INTEGER(INTG), INTENT(OUT) :: err !<The error code 
@@ -7134,7 +7134,7 @@ CONTAINS
   SUBROUTINE SolverMapping_VariablesFinalise(solverMappingVariables,err,error,*)
 
     !Argument variables
-    TYPE(SolverMapping_VariablesType), INTENT(INOUT) :: solverMappingVariables !<The solver mapping variables to finalise
+    TYPE(SolverMappingVariablesType), INTENT(INOUT) :: solverMappingVariables !<The solver mapping variables to finalise
     INTEGER(INTG), INTENT(OUT) :: err !<The error code 
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
@@ -7165,10 +7165,7 @@ CONTAINS
   SUBROUTINE SolverMapping_VariablesInitialise(solverMappingVariables,err,error,*)
 
     !Argument variables          !Allocate the column variable lists
-          ALLOCATE(solverMapping%columnVariablesList(solverMapping%numberOfSolverMatrices),STAT=err)
-          IF(err/=0) CALL FlagError("Could not allocate solver mapping column variables list.",err,error,*999)
-
-    TYPE(SolverMapping_VariablesType), INTENT(OUT) :: solverMappingVariables !<The solver mapping variables to initialise
+    TYPE(SolverMappingVariablesType), INTENT(OUT) :: solverMappingVariables !<The solver mapping variables to initialise
     INTEGER(INTG), INTENT(OUT) :: err !<The error code 
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables

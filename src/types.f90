@@ -3046,9 +3046,9 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     TYPE(LIST_TYPE), POINTER :: interfaceRowVariablesList !<The list of interface variables in the solver mapping rows.
     TYPE(LIST_PTR_TYPE), POINTER :: interfaceColVariablesList(:) !<interfaceColVariablesList(solverMatrixIdx). The list of interface condition variables in the solver mapping columns for the solverMatrixIdx'th solver matrix.
     TYPE(LIST_PTR_TYPE), POINTER :: interfaceIndices(:) !<interfaceIndices(equationsSetIdx). The list of interface condition indices in the equationsSetIdx'th equations set.
-    INTEGER, ALLOCATABLE :: dynamicVariableType(:) !<dynamicVariableType(equationsSetIdx). The variable type that is mapped to the dynamic matrices for the equationsSetIdx'th equations set.
-    INTEGER(INTG), ALLOCATABLE :: matrixVariableTypes(:,:,:) !<matrixVariableTypes(0:..,equationsSetIdx,matrixIdx). The list of matrix variable types in the equationsSetIdx'th equations set for the matrixIdx'th solver matrix. matrixVariableTypes(0,equationsSetIdx,matrixIdx) is the number of variable types in the equationsSetIdx'th equations set mapped to the matrixIdx'th solver matrix and matrixVariableTypes(1..,equationsSetIdx,matrixIdx) is the list of the variable types in the equations set.
-    INTEGER(INTG), ALLOCATABLE :: residualVariableTypes(:,:) !<residualVariableTypes(0:..,equationsSetIdx). The list of residual variable types in the equationsSetIdx'th equations set. residualVariableTypes(0,equationsSetIdx) is the number of variable types in the equationsSetIdx'th equations set and residualVariableTypes(1..,equationsSetIdx) is the list of the variable types in the equations set.
+    INTEGER, ALLOCATABLE :: dynamicVariableType(:,:) !<dynamicVariableType(equationsSetIdx,solverMatrixIdx). The variable type that is mapped to the dynamic matrices for the equationsSetIdx'th equations set.
+    INTEGER(INTG), ALLOCATABLE :: matrixVariableTypes(:,:,:) !<matrixVariableTypes(0:..,equationsSetIdx,SolverMatrixIdx). The list of matrix variable types in the equationsSetIdx'th equations set for the matrixIdx'th solver matrix. matrixVariableTypes(0,equationsSetIdx,matrixIdx) is the number of variable types in the equationsSetIdx'th equations set mapped to the matrixIdx'th solver matrix and matrixVariableTypes(1..,equationsSetIdx,matrixIdx) is the list of the variable types in the equations set.
+    INTEGER(INTG), ALLOCATABLE :: residualVariableTypes(:,:,:) !<residualVariableTypes(0:..,equationsSetIdx,solverMatrixIdx). The list of residual variable types in the equationsSetIdx'th equations set. residualVariableTypes(0,equationsSetIdx) is the number of variable types in the equationsSetIdx'th equations set and residualVariableTypes(1..,equationsSetIdx) is the list of the variable types in the equations set.
     INTEGER(INTG), ALLOCATABLE :: lhsVariableType(:) !<lhsVariableType(equationsSetIdx). The variable type that is mapped to the solution LHS for the equations_set_idx'th equations set.
     INTEGER(INTG), ALLOCATABLE :: rhsVariableType(:) !<rhsVariableType(equationsSetIdx). The variable type that is mapped to the solution RHS for the equationsSetIdx'th equations set
     INTEGER, ALLOCATABLE :: sourceVariableType(:) !<sourceVariableType(equationsSetIdx). The source variable type that is mapped to the source vector for the equationsSetIdx'th equations set.
@@ -3106,12 +3106,12 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     INTEGER(INTG) :: numberOfInterfaceConditions !<The number of interface conditions in the solution mapping.
     TYPE(INTERFACE_CONDITION_PTR_TYPE), ALLOCATABLE :: interfaceConditions(:) !<interfaceConditions(interfaceConditionIdx). A pointer to the interfaceConditionIdx'th interface condition that is in this solution mapping.
     TYPE(interfaceConditionToSolverMapType), ALLOCATABLE :: interfaceConditionToSolverMap(:) !<interfaceConditionToSolverMap(interfaceConditionIdx). The mapping from the interfaceConditionIdx'th interface condition to the solver matrices.
-    TYPE(SolverMapping_VariablesType) :: rowVariablesList !<The list of row variables for the solver matrices
-    TYPE(SolverMapping_VariablesType), ALLOCATABLE :: columnVariablesList(:) !<columnVariablesList(solverMatrixIdx). The list of column variables for the solverMatrixIdx'th solver matrix.
+    TYPE(SolverMappingVariablesType) :: rowVariablesList !<The list of row variables for the solver matrices
+    TYPE(SolverMappingVariablesType), ALLOCATABLE :: columnVariablesList(:) !<columnVariablesList(solverMatrixIdx). The list of column variables for the solverMatrixIdx'th solver matrix.
     TYPE(SolverColToEquationsMapsType), ALLOCATABLE :: solverColToEquationsColsMap(:) !<solverColToEquationsColsMap(solverMatrixIdx). The mapping from the solverMatrixIdx'th solver matrix to the equations set. 
     TYPE(SolverRowToEquationsMapsType), ALLOCATABLE :: solverRowToEquationsRowsMap(:) !<solverRowToEquationsRowsMap(localRowIdx). The mappings from the localRowIdx'th solver row to the equations set rows.
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: rowDofsMapping !<The domain mapping for the solver rows.
-    TYPE(SolverMapping_CreateValuesCacheType), POINTER :: createValuesCache !<The create values cache for the solver mapping
+    TYPE(SolverMappingCreateValuesCacheType), POINTER :: createValuesCache !<The create values cache for the solver mapping
   END TYPE SolverMappingType
 
   !
