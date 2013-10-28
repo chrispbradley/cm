@@ -133,13 +133,15 @@ CONTAINS
       & interfaceConditionIdx2,interfaceEquationsListItem(2),interfaceIdx,interfaceMatrixIdx,interfaceRow,interfaceRowNumber, &
       & jacobianColumn,linearVariableType,lhsVariableType,localColumn,localDof,localDofsOffset,localRow,matricesType,matrixNumber, &
       & matrixType,matrixTypeIdx,matrixVariableIdx,myRank,numberOfColumns,numberOfDynamicEquationsMatrices, &
-      & numberOfEquationsColumns,numberOfEquationsSets,numberOfEquationsVariables,numberofInterfaces,numberOfInterfaceColumns, &
-      & numberOfInterfaceRows,numberOfInterfaceVariables,numberOfGlobalSolverDofs,numberOfGlobalSolverRows, &
+      & numberOfEquationsColumns,numberOfEquationsRowVariables,numberOfEquationsSets,numberOfEquationsVariables, &
+      & numberofInterfaces,numberOfInterfaceColumns,numberOfInterfaceRows,numberOfInterfaceRowVariables, &
+      & numberOfInterfaceVariables,numberOfGlobalSolverDofs,numberOfGlobalSolverRows, &
       & numberOfLinearEquationsMatrices,numberOfLocalSolverDofs,numberOfLocalSolverRows,numberOfRankCols, &
       & numberOfRankRows,numberOfVariables,numberColEquationsCols,numberRowEquationsRows,rank,rankIdx,residualVariableType, &
       & rowEquationsRowIdx,rowIdx,rowListItem(4),rowRank,solverGlobalDof,solverMatrixIdx,solverVariableIdx,solverVariableIdxTemp, &
       & tempOffset,totalNumberOfLocalSolverDofs,variableIdx,variableListItem(3),variablePositionIdx,variableType
-    INTEGER(INTG), ALLOCATABLE :: equationsSetVariables(:,:),equationsVariables(:,:),interfaceEquationsList(:,:), &
+    INTEGER(INTG), ALLOCATABLE :: equationsRowVariables(:,:),equationsSetVariables(:,:),equationsVariables(:,:), &
+      & interfaceEquationsList(:,:),interfaceRowVariables(:,:), &
       & interfaceVariables(:,:),rankGlobalRowsList(:,:),rankGlobalColsList(:,:),solverLocalDof(:)
     INTEGER(INTG), ALLOCATABLE :: numberOfVariableGlobalSolverDofs(:),numberOfVariableLocalSolverDofs(:), &
       & totalNumberOfVariableLocalSolverDofs(:),subMatrixInformation(:,:,:),subMatrixList(:,:,:),variableTypes(:)
@@ -235,13 +237,13 @@ CONTAINS
                       dynamicMapping=>equationsMapping%DYNAMIC_MAPPING
                       linearMapping=>equationsMapping%LINEAR_MAPPING
                       nonlinearMapping=>equationsMapping%NONLINEAR_MAPPING
-                      DO solverMatrixIdx=1,solverMapping%numberOfSolverMatrices
-                        IF(ASSOCIATED(dynamicMapping)) THEN
-                          dynamicVariableType=solverMapping%createValuesCache%dynamicVariableType(equationsSetIdx)
+                      IF(ASSOCIATED(dynamicMapping)) THEN
+                        DO variableIdx=1,solverMapping%createValuesCache%dynamicVariableType(0,equationsSetIdx)
+                          dynamicVariableType=solverMapping%createValuesCache%dynamicVariableType(variableIdx,equationsSetIdx)
                           dynamicVariable=>dependentField%VARIABLE_TYPE_MAP(dynamicVariableType)%ptr
                           IF(ASSOCIATED(dynamicVariable)) THEN
                             !See if this variable is already in the list of column variables.
-                            CALL SolverMapping_SolverVariableFindAdd(solverMapping%columnVariablesList(solverMatrixIdx), &
+                            CALL SolverMapping_SolverVariableFindAdd(solverMapping%columnVariablesList(1), &
                               & dynamicVariable,SOLVER_MAPPING_EQUATIONS_EQUATIONS_SET,equationsSetIdx,err,error,*999)
                           ELSE
                             localError="Dependent field variable is not associated for dynamic variable type "// &
@@ -249,7 +251,9 @@ CONTAINS
                               & TRIM(NumberToVstring(equationsSetIdx,"*",err,error))//"."
                             CALL FlagError(localError,err,error,*999)
                           ENDIF
-                        ENDIF
+                        ENDDO !variableIdx
+                      ENDIF
+                      DO solverMatrixIdx=1,solverMapping%numberOfSolverMatrices
                         IF(ASSOCIATED(linearMapping)) THEN
                           DO variableIdx=1,solverMapping%createValuesCache%matrixVariableTypes(0,equationsSetIdx,solverMatrixIdx)
                             linearVariableType=solverMapping%createValuesCache%matrixVariableTypes(variableIdx,equationsSetIdx, &
@@ -267,10 +271,13 @@ CONTAINS
                             ENDIF
                           ENDDO !variableIdx
                         ENDIF
-                        IF(ASSOCIATED(nonlinearMapping)) THEN
-                          DO variableIdx=1,solverMapping%createValuesCache%residualVariableTypes(0,equationsSetIdx,solverMatrixIdx)
-                            residualVariableType=solverMapping%createValuesCache%matrixVariableTypes(variableIdx,equationsSetIdx, &
-                              & solverMatrixIdx)
+                      ENDDO !solverMatrixIdx                      
+                      IF(ASSOCIATED(nonlinearMapping)) THEN
+                        DO residualVariableIdx=1,solverMapping%createValuesCache%residualVariableTypes(0,0,equationsSetIdx)
+                          DO variableIdx=1,solverMapping%createValuesCache%residualVariableTypes(0,residualVariableIdx, &
+                            & equationsSetIdx)
+                            residualVariableType=solverMapping%createValuesCache%matrixVariableTypes(variableIdx, &
+                              & residualVariableIdx,equationsSetIdx)
                             residualVariable=>dependentField%VARIABLE_TYPE_MAP(residualVariableType)%ptr
                             IF(ASSOCIATED(residualVariable)) THEN
                               !See if this variable is already in the list of column variables.
@@ -283,8 +290,8 @@ CONTAINS
                               CALL FlagError(localError,err,error,*999)
                             ENDIF
                           ENDDO !variableIdx
-                        ENDIF
-                      ENDDO !solverMatrixIdx
+                        ENDDO !residualVariableIdx
+                      ENDIF
                     ELSE
                       CALL FlagError("Equations mapping is not associated.",err,error,*999)
                     ENDIF
@@ -327,28 +334,32 @@ CONTAINS
           ! Allocate and initialise
           !
           !Compute the order of the row variables for the solver matrices          
-          CALL List_DetachAndDestroy(solverMapping%createValuesCache%equationsRowVariablesList%ptr, &
+          CALL List_DetachAndDestroy(solverMapping%createValuesCache%equationsRowVariablesList, &
             & numberOfEquationsRowVariables,equationsRowVariables,err,error,*999)
-          CALL List_DetachAndDestroy(solverMapping%createValuesCache%interfaceRowVariablesList%ptr, &
+          CALL List_DetachAndDestroy(solverMapping%createValuesCache%interfaceRowVariablesList, &
             & numberOfInterfaceRowVariables,interfaceRowVariables,err,error,*999)
 
           variableProcessed=.FALSE.
           solverVariableIdx=0
           DO variableIdx=1,numberOfEquationsRowVariables
 
-          DO equationsSetIdx=1,solverMapping%numberOfEquationsSets
-            equationsSet=>solverMapping%equationsSets(equationsSetIdx)%ptr
-            IF(ASSOCIATED(equationsSet)) THEN
-              equations=>equationsSet%equations
-              IF(ASSOCIATED(equations)) THEN
-                 CALL SolverMapping_EquationsSetToSolverMapInitialise(solverMapping%equationsSetToSolverMap( &
-                  & equationsSetIdx),err,error,*999)
-                solverMapping%equationsSetToSolverMap(equationsSetIdx)%equationsSetIndex=equationsSetIdx
-                solverMapping%equationsSetToSolverMap(equationsSetIdx)%solverMapping=>solverMapping
-                solverMapping%equationsSetToSolverMap(equationsSetIdx)%equations=>equations
-                
-                
-           !Calculate the column mappings for each solver matrix
+            DO equationsSetIdx=1,solverMapping%numberOfEquationsSets
+              equationsSet=>solverMapping%equationsSets(equationsSetIdx)%ptr
+              IF(ASSOCIATED(equationsSet)) THEN
+                equations=>equationsSet%equations
+                IF(ASSOCIATED(equations)) THEN
+                  CALL SolverMapping_EquationsSetToSolverMapInitialise(solverMapping%equationsSetToSolverMap( &
+                    & equationsSetIdx),err,error,*999)
+                  solverMapping%equationsSetToSolverMap(equationsSetIdx)%equationsSetIndex=equationsSetIdx
+                  solverMapping%equationsSetToSolverMap(equationsSetIdx)%solverMapping=>solverMapping
+                  solverMapping%equationsSetToSolverMap(equationsSetIdx)%equations=>equations
+                ENDIF
+              ENDIF
+            ENDDO !equationsSetIdx
+
+          ENDDO !variableIdx
+          
+          !Calculate the column mappings for each solver matrix
           DO solverMatrixIdx=1,solverMapping%numberOfSolverMatrices
 
             !Initialise the column variables list
@@ -375,7 +386,7 @@ CONTAINS
             DO variableIdx=1,numberOfEquationsVariables
               solverVariableIdx=solverVariableIdx+1
               CALL SolverMapping_VariableInitialise(solverMapping%columnVariablesList(solverMatrixIdx)% &
-                & variables(solverVariableIdx),err,error,*999)
+                & variables(solverVariableIdx)%ptr,err,error,*999)
               equationsSetIdx=equationsVariables(1,variableIdx)
               equationsSet=>solverMapping%equationsSets(equationsSetIdx)%ptr
               IF(ASSOCIATED(equationsSet)) THEN
@@ -384,8 +395,8 @@ CONTAINS
                   variableType=equationsVariables(2,variableIdx)
                   variable=>dependentField%VARIABLE_TYPE_MAP(variableType)%ptr
                   IF(ASSOCIATED(variable)) THEN
-                    solverMapping%columnVariablesList(solverMatrixIdx)%variables(solverVariableIdx)%variable=>variable
-                    solverMapping%columnVariablesList(solverMatrixIdx)%variables(solverVariableIdx)%variableType=variableType
+                    solverMapping%columnVariablesList(solverMatrixIdx)%variables(solverVariableIdx)%ptr%variable=>variable
+                    solverMapping%columnVariablesList(solverMatrixIdx)%variables(solverVariableIdx)%ptr%variableType=variableType
                     NULLIFY(variablesList(solverVariableIdx)%ptr)
                     CALL List_CreateStart(variablesList(solverVariableIdx)%ptr,err,error,*999)
                     CALL List_DataTypeSet(variablesList(solverVariableIdx)%ptr,LIST_INTG_TYPE,err,error,*999)
@@ -406,7 +417,7 @@ CONTAINS
             DO variableIdx=1,numberOfInterfaceVariables
               solverVariableIdx=solverVariableIdx+1
               CALL SolverMapping_VariableInitialise(solverMapping%columnVariablesList(solverMatrixIdx)% &
-                & variables(solverVariableIdx),err,error,*999)
+                & variables(solverVariableIdx)%ptr,err,error,*999)
               interfaceConditionIdx=interfaceVariables(1,variableIdx)
               interfaceCondition=>solverMapping%interfaceConditions(interfaceConditionIdx)%ptr
               IF(ASSOCIATED(interfaceCondition)) THEN
@@ -416,8 +427,8 @@ CONTAINS
                     variableType=interfaceVariables(2,variableIdx)
                     variable=>lagrangeField%VARIABLE_TYPE_MAP(variableType)%ptr
                     IF(ASSOCIATED(variable)) THEN
-                      solverMapping%columnVariablesList(solverMatrixIdx)%variables(solverVariableIdx)%variable=>variable
-                      solverMapping%columnVariablesList(solverMatrixIdx)%variables(solverVariableIdx)%variableType=variableType
+                      solverMapping%columnVariablesList(solverMatrixIdx)%variables(solverVariableIdx)%ptr%variable=>variable
+                      solverMapping%columnVariablesList(solverMatrixIdx)%variables(solverVariableIdx)%ptr%variableType=variableType
                       NULLIFY(variablesList(solverVariableIdx)%ptr)
                       CALL List_CreateStart(variablesList(solverVariableIdx)%ptr,err,error,*999)
                       CALL List_DataTypeSet(variablesList(solverVariableIdx)%ptr,LIST_INTG_TYPE,err,error,*999)
@@ -454,7 +465,7 @@ CONTAINS
               & solverMapping%columnVariablesList(solverMatrixIdx)%numberOfVariables),STAT=err)
             IF(err/=0) CALL FlagError("Could not allocate sub matrix list.",err,error,*999)
             subMatrixList=0
-
+          ENDDO !solverMatrixIdx
           
           ALLOCATE(interfaceEquationsLists(solverMapping%numberOfInterfaceConditions),STAT=err)
           IF(err/=0) CALL FlagError("Could not allocate equations set list.",err,error,*999)
@@ -591,7 +602,7 @@ CONTAINS
           solverVariableIdx=0
           DO variableIdx=1,numberOfEquationsVariables
             solverVariableIdx=solverVariableIdx+1
-            CALL SolverMapping_VariableInitialise(solverMapping%rowVariablesList%variables(solverVariableIdx),err,error,*999)
+            CALL SolverMapping_VariableInitialise(solverMapping%rowVariablesList%variables(solverVariableIdx)%ptr,err,error,*999)
             equationsSetIdx=equationsVariables(1,variableIdx)
             equationsSet=>solverMapping%equationsSets(equationsSetIdx)%ptr
             IF(ASSOCIATED(equationsSet)) THEN
@@ -600,8 +611,8 @@ CONTAINS
                 variableType=equationsVariables(2,variableIdx)
                 variable=>dependentField%VARIABLE_TYPE_MAP(variableType)%ptr
                 IF(ASSOCIATED(variable)) THEN
-                  solverMapping%rowVariablesList%variables(solverVariableIdx)%variable=>variable
-                  solverMapping%rowVariablesList%variables(solverVariableIdx)%variableType=variableType
+                  solverMapping%rowVariablesList%variables(solverVariableIdx)%ptr%variable=>variable
+                  solverMapping%rowVariablesList%variables(solverVariableIdx)%ptr%variableType=variableType
                   NULLIFY(variablesList(solverVariableIdx)%ptr)
                   CALL List_CreateStart(variablesList(solverVariableIdx)%ptr,err,error,*999)
                   CALL List_DataTypeSet(variablesList(solverVariableIdx)%ptr,LIST_INTG_TYPE,err,error,*999)
@@ -621,7 +632,7 @@ CONTAINS
           IF(ALLOCATED(equationsVariables)) DEALLOCATE(equationsVariables)
           DO variableIdx=1,numberOfInterfaceVariables
             solverVariableIdx=solverVariableIdx+1
-            CALL SolverMapping_VariableInitialise(solverMapping%rowVariablesList%variables(solverVariableIdx),err,error,*999)
+            CALL SolverMapping_VariableInitialise(solverMapping%rowVariablesList%variables(solverVariableIdx)%ptr,err,error,*999)
             interfaceConditionIdx=interfaceVariables(1,variableIdx)
             interfaceCondition=>solverMapping%interfaceConditions(interfaceConditionIdx)%ptr
             IF(ASSOCIATED(interfaceCondition)) THEN
@@ -631,8 +642,8 @@ CONTAINS
                   variableType=interfaceVariables(2,variableIdx)
                   variable=>lagrangeField%VARIABLE_TYPE_MAP(variableType)%ptr
                   IF(ASSOCIATED(variable)) THEN
-                    solverMapping%columnVariablesList(solverMatrixIdx)%variables(solverVariableIdx)%variable=>variable
-                    solverMapping%columnVariablesList(solverMatrixIdx)%variables(solverVariableIdx)%variableType=variableType
+                    solverMapping%columnVariablesList(solverMatrixIdx)%variables(solverVariableIdx)%ptr%variable=>variable
+                    solverMapping%columnVariablesList(solverMatrixIdx)%variables(solverVariableIdx)%ptr%variableType=variableType
                     NULLIFY(variablesList(solverVariableIdx)%ptr)
                     CALL List_CreateStart(variablesList(solverVariableIdx)%ptr,err,error,*999)
                     CALL List_DataTypeSet(variablesList(solverVariableIdx)%ptr,LIST_INTG_TYPE,err,error,*999)
@@ -1364,7 +1375,7 @@ CONTAINS
             DO variableIdx=1,numberOfEquationsVariables
               solverVariableIdx=solverVariableIdx+1
               CALL SolverMapping_VariableInitialise(solverMapping%columnVariablesList(solverMatrixIdx)% &
-                & variables(solverVariableIdx),err,error,*999)
+                & variables(solverVariableIdx)%ptr,err,error,*999)
               equationsSetIdx=equationsVariables(1,variableIdx)
               equationsSet=>solverMapping%equationsSets(equationsSetIdx)%ptr
               IF(ASSOCIATED(equationsSet)) THEN
@@ -1373,8 +1384,8 @@ CONTAINS
                   variableType=equationsVariables(2,variableIdx)
                   variable=>dependentField%VARIABLE_TYPE_MAP(variableType)%ptr
                   IF(ASSOCIATED(variable)) THEN
-                    solverMapping%columnVariablesList(solverMatrixIdx)%variables(solverVariableIdx)%variable=>variable
-                    solverMapping%columnVariablesList(solverMatrixIdx)%variables(solverVariableIdx)%variableType=variableType
+                    solverMapping%columnVariablesList(solverMatrixIdx)%variables(solverVariableIdx)%ptr%variable=>variable
+                    solverMapping%columnVariablesList(solverMatrixIdx)%variables(solverVariableIdx)%ptr%variableType=variableType
                     NULLIFY(variablesList(solverVariableIdx)%ptr)
                     CALL List_CreateStart(variablesList(solverVariableIdx)%ptr,err,error,*999)
                     CALL List_DataTypeSet(variablesList(solverVariableIdx)%ptr,LIST_INTG_TYPE,err,error,*999)
@@ -1395,7 +1406,7 @@ CONTAINS
             DO variableIdx=1,numberOfInterfaceVariables
               solverVariableIdx=solverVariableIdx+1
               CALL SolverMapping_VariableInitialise(solverMapping%columnVariablesList(solverMatrixIdx)% &
-                & variables(solverVariableIdx),err,error,*999)
+                & variables(solverVariableIdx)%ptr,err,error,*999)
               interfaceConditionIdx=interfaceVariables(1,variableIdx)
               interfaceCondition=>solverMapping%interfaceConditions(interfaceConditionIdx)%ptr
               IF(ASSOCIATED(interfaceCondition)) THEN
@@ -1405,8 +1416,8 @@ CONTAINS
                     variableType=interfaceVariables(2,variableIdx)
                     variable=>lagrangeField%VARIABLE_TYPE_MAP(variableType)%ptr
                     IF(ASSOCIATED(variable)) THEN
-                      solverMapping%columnVariablesList(solverMatrixIdx)%variables(solverVariableIdx)%variable=>variable
-                      solverMapping%columnVariablesList(solverMatrixIdx)%variables(solverVariableIdx)%variableType=variableType
+                      solverMapping%columnVariablesList(solverMatrixIdx)%variables(solverVariableIdx)%ptr%variable=>variable
+                      solverMapping%columnVariablesList(solverMatrixIdx)%variables(solverVariableIdx)%ptr%variableType=variableType
                       NULLIFY(variablesList(solverVariableIdx)%ptr)
                       CALL List_CreateStart(variablesList(solverVariableIdx)%ptr,err,error,*999)
                       CALL List_DataTypeSet(variablesList(solverVariableIdx)%ptr,LIST_INTG_TYPE,err,error,*999)
@@ -1460,7 +1471,7 @@ CONTAINS
                       & LIST_INTG_TYPE,err,error,*999)
                     !Set approximate size for the number of columns per variable.
                     CALL List_InitialSizeSet(rankGlobalColsLists(dofType,equationsIdx,solverVariableIdx,rank)%ptr, &
-                      & solverMapping%columnVariablesList(solverMatrixIdx)%variables(solverVariableIdx)%variable% &
+                      & solverMapping%columnVariablesList(solverMatrixIdx)%variables(solverVariableIdx)%ptr%variable% &
                       & TOTAL_NUMBER_OF_DOFS,err,error,*999)
                     CALL List_DataDimensionSet(rankGlobalColsLists(dofType,equationsIdx,solverVariableIdx,rank)%ptr,5, &
                       & err,error,*999)
@@ -1543,9 +1554,9 @@ CONTAINS
                 ENDDO
               ENDIF
               IF(ASSOCIATED(nonlinearMapping)) THEN
-                DO variableIdx=1,solverMapping%createValuesCache%residualVariableTypes(0,equationsSetIdx)
-                  equationsVariableListItem(1)=solverMapping%createValuesCache%residualVariableTypes( &
-                      & variableIdx,equationsSetIdx)
+                DO variableIdx=1,solverMapping%createValuesCache%residualVariableTypes(0,equationsSetIdx,solverMatrixIdx)
+                  equationsVariableListItem(1)=solverMapping%createValuesCache%residualVariableTypes(variableIdx, &
+                    & equationsSetIdx,solverMatrixIdx)
                   equationsVariableListItem(2)=SOLVER_MAPPING_EQUATIONS_NONLINEAR_MATRIX
                   equationsVariableListItem(3)=variableIdx
                   CALL List_ItemAdd(equationsSetVariableList,equationsVariableListItem,err,error,*999)
@@ -1588,7 +1599,7 @@ CONTAINS
                   found=.FALSE.
                   DO variablePositionIdx=1,solverMapping%columnVariablesList(solverMatrixIdx)%numberOfVariables
                     IF(ASSOCIATED(dependentVariable,solverMapping%columnVariablesList(solverMatrixIdx)%variables( &
-                      & variablePositionIdx)%variable)) THEN
+                      & variablePositionIdx)%ptr%variable)) THEN
                       found=.TRUE.
                       EXIT
                     ENDIF
@@ -1784,7 +1795,7 @@ CONTAINS
                   found=.FALSE.
                   DO variablePositionIdx=1,solverMapping%columnVariablesList(solverMatrixIdx)%numberOfVariables
                     IF(ASSOCIATED(lagrangeVariable,solverMapping%columnVariablesList(solverMatrixIdx)%variables( &
-                      & variablePositionIdx)%variable)) THEN
+                      & variablePositionIdx)%ptr%variable)) THEN
                       found=.TRUE.
                       EXIT
                     ENDIF
@@ -1908,7 +1919,7 @@ CONTAINS
                     found=.FALSE.
                     DO variablePositionIdx=1,solverMapping%columnVariablesList(solverMatrixIdx)%numberOfVariables
                       IF(ASSOCIATED(dependentVariable,solverMapping%columnVariablesList(solverMatrixIdx)%variables( &
-                        & variablePositionIdx)%VARIABLE)) THEN
+                        & variablePositionIdx)%ptr%variable)) THEN
                         found=.TRUE.
                         EXIT
                       ENDIF
@@ -2174,7 +2185,7 @@ CONTAINS
                 numberOfVariables=1
               ELSE
                 IF(ASSOCIATED(nonlinearMapping)) THEN
-                  numberOfVariables=solverMapping%createValuesCache%residualVariableTypes(0,equationsSetIdx)
+                  numberOfVariables=solverMapping%createValuesCache%residualVariableTypes(0,equationsSetIdx,solverMatrixIdx)
                 ELSE
                   numberOfVariables=solverMapping%createValuesCache%matrixVariableTypes(0,equationsSetIdx,solverMatrixIdx)
                 ENDIF
@@ -2306,7 +2317,7 @@ CONTAINS
               ENDIF
               DO variableIdx=1,numberOfVariables
                 IF(ASSOCIATED(dynamicMapping)) THEN
-                  variableType=solverMapping%createValuesCache%dynamicVariableType(equationsSetIdx)
+                  variableType=solverMapping%createValuesCache%dynamicVariableType(variableIdx,equationsSetIdx)
                   numberOfDynamicEquationsMatrices=dynamicMapping%VAR_TO_EQUATIONS_MATRICES_MAPS(variableType)% &
                     & NUMBER_OF_EQUATIONS_MATRICES
                 ELSE
@@ -2472,7 +2483,7 @@ CONTAINS
             IF(err/=0) CALL FlagError("Could not allocate dof map.",err,error,*999)
             DO solverVariableIdx=1,solverMapping%columnVariablesList(solverMatrixIdx)%numberOfVariables
               ALLOCATE(dofMap(solverVariableIdx)%ptr(solverMapping%columnVariablesList(solverMatrixIdx)% &
-                & variables(solverVariableIdx)%variable%NUMBER_OF_GLOBAL_DOFS),STAT=err)
+                & variables(solverVariableIdx)%ptr%variable%NUMBER_OF_GLOBAL_DOFS),STAT=err)
               IF(err/=0) CALL FlagError("Could not allocate dof map global dof map.",err,error,*999)
               dofMap(solverVariableIdx)%ptr=0
             ENDDO !solverVariableIdx
@@ -2550,7 +2561,7 @@ CONTAINS
                         
                         !Loop over the variables
                         
-                        dependentVariable=>solverMapping%columnVariablesList(solverMatrixIdx)%variables(solverVariableIdx)% &
+                        dependentVariable=>solverMapping%columnVariablesList(solverMatrixIdx)%variables(solverVariableIdx)%ptr% &
                           & variable
                         colDofsMapping=>dependentVariable%DOMAIN_MAPPING
                         CALL BOUNDARY_CONDITIONS_VARIABLE_GET(boundaryConditions,dependentVariable,boundaryConditionsVariable, &
@@ -2910,7 +2921,7 @@ CONTAINS
                           !Loop over the variables
                           ! This is not only a Lagrange variable (it could be a equationset variable) - rename for clarity.
                           
-                          lagrangeVariable=>solverMapping%columnVariablesList(solverMatrixIdx)%variables(solverVariableIdx)% &
+                          lagrangeVariable=>solverMapping%columnVariablesList(solverMatrixIdx)%variables(solverVariableIdx)%ptr% &
                             & variable
                          
                           DO globalDofIdx=1,numberOfRankCols
@@ -3393,17 +3404,17 @@ CONTAINS
       DO variableIdx=1,solverMapping%rowVariablesList%numberOfVariables
         CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"      Variable : ",variableIdx,err,error,*999)
         CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"        Variable type = ",solverMapping%rowVariablesList% &
-          & variables(variableIdx)%variableType,err,error,*999)        
+          & variables(variableIdx)%ptr%variableType,err,error,*999)        
         CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"        Number of equations = ",solverMapping%rowVariablesList% &
-          & variables(variableIdx)%numberOfEquations,err,error,*999)        
+          & variables(variableIdx)%ptr%numberOfEquations,err,error,*999)        
         CALL WriteStringVector(DIAGNOSTIC_OUTPUT_TYPE,1,1,solverMapping%rowVariablesList%variables(variableIdx)% &
-          & numberOfEquations,5,5,solverMapping%rowVariablesList%variables(variableIdx)%equationTypes, &
+          & numberOfEquations,5,5,solverMapping%rowVariablesList%variables(variableIdx)%ptr%equationTypes, &
           & '("        Equation types   :",5(X,I13))','(26X,5(X,I13))',err,error,*999)
         CALL WriteStringVector(DIAGNOSTIC_OUTPUT_TYPE,1,1,solverMapping%rowVariablesList%variables(variableIdx)% &
-          & numberOfEquations,5,5,solverMapping%rowVariablesList%variables(variableIdx)%equationTypes, &
+          & numberOfEquations,5,5,solverMapping%rowVariablesList%variables(variableIdx)%ptr%equationTypes, &
           & '("        Equation indices :",5(X,I13))','(26X,5(X,I13))',err,error,*999)
       ENDDO !variableIdx
-        CALL WriteString(DIAGNOSTIC_OUTPUT_TYPE,"    Column variables lists:",err,error,*999)
+      CALL WriteString(DIAGNOSTIC_OUTPUT_TYPE,"    Column variables lists:",err,error,*999)
       DO solverMatrixIdx=1,solverMapping%numberOfSolverMatrices
         CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"      Solver matrix : ",solverMatrixIdx,err,error,*999)        
         CALL WriteStringValue(DIAGNOSTIC_OUTPUT_TYPE,"        Number of variables = ",solverMapping%columnVariablesList( &
@@ -4198,13 +4209,14 @@ CONTAINS
         ALLOCATE(solverMapping%createValuesCache%interfaceIndices(solverMapping%numberOfEquationsSets),STAT=err)
         IF(err/=0) CALL FlagError("Could not allocate solver mapping create values cache interface condition indices.", &
           & err,error,*999)
-        ALLOCATE(solverMapping%createValuesCache%dynamicVariableType(solverMapping%numberOfEquationsSets),STAT=err)
+        ALLOCATE(solverMapping%createValuesCache%dynamicVariableType(0:FIELD_NUMBER_OF_VARIABLE_TYPES, &
+          & solverMapping%numberOfEquationsSets),STAT=err)
         IF(err/=0) CALL FlagError("Could not allocate solver mapping create values cache dynamic variable type.",err,error,*999)
         ALLOCATE(solverMapping%createValuesCache%matrixVariableTypes(0:FIELD_NUMBER_OF_VARIABLE_TYPES, &
           & solverMapping%numberOfEquationsSets,solverMapping%numberOfSolverMatrices),STAT=err)
         IF(err/=0) CALL FlagError("Could not allocate solver mapping create values cache matrix variable types.", err,error,*999)
         ALLOCATE(solverMapping%createValuesCache%residualVariableTypes(0:FIELD_NUMBER_OF_VARIABLE_TYPES, &
-          & solverMapping%numberOfEquationsSets),STAT=err)
+          & solverMapping%numberOfEquationsSets,solverMapping%numberOfSolverMatrices),STAT=err)
         IF(err/=0) CALL FlagError("Could not allocate solver mapping create values cache residual variable type.",err,error,*999)
         ALLOCATE(solverMapping%createValuesCache%lhsVariableType(solverMapping%numberOfEquationsSets),STAT=err)
         IF(err/=0) CALL FlagError("Could not allocate solver mapping create values cache LHS variable type.",err,error,*999)
@@ -4809,29 +4821,29 @@ CONTAINS
                       IF(ASSOCIATED(solverMapping%createValuesCache%interfaceIndices)) &
                         & DEALLOCATE(solverMapping%createValuesCache%interfaceIndices)
 
-                      newDynamicVariableType(1:solverMapping%numberOfEquationsSets)= &
+                      newDynamicVariableType(:,1:solverMapping%numberOfEquationsSets)= &
                         & solverMapping%createValuesCache%dynamicVariableType
                       newMatrixVariableTypes(:,1:solverMapping%numberOfEquationsSets,:)= &
                         & solverMapping%createValuesCache%matrixVariableTypes
-                      newResidualVariableTypes(:,1:solverMapping%numberOfEquationsSets)= &
+                      newResidualVariableTypes(:,:,1:solverMapping%numberOfEquationsSets)= &
                         & solverMapping%createValuesCache%residualVariableTypes
                       newLhsVariableType(1:solverMapping%numberOfEquationsSets)= &
                         & solverMapping%createValuesCache%lhsVariableType
-                      newRhsVariableType(1:solverMapping%numberOfEquationsSets)= &
+                      newRhsVariableType(:,1:solverMapping%numberOfEquationsSets)= &
                         & solverMapping%createValuesCache%rhsVariableType
-                      newSourceVariableType(1:solverMapping%numberOfEquationsSets)= &
+                      newSourceVariableType(:,1:solverMapping%numberOfEquationsSets)= &
                         & solverMapping%createValuesCache%sourceVariableType
                       DO equationsSetIdx=1,solverMapping%numberOfEquationsSets
                         newEquationsSets(equationsSetIdx)%ptr=>solverMapping%equationsSets(equationsSetIdx)%ptr
                       ENDDO !equationsSetIdx
                       solverMapping%createValuesCache%interfaceIndices=>newInterfaceIndices
 
-                      newDynamicVariableType(solverMapping%numberOfEquationsSets+1)=0
+                      newDynamicVariableType(:,solverMapping%numberOfEquationsSets+1)=0
                       newMatrixVariableTypes(:,solverMapping%numberOfEquationsSets+1,:)=0
-                      newResidualVariableTypes(:,solverMapping%numberOfEquationsSets+1)=0
+                      newResidualVariableTypes(:,:,solverMapping%numberOfEquationsSets+1)=0
                       newLhsVariableType(solverMapping%numberOfEquationsSets+1)=0
-                      newRhsVariableType(solverMapping%numberOfEquationsSets+1)=0
-                      newSourceVariableType(solverMapping%numberOfEquationsSets+1)=0
+                      newRhsVariableType(:,solverMapping%numberOfEquationsSets+1)=0
+                      newSourceVariableType(:,solverMapping%numberOfEquationsSets+1)=0
 
                       CALL MOVE_ALLOC(newDynamicVariableType,solverMapping%createValuesCache%dynamicVariableType)
                       CALL MOVE_ALLOC(newMatrixVariableTypes,solverMapping%createValuesCache%matrixVariableTypes)
@@ -4844,19 +4856,21 @@ CONTAINS
 
                     ELSE IF(solverMapping%numberOfEquationsSets==0) THEN
                       
-                      ALLOCATE(newDynamicVariableType(solverMapping%numberOfEquationsSets+1),STAT=err)
+                      ALLOCATE(newDynamicVariableType(0:FIELD_NUMBER_OF_VARIABLE_TYPES,solverMapping%numberOfEquationsSets+1), &
+                        & STAT=err)
                       IF(err/=0) CALL FlagError("Could not allocate dynamic variable type.",err,error,*999)
                       ALLOCATE(newMatrixVariableTypes(0:FIELD_NUMBER_OF_VARIABLE_TYPES, &
                         & solverMapping%numberOfEquationsSets+1,solverMapping%numberOfSolverMatrices),STAT=err)
                       IF(err/=0) CALL FlagError("Could not allocate matrix variable types.",err,error,*999)
-                      ALLOCATE(newResidualVariableTypes(0:FIELD_NUMBER_OF_VARIABLE_TYPES, &
+                      ALLOCATE(newResidualVariableTypes(0:FIELD_NUMBER_OF_VARIABLE_TYPES,0:FIELD_NUMBER_OF_VARIABLE_TYPES, &
                         & solverMapping%numberOfEquationsSets+1),STAT=err)
                       IF(err/=0) CALL FlagError("Could not allocate residual variable type.",err,error,*999)
                       ALLOCATE(newLhsVariableType(solverMapping%numberOfEquationsSets+1),STAT=err)
                       IF(err/=0) CALL FlagError("Could not allocate LHS variable type.",err,error,*999)
-                      ALLOCATE(newRhsVariableType(solverMapping%numberOfEquationsSets+1),STAT=err)
+                      ALLOCATE(newRhsVariableType(0:FIELD_NUMBER_OF_VARIABLE_TYPES,solverMapping%numberOfEquationsSets+1),STAT=err)
                       IF(err/=0) CALL FlagError("Could not allocate RHS variable type.",err,error,*999)
-                      ALLOCATE(newSourceVariableType(solverMapping%numberOfEquationsSets+1),STAT=err)
+                      ALLOCATE(newSourceVariableType(0:FIELD_NUMBER_OF_VARIABLE_TYPES,solverMapping%numberOfEquationsSets+1), &
+                        & STAT=err)
                       IF(err/=0) CALL FlagError("Could not allocate source variable type.",err,error,*999)
                       ALLOCATE(newInterfaceIndices(solverMapping%numberOfEquationsSets+1),STAT=err)
                       IF(err/=0) CALL FlagError("Could not allocate new interface indices.",err,error,*999)
@@ -4908,10 +4922,10 @@ CONTAINS
                             DO WHILE(variableType<=FIELD_NUMBER_OF_VARIABLE_TYPES.AND..NOT.matrixDone)
                               IF(equationsMapping%LINEAR_MAPPING%VAR_TO_EQUATIONS_MATRICES_MAPS(variableType)% &
                                 & NUMBER_OF_EQUATIONS_MATRICES>0) THEN                  
-                                solverMapping%createValuesCache%matrixVariableTypes(0, &
-                                  & solverMapping%numberOfEquationsSets+1,matrixIdx)=1
-                                solverMapping%createValuesCache%matrixVariableTypes(1, &
-                                  & solverMapping%numberOfEquationsSets+1,matrixIdx)=variableType
+                                solverMapping%createValuesCache%matrixVariableTypes(0,solverMapping%numberOfEquationsSets+1, &
+                                  & matrixIdx)=1
+                                solverMapping%createValuesCache%matrixVariableTypes(1,solverMapping%numberOfEquationsSets+1, &
+                                  & matrixIdx)=variableType
                                 matrixDone=.TRUE.
                               ELSE
                                 variableType=variableType+1
@@ -4937,28 +4951,31 @@ CONTAINS
                           CALL FlagError("Equations mapping linear mapping is not associated.",err,error,*999)
                         ENDIF
                       CASE(EQUATIONS_NONLINEAR)
-                        IF(ASSOCIATED(equationsMapping%NONLINEAR_MAPPING)) THEN
+                        IF(ASSOCIATED(equationsMapping%nonlinearMapping)) THEN
                           !Set the number of residual variables for this equations set
-                          solverMapping%createValuesCache%residualVariableTypes(0,solverMapping%numberOfEquationsSets+1)= &
-                            & equationsMapping%NONLINEAR_MAPPING%NUMBER_OF_RESIDUAL_VARIABLES
+                          solverMapping%createValuesCache%residualVariableTypes(0,0,solverMapping%numberOfEquationsSets+1)= &
+                            & equationsMapping%nonlinearMapping%numberOfResiduals                          
                           !Map the residual variables to the solver Jacobian
-                          DO matrixIdx=1,equationsMapping%NONLINEAR_MAPPING%NUMBER_OF_RESIDUAL_VARIABLES
-                            solverMapping%createValuesCache%residualVariableTypes(matrixIdx,solverMapping% &
-                              & numberOfEquationsSets+1)=equationsMapping%NONLINEAR_MAPPING% &
-                              & JACOBIAN_TO_VAR_MAP(matrixIdx)%VARIABLE_TYPE
-                          ENDDO
+                          DO residualVariableIdx=1,equationsMapping%nonlinearMapping%numberOfResiduals     
+                            DO variableIdx=1,equationsMapping%nonlinearMapping%numberOfResidualVariables(residualVariableIdx)
+                              solverMapping%createValuesCache%residualVariableTypes(matrixIdx,solverMapping% &
+                                & numberOfEquationsSets+1)=equationsMapping%nonlinearMapping% &
+                                & jacobianToVarMap(variableIdx,residualVariableIdx)%VARIABLE_TYPE
+                            ENDDO !variableIdx
+                          ENDDO !residualVariableIdx
                           IF(ASSOCIATED(equationsMapping%LINEAR_MAPPING)) THEN
                             !If there are linear matrices operating on the residual variable then map them to the
                             !solver matrix (Jacobian)
                             IF(solverMapping%numberOfSolverMatrices==1) THEN
-                              DO matrixIdx=1,equationsMapping%NONLINEAR_MAPPING%NUMBER_OF_RESIDUAL_VARIABLES
-                                variableType=equationsMapping%NONLINEAR_MAPPING%JACOBIAN_TO_VAR_MAP(matrixIdx)%VARIABLE_TYPE
+                              DO residualVariableIdx=1,equationsMapping%nonlinearMapping%numberOfResiduals
+                                DO variableIdx=1,equationsMapping%nonlinearMapping%numberOfResidualVariables(residualVariableIdx)
+                                  variableType=equationsMapping%nonlinearMapping%jacobianToVarMap(variableIdx, &
+                                    residualVariableIdx)%VARIABLE_TYPE
                                 IF(equationsMapping%LINEAR_MAPPING%VAR_TO_EQUATIONS_MATRICES_MAPS(variableType)% &
                                   & NUMBER_OF_EQUATIONS_MATRICES>0) THEN
-                                  solverMapping%createValuesCache%matrixVariableTypes(0, &
-                                    & solvermapping%numberOfEquationsSets+1,1)=1
-                                  solverMapping%createValuesCache%matrixVariableTypes(1, &
-                                    & solverMapping%numberOfEquationsSets+1,1)=variableType
+                                  solverMapping%createValuesCache%matrixVariableTypes(0,solvermapping%numberOfEquationsSets+1,1)=1
+                                  solverMapping%createValuesCache%matrixVariableTypes(1,solverMapping%numberOfEquationsSets+1,1)= &
+                                    & variableType
                                 ENDIF
                               ENDDO !matrixIdx
                             ELSE
@@ -4981,20 +4998,26 @@ CONTAINS
                       SELECT CASE(equations%linearity)
                       CASE(EQUATIONS_LINEAR)
                         IF(ASSOCIATED(equationsMapping%DYNAMIC_MAPPING)) THEN
-                          solverMapping%createValuesCache%dynamicVariableType(solverMapping%numberOfEquationsSets+1)= &
+                          !Just map one dynamic variable at the moment
+                          solverMapping%createValuesCache%dynamicVariableType(0,solverMapping%numberOfEquationsSets+1)=1
+                          solverMapping%createValuesCache%dynamicVariableType(1,solverMapping%numberOfEquationsSets+1)= &
                             & equationsMapping%DYNAMIC_MAPPING%DYNAMIC_VARIABLE_TYPE
                         ELSE
                           CALL FlagError("Equations mapping dynamic mapping is not associated.",err,error,*999)
                         ENDIF
                       CASE(EQUATIONS_NONLINEAR)
                         IF(ASSOCIATED(equationsMapping%DYNAMIC_MAPPING)) THEN
-                          solverMapping%createValuesCache%dynamicVariableType(solverMapping%numberOfEquationsSets+1)= &
+                          !Just map one dynamic variable at the moment
+                          solverMapping%createValuesCache%dynamicVariableType(0,solverMapping%numberOfEquationsSets+1)=1
+                          solverMapping%createValuesCache%dynamicVariableType(1,solverMapping%numberOfEquationsSets+1)= &
                             & equationsMapping%DYNAMIC_MAPPING%DYNAMIC_VARIABLE_TYPE
-                          DO matrixIdx=1,equationsMapping%NONLINEAR_MAPPING%NUMBER_OF_RESIDUAL_VARIABLES
-                            solverMapping%createValuesCache%residualVariableTypes(matrixIdx,solverMapping% &
-                              & numberOfEquationsSets+1)=equationsMapping%NONLINEAR_MAPPING% &
-                              & JACOBIAN_TO_VAR_MAP(matrixIdx)%VARIABLE_TYPE
-                          ENDDO !matrixIdx
+                          DO residualVariableIdx=1,equationsMapping%nonlinearMapping%numberOfResiduals
+                            DO variableIdx=1,equationsMapping%nonlinearMapping%numberOfResidualVariables(residualVariableIdx)
+                              solverMapping%createValuesCache%residualVariableTypes(variableIdx,residualVariableIdx,solverMapping% &
+                                & numberOfEquationsSets+1)=equationsMapping%NONLINEAR_MAPPING% &
+                                & JACOBIAN_TO_VAR_MAP(matrixIdx)%VARIABLE_TYPE
+                            ENDDO !variableIdx
+                          ENDDO !residualVariableIdx
                         ELSE
                           CALL FlagError("Equations mapping dynamic mapping is not associated.",err,error,*999)
                         ENDIF

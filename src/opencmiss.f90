@@ -851,6 +851,14 @@ MODULE OPENCMISS
   INTEGER(INTG), PARAMETER :: CMISS_BOUNDARY_CONDITION_IMPERMEABLE_WALL = BOUNDARY_CONDITION_IMPERMEABLE_WALL
   INTEGER(INTG), PARAMETER :: CMISS_BOUNDARY_CONDITION_NEUMANN_INTEGRATED_ONLY = BOUNDARY_CONDITION_NEUMANN_INTEGRATED_ONLY !<A Neumann integrated boundary condition, and no point values will be integrated over a face or line that includes this dof
   !>@}
+  !> \addtogroup OPENCMISS_BoundaryConditionFieldVariableConditionTypes OPENCMISS::BoundaryConditions::FieldVariableConditionTypes
+  !> \brief Field variable condition types
+  !> \see OPENCMISS::BoundaryConditions,OPENCMISS
+  !>@{
+  INTEGER(INTG), PARAMETER :: CMISS_BOUNDARY_CONDITION_FIELD_VARIABLE_FREE = BOUNDARY_CONDITION_FIELD_VARIABLE_FREE !<The field variable is free (unknown. \see OPENCMISS_BoundaryConditionFieldVariableConditionTypes,OPENCMISS
+  INTEGER(INTG), PARAMETER :: CMISS_BOUNDARY_CONDITION_FIELD_VARIABLE_FIXED = BOUNDARY_CONDITION_FIELD_VARIABLE_FIXED !<The field variable is fixed (known). \see OPENCMISS_BoundaryConditionFieldVariableConditionTypes,OPENCMISS
+  !>@}
+  !>@}
   !> \addtogroup OPENCMISS_BoundaryConditionSparsityTypes OPENCMISS::BoundaryConditions::SparsityTypes
   !> \brief Storage type for matrices used by boundary conditions.
   !> \see OPENCMISS::BoundaryConditions,OPENCMISS
@@ -929,6 +937,18 @@ MODULE OPENCMISS
     MODULE PROCEDURE CMISSBoundaryConditions_ConstrainNodeDofsEqualObj
   END INTERFACE CMISSBoundaryConditions_ConstrainNodeDofsEqual
 
+  !>Get the field variable condition type for boundary conditions
+  INTERFACE CMISSBoundaryConditions_FieldVariableConditionGet
+    MODULE PROCEDURE CMISSBoundaryConditions_FieldVariableConditionGetNumber
+    MODULE PROCEDURE CMISSBoundaryConditions_FieldVariableConditionGetObj
+  END INTERFACE CMISSBoundaryConditions_FieldVariableConditionGet
+
+  !>Set the field variable condition type for boundary conditions
+  INTERFACE CMISSBoundaryConditions_FieldVariableConditionSet
+    MODULE PROCEDURE CMISSBoundaryConditions_FieldVariableConditionSetNumber
+    MODULE PROCEDURE CMISSBoundaryConditions_FieldVariableConditionSetObj
+  END INTERFACE CMISSBoundaryConditions_FieldVariableConditionSet
+
   PUBLIC CMISS_BOUNDARY_CONDITION_FREE,CMISS_BOUNDARY_CONDITION_FIXED, &
     & CMISS_BOUNDARY_CONDITION_FIXED_WALL,CMISS_BOUNDARY_CONDITION_FIXED_INLET,CMISS_BOUNDARY_CONDITION_MOVED_WALL, &
     & CMISS_BOUNDARY_CONDITION_FREE_WALL,CMISS_BOUNDARY_CONDITION_FIXED_OUTLET,CMISS_BOUNDARY_CONDITION_MOVED_WALL_INCREMENTED, &
@@ -955,6 +975,8 @@ MODULE OPENCMISS
   PUBLIC CMISSBoundaryConditions_NeumannSparsityTypeSet
 
   PUBLIC CMISSBoundaryConditions_ConstrainNodeDofsEqual
+
+  PUBLIC CMISSBoundaryConditions_FieldVariableConditionGet,CMISSBoundaryConditions_FieldVariableConditionSet
 
 !!==================================================================================================================================
 !!
@@ -12639,6 +12661,208 @@ CONTAINS
     RETURN
 
   END SUBROUTINE CMISSBoundaryConditions_ConstrainNodeDofsEqualObj
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Get the field variable condition type for a field variable specified by number.
+  SUBROUTINE CMISSBoundaryConditions_FieldVariableConditionGetNumber(regionUserNumber,problemUserNumber,controlLoopIdentifier, &
+    & solverIndex,fieldUserNumber,fieldVariableType,condition,err)
+
+    !Argument variables
+    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the boundary conditions and field.
+    INTEGER(INTG), INTENT(IN) :: problemUserNumber !<The user number of the problem containing the boundary conditions.
+    INTEGER(INTG), INTENT(IN) :: controlLoopIdentifier !<The control loop identifier to get the boundary conditions.
+    INTEGER(INTG), INTENT(IN) :: solverIndex !<The solver index of the boundary conditions.
+    INTEGER(INTG), INTENT(IN) :: fieldUserNumber !<The user number of the dependent field containing the field variable.
+    INTEGER(INTG), INTENT(IN) :: fieldVariableType !<The variable type of the dependent field to get the condition type for. \see OPENCMISS_FieldVariableTypes
+    INTEGER(INTG), INTENT(OUT) :: condition !<On return, the field variable condition type. \see OPENCMISS_BoundaryConditionFieldVariableConditionTypes
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+    TYPE(REGION_TYPE), POINTER :: region
+    TYPE(PROBLEM_TYPE), POINTER :: problem
+    TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: solverEquations
+    TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: boundaryConditions
+    TYPE(FIELD_TYPE), POINTER :: field
+    TYPE(VARYING_STRING) :: localError
+
+    CALL Enters("CMISSBoundaryConditions_FieldVariableConditionGetNumber",err,error,*999)
+
+    NULLIFY(region)
+    NULLIFY(problem)
+    NULLIFY(solverEquations)
+    NULLIFY(field)
+
+    CALL Region_user_number_find(regionUserNumber,region,err,error,*999)
+    IF(ASSOCIATED(region)) THEN
+      CALL Problem_user_number_find(problemUserNumber,problem,err,error,*999)
+      IF(ASSOCIATED(problem)) THEN
+        CALL Problem_solver_equations_get(problem,controlLoopIdentifier,solverIndex,solverEquations,err,error,*999)
+        IF(ASSOCIATED(solverEquations)) THEN
+          CALL Solver_equations_boundary_conditions_get(solverEquations,boundaryConditions,err,error,*999)
+          IF(ASSOCIATED(boundaryConditions)) THEN
+            CALL Field_user_number_find(fieldUserNumber,region,field,err,error,*999)
+            IF(ASSOCIATED(field)) THEN
+              CALL BoundaryConditions_FieldVariableConditionGet(boundaryConditions,field,fieldVariableType,condition,err,error,*999)
+            ELSE
+              localError="A field with a user number of "//TRIM(NumberToVString(fieldUserNumber,"*",err,error))// &
+                & " does not exist."
+              CALL FlagError(localError,err,error,*999)
+            END IF
+          ELSE
+            localError="The boundary conditions for the solver equations are not associated."
+            CALL FLAG_ERROR(localError,err,error,*999)
+          END IF
+        ELSE
+          CALL FlagError("The solver equations are not associated.",err,error,*999)
+        END IF
+      ELSE
+        localError="A problem with a user number of "//TRIM(NumberToVString(problemUserNumber,"*",err,error))//" does not exist."
+        CALL FlagError(localError,err,error,*999)
+      END IF
+    ELSE
+      localError="A region with a user number of "//TRIM(NumberToVString(regionUserNumber,"*",err,error))//" does not exist."
+      CALL FlagError(localError,err,error,*999)
+    END IF
+
+    CALL Exits("CMISSBoundaryConditions_FieldVariableConditionGetNumber")
+    RETURN
+999 CALL Errors("CMISSBoundaryConditions_FieldVariableConditionGetNumber",err,error)
+    CALL Exits("CMISSBoundaryConditions_FieldVariableConditionGetNumber")
+    CALL CMISSHandleError(err,error)
+    RETURN
+
+  END SUBROUTINE CMISSBoundaryConditions_FieldVariableConditionGetNumber
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Get the field variable condition type for a field variable specified by object.
+  SUBROUTINE CMISSBoundaryConditions_FieldVariableConditionGetObj(boundaryConditions,field,fieldVariableType,condition,err)
+
+    !Argument variables
+    TYPE(CMISSBoundaryConditionsType), INTENT(IN) :: boundaryConditions !<The boundary conditions to get the field variable condition for.
+    TYPE(CMISSFieldType), INTENT(IN) :: field !<The equations dependent field to get the field variable condition for
+    INTEGER(INTG), INTENT(IN) :: fieldVariableType !<The field variable type to get the condition for \see OPENCMISS_FieldVariableTypes
+    INTEGER(INTG), INTENT(OUT) :: condition !<On return, the field variable condition. \see OPENCMISS_BoundaryConditionFieldVariableConditionTypes
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+
+    CALL Enters("CMISSBoundaryConditions_FieldVariableConditionGetObj",err,error,*999)
+
+    CALL BoundaryConditions_FieldVariableConditionGet(boundaryConditions%boundary_conditions,field%field,fieldVariableType, &
+      & condition,err,error,*999)
+
+    CALL Exits("CMISSBoundaryConditions_FieldVariableConditionGetObj")
+    RETURN
+999 CALL Errors("CMISSBoundaryConditions_FieldVariableConditionGetObj",err,error)
+    CALL Exits("CMISSBoundaryConditions_FieldVariableConditionGetObj")
+    CALL CMISSHandleError(err,error)
+    RETURN
+
+  END SUBROUTINE CMISSBoundaryConditions_FieldVariableConditionGetObj
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Set the field variable condition type for a field variable specified by number.
+  SUBROUTINE CMISSBoundaryConditions_FieldVariableConditionSetNumber(regionUserNumber,problemUserNumber,controlLoopIdentifier, &
+    & solverIndex,fieldUserNumber,fieldVariableType,condition,err)
+
+    !Argument variables
+    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the boundary conditions and field.
+    INTEGER(INTG), INTENT(IN) :: problemUserNumber !<The user number of the problem containing the boundary conditions.
+    INTEGER(INTG), INTENT(IN) :: controlLoopIdentifier !<The control loop identifier to set the boundary conditions.
+    INTEGER(INTG), INTENT(IN) :: solverIndex !<The solver index of the boundary conditions.
+    INTEGER(INTG), INTENT(IN) :: fieldUserNumber !<The user number of the dependent field containing the field variable.
+    INTEGER(INTG), INTENT(IN) :: fieldVariableType !<The variable type of the dependent field to set the condition type for. \see OPENCMISS_FieldVariableTypes
+    INTEGER(INTG), INTENT(IN) :: condition !<The field variable condition type to set. \see OPENCMISS_BoundaryConditionFieldVariableConditionTypes
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+    TYPE(REGION_TYPE), POINTER :: region
+    TYPE(PROBLEM_TYPE), POINTER :: problem
+    TYPE(SOLVER_EQUATIONS_TYPE), POINTER :: solverEquations
+    TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: boundaryConditions
+    TYPE(FIELD_TYPE), POINTER :: field
+    TYPE(VARYING_STRING) :: localError
+
+    CALL Enters("CMISSBoundaryConditions_FieldVariableConditionSetNumber",err,error,*999)
+
+    NULLIFY(region)
+    NULLIFY(problem)
+    NULLIFY(solverEquations)
+    NULLIFY(field)
+
+    CALL Region_user_number_find(regionUserNumber,region,err,error,*999)
+    IF(ASSOCIATED(region)) THEN
+      CALL Problem_user_number_find(problemUserNumber,problem,err,error,*999)
+      IF(ASSOCIATED(problem)) THEN
+        CALL Problem_solver_equations_get(problem,controlLoopIdentifier,solverIndex,solverEquations,err,error,*999)
+        IF(ASSOCIATED(solverEquations)) THEN
+          CALL Solver_equations_boundary_conditions_get(solverEquations,boundaryConditions,err,error,*999)
+          IF(ASSOCIATED(boundaryConditions)) THEN
+            CALL Field_user_number_find(fieldUserNumber,region,field,err,error,*999)
+            IF(ASSOCIATED(field)) THEN
+              CALL BoundaryConditions_FieldVariableConditionSet(boundaryConditions,field,fieldVariableType,condition,err,error,*999)
+            ELSE
+              localError="A field with a user number of "//TRIM(NumberToVString(fieldUserNumber,"*",err,error))// &
+                & " does not exist."
+              CALL FlagError(localError,err,error,*999)
+            END IF
+          ELSE
+            localError="The boundary conditions for the solver equations are not associated."
+            CALL FLAG_ERROR(localError,err,error,*999)
+          END IF
+        ELSE
+          CALL FlagError("The solver equations are not associated.",err,error,*999)
+        END IF
+      ELSE
+        localError="A problem with a user number of "//TRIM(NumberToVString(problemUserNumber,"*",err,error))//" does not exist."
+        CALL FlagError(localError,err,error,*999)
+      END IF
+    ELSE
+      localError="A region with a user number of "//TRIM(NumberToVString(regionUserNumber,"*",err,error))//" does not exist."
+      CALL FlagError(localError,err,error,*999)
+    END IF
+
+    CALL Exits("CMISSBoundaryConditions_FieldVariableConditionSetNumber")
+    RETURN
+999 CALL Errors("CMISSBoundaryConditions_FieldVariableConditionSetNumber",err,error)
+    CALL Exits("CMISSBoundaryConditions_FieldVariableConditionSetNumber")
+    CALL CMISSHandleError(err,error)
+    RETURN
+
+  END SUBROUTINE CMISSBoundaryConditions_FieldVariableConditionSetNumber
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Set the field variable condition type for a field variable specified by object.
+  SUBROUTINE CMISSBoundaryConditions_FieldVariableConditionSetObj(boundaryConditions,field,fieldVariableType,condition,err)
+
+    !Argument variables
+    TYPE(CMISSBoundaryConditionsType), INTENT(IN) :: boundaryConditions !<The boundary conditions to set the field variable condition for.
+    TYPE(CMISSFieldType), INTENT(IN) :: field !<The equations dependent field to set the field variable condition for
+    INTEGER(INTG), INTENT(IN) :: fieldVariableType !<The field variable type to set the condition for \see OPENCMISS_FieldVariableTypes
+    INTEGER(INTG), INTENT(IN) :: condition !<The field variable condition to set. \see OPENCMISS_BoundaryConditionFieldVariableConditionTypes
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+
+    CALL Enters("CMISSBoundaryConditions_FieldVariableConditionSetObj",err,error,*999)
+
+    CALL BoundaryConditions_FieldVariableConditionSet(boundaryConditions%boundary_conditions,field%field,fieldVariableType, &
+      & condition,err,error,*999)
+
+    CALL Exits("CMISSBoundaryConditions_FieldVariableConditionSetObj")
+    RETURN
+999 CALL Errors("CMISSBoundaryConditions_FieldVariableConditionSetObj",err,error)
+    CALL Exits("CMISSBoundaryConditions_FieldVariableConditionSetObj")
+    CALL CMISSHandleError(err,error)
+    RETURN
+
+  END SUBROUTINE CMISSBoundaryConditions_FieldVariableConditionGetObj
 
 !!==================================================================================================================================
 !!

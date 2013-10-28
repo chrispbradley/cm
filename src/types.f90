@@ -1574,175 +1574,191 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
   !
   
    !>Contains the information about the mapping of a variable DOF to an equations matrix column
-  TYPE VAR_TO_EQUATIONS_COLUMN_MAP_TYPE
-    INTEGER(INTG), ALLOCATABLE :: COLUMN_DOF(:) !<COLUMN_DOF(dof_idx). The equations column number for this equations matrix that the dof_idx'th variable DOF is mapped to.  
-  END TYPE VAR_TO_EQUATIONS_COLUMN_MAP_TYPE
+  TYPE VarToEquationsColumnMapType
+    INTEGER(INTG), ALLOCATABLE :: columnDof(:) !<columnDof(dofIdx). The equations column number for this equations matrix that the dofIdx'th variable DOF is mapped to.  
+  END TYPE VarToEquationsColumnMapType
 
   !>Contains the mapping for a dependent variable type to the equations matrices
-  TYPE VAR_TO_EQUATIONS_MATRICES_MAP_TYPE
-    INTEGER(INTG) :: VARIABLE_INDEX !<The variable index for this variable to equations matrices map
-    INTEGER(INTG) :: VARIABLE_TYPE !<The variable type for this variable to equations matrices map
-    TYPE(FIELD_VARIABLE_TYPE), POINTER :: VARIABLE !<A pointer to the field variable for this variable to equations matrices map
-    INTEGER(INTG) :: NUMBER_OF_EQUATIONS_MATRICES !<The number of equations matrices (linear or dynamic) this variable type is mapped to. If the number is -1 the variable is mapped to the RHS vector. If the number is zero then this variable type is not involved in the equations set and the rest of the type is not allocated.
-    INTEGER(INTG), ALLOCATABLE :: EQUATIONS_MATRIX_NUMBERS(:) !<EQUATIONS_MATRIX_NUMBERS(i). The equations matrix number for the i'th matrix that this variable type is mapped to.
-    TYPE(VAR_TO_EQUATIONS_COLUMN_MAP_TYPE), ALLOCATABLE :: DOF_TO_COLUMNS_MAPS(:) !<DOF_TO_COLUMNS_MAPS(i). The variable dof to equations columns for the i'th equations matrix.
-    !INTEGER(INTG), ALLOCATABLE :: DOF_TO_ROWS_MAP(:) !<DOF_TO_ROWS_MAP(dof_idx). The row number that the dof_idx'th variable dof is mapped to.
-  END TYPE VAR_TO_EQUATIONS_MATRICES_MAP_TYPE
+  TYPE VarToEquationsMatricesMapType
+    INTEGER(INTG) :: variableIndex !<The variable index for this variable to equations matrices map
+    INTEGER(INTG) :: variableType !<The variable type for this variable to equations matrices map
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: variable !<A pointer to the field variable for this variable to equations matrices map
+    INTEGER(INTG) :: numberOfEquationsMatrices !<The number of equations matrices (linear or dynamic) this variable type is mapped to.
+    INTEGER(INTG), ALLOCATABLE :: equationsMatrixNumbers(:) !<equationsMatrixNumbers(matrixIdx). The equations matrix number for the matrixIdx'th matrix that this variable type is mapped to.
+!!TODO: Do we need to allow for different matrices of the same variable to have a different dof to columns map?
+    TYPE(VarToEquationsColumnMapType), ALLOCATABLE :: dofToColumnsMaps(:) !<dofToColumnsMaps(matrixIdx). The variable dof to equations columns for the matrixIdx'th equations matrix.
+  END TYPE VarToEquationsMatricesMapType
 
   !>Contains information for mapping an equations matrix to a field variable.
-  TYPE EQUATIONS_MATRIX_TO_VAR_MAP_TYPE
-    INTEGER(INTG) :: MATRIX_NUMBER !<The equations matrix number
-    TYPE(EQUATIONS_MATRIX_TYPE), POINTER :: EQUATIONS_MATRIX !<A pointer to the equations matrix
-    INTEGER(INTG) :: VARIABLE_TYPE !<The dependent variable type mapped to this equations matrix
-    TYPE(FIELD_VARIABLE_TYPE), POINTER :: VARIABLE !<A pointer to the field variable that is mapped to this equations matrix
-    INTEGER(INTG) :: NUMBER_OF_COLUMNS !<The number of columns in this equations matrix.
-    REAL(DP) :: MATRIX_COEFFICIENT !<The multiplicative coefficent for the matrix in the equation set
-    INTEGER(INTG), ALLOCATABLE :: COLUMN_TO_DOF_MAP(:) !<COLUMN_TO_DOF_MAP(column_idx). The variable DOF that the column_idx'th column of this equations matrix is mapped to.
-    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: COLUMN_DOFS_MAPPING !<A pointer to the column dofs domain mapping for the matrix variable
-  END TYPE EQUATIONS_MATRIX_TO_VAR_MAP_TYPE
+  TYPE EquationsMatrixToVarMapType
+    INTEGER(INTG) :: matrixNumber !<The equations matrix number
+    TYPE(EQUATIONS_MATRIX_TYPE), POINTER :: equationsMatrix !<A pointer to the equations matrix
+    INTEGER(INTG) :: variableType!<The dependent variable type mapped to this equations matrix
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: variable !<A pointer to the field variable that is mapped to this equations matrix
+    INTEGER(INTG) :: numberOfColumns !<The number of columns in this equations matrix.
+    REAL(DP) :: matrixCoefficient !<The multiplicative coefficent for the matrix in the equation set
+    INTEGER(INTG), ALLOCATABLE :: columnToDofMap(:) !<columnToDofMap(columnIdx). The variable DOF that the columnIdx'th column of this equations matrix is mapped to.
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: columnDofsMapping !<A pointer to the column dofs domain mapping for the matrix variable
+  END TYPE EquationsMatrixToVarMapType
 
+  !>Contains information for mapping a field variable to the dynamic matrices in the equations set of the mapping
+  TYPE EquationsMappingDynamicVarType
+    INTEGER(INTG) :: numberOfDynamicVarMatrices !<The number of dynamic equations matrices for this dynamic variable in the mapping
+    INTEGER(INTG) :: dynamicVariableType !<The variable type of dynamic variable in the mapping.
+    INTEGER(INTG) :: stiffnessMatrixNumber !<The matrix number of the dynamic stiffness matrix for the dynamic variable. 0 if there is no dynamic stiffness matrix
+    INTEGER(INTG) :: dampingMatrixNumber !<The matrix number of the dynamic damping matrix for the dynamic variable. 0 if there is no dynamic damping matrix
+    INTEGER(INTG) :: massMatrixNumber !<massMatrixNumber(variableIdx). The matrix number of the dynamic mass matrix for the dynamic variable. 0 if there is no dynamic mass matrix
+    TYPE(VarToEquationsMatricesMapType) :: varToEquationsMatricesMap !<The equations matrices mapping for this dynamic variable.
+  END TYPE EquationsMappingDynamicVarType
+  
   !>Contains information for mapping field variables to the dynamic matrices in the equations set of the mapping
-  TYPE EQUATIONS_MAPPING_DYNAMIC_TYPE
-    TYPE(EQUATIONS_MAPPING_TYPE), POINTER :: EQUATIONS_MAPPING !<A pointer to the equations mapping
-    INTEGER(INTG) :: NUMBER_OF_DYNAMIC_EQUATIONS_MATRICES !<The number of dynamic equations matrices in this mapping
-
-    INTEGER(INTG) :: STIFFNESS_MATRIX_NUMBER !<The matrix number of the dynamic stiffness matrix. 0 if there is no dynamic stiffness matrix
-    INTEGER(INTG) :: DAMPING_MATRIX_NUMBER !<The matrix number of the dynamic damping matrix. 0 if there is no dynamic damping matrix
-    INTEGER(INTG) :: MASS_MATRIX_NUMBER !<The matrix number of the dynamic mass matrix. 0 if there is no dynamic mass matrix
-    INTEGER(INTG) :: DYNAMIC_VARIABLE_TYPE !<The variable type involved in the equations matrix mapping.
-    TYPE(FIELD_VARIABLE_TYPE), POINTER :: DYNAMIC_VARIABLE !<A pointer to the variable that is mapped to the dynamic matrices.
-!!TODO: just make this the size of the number of matrix variables used (i.e. 1) rather than the field number of variable types???
-    TYPE(VAR_TO_EQUATIONS_MATRICES_MAP_TYPE), ALLOCATABLE :: VAR_TO_EQUATIONS_MATRICES_MAPS(:) !<VAR_TO_EQUATIONS_MATRICES_MAPS(variable_type_idx). The equations matrices mapping for the variable_type_idx'th variable type.
-    TYPE(EQUATIONS_MATRIX_TO_VAR_MAP_TYPE), ALLOCATABLE :: EQUATIONS_MATRIX_TO_VAR_MAPS(:) !<EQUATIONS_MATRIX_TO_VAR_MAPS(matrix_idx). The mappings for the matrix_idx'th equations matrix.
-    !INTEGER(INTG), ALLOCATABLE :: EQUATIONS_ROW_TO_VARIABLE_DOF_MAPS(:) !<EQUATIONS_ROW_TO_VARIABLE_DOF_MAPS(row_idx). The row mappings for the row_idx'th row of the equations matrices to the dynamic variable.
-  END TYPE EQUATIONS_MAPPING_DYNAMIC_TYPE
+  TYPE EquationsMappingDynamicType
+    TYPE(EQUATIONS_MAPPING_TYPE), POINTER :: equationsMapping !<A pointer to the equations mapping
+    INTEGER(INTG) :: numberOfDynamicMatrixVariables !<The number of dependent variables involved in the dynamic equations matrix mapping
+    INTEGER(INTG), ALLOCATABLE :: dynamicMatrixVariableTypes(:) !<dynamicMatrixVariableTypes(variableIdx). The variable type of the variableIdx'th variable type involved in the equations dynamic matrix mapping.
+    TYPE(EquationsMappingDynamicVarType), ALLOCATABLE :: dynamicVariableMapping(:) !<dynamicVariableMapping(variableIdx). The mappings for the variableIdx'th dynamic variable in the mapping.
+    INTEGER(INTG) :: numberOfDynamicMatrices !<The number of dynamic matrices in the equations mapping.
+    TYPE(EquationsMatrixToVarMapType), ALLOCATABLE :: equationsMatrixToVarMaps(:) !<equationsMatrixToVarMaps(matrixIdx). The mappings for the matrixIdx'th equations matrix.
+  END TYPE EquationsMappingDynamicType
 
   !>Contains information on the equations mapping for the LHS i.e., how a field variable is mapped to the LHS rows of
   !>the equations set of this equations mapping.
-  TYPE EquationsMapping_LhsType
+  TYPE EquationsMappingLhsType
     TYPE(EQUATIONS_MAPPING_TYPE), POINTER :: equationsMapping !<A pointer to the equations mapping
     INTEGER(INTG) :: lhsVariableType !<The variable type number mapped to the RHS vector
     TYPE(FIELD_VARIABLE_TYPE), POINTER :: lhsVariable !<A pointer to the variable that is mapped to the RHS vector
     TYPE(DOMAIN_MAPPING_TYPE), POINTER :: lhsVariableMapping !<A pointer to the RHS variable domain mapping
     INTEGER(INTG), ALLOCATABLE :: lhsDofToEquationsRowMap(:) !<lhsDofToEquationsRowMap(dofIdx). The mapping from the dofIdx'th LHS dof in the LHS variable to the equations row.   
     INTEGER(INTG), ALLOCATABLE :: equationsRowToLhsDofMap(:) !<equationsRowToLhsDofMap(rowIdx). The mapping from the rowIdx'th LHS row of the equations to the LHS dof.   
-  END TYPE EquationsMapping_LhsType
+  END TYPE EquationsMappingLhsType
 
   !>Contains information for mapping field variables to the linear matrices in the equations set of the mapping
-  TYPE EQUATIONS_MAPPING_LINEAR_TYPE
-    TYPE(EQUATIONS_MAPPING_TYPE), POINTER :: EQUATIONS_MAPPING !<A pointer to the equations mapping
-    INTEGER(INTG) :: NUMBER_OF_LINEAR_EQUATIONS_MATRICES !<The number of linear equations matrices in this mapping
-    INTEGER(INTG) :: NUMBER_OF_LINEAR_MATRIX_VARIABLES !<The number of dependent variables involved in the linear equations matrix mapping
-    INTEGER(INTG), ALLOCATABLE :: LINEAR_MATRIX_VARIABLE_TYPES(:) !<LINEAR_MATRIX_VARIABLE_TYPES(i). The variable type of the i'th variable type involved in the equations linear matrix mapping.
-!!TODO: just make this the size of the number of matrix variables rather than the field number of variable types and merge matrix variable types above???
-    TYPE(VAR_TO_EQUATIONS_MATRICES_MAP_TYPE), ALLOCATABLE :: VAR_TO_EQUATIONS_MATRICES_MAPS(:) !<VAR_TO_EQUATIONS_MATRICES_MAPS(variable_type_idx). The equations matrices mapping for the variable_type_idx'th variable type.
-    TYPE(EQUATIONS_MATRIX_TO_VAR_MAP_TYPE), ALLOCATABLE :: EQUATIONS_MATRIX_TO_VAR_MAPS(:) !<EQUATIONS_MATRIX_TO_VAR_MAPS(matrix_idx). The mappings for the matrix_idx'th equations matrix.
-    !INTEGER(INTG), ALLOCATABLE :: EQUATIONS_ROW_TO_VARIABLE_DOF_MAPS(:,:) !<EQUATIONS_ROW_TO_VARIABLE_DOFS_MAPS(row_idx,variable_type_idx). The row mappings for the row_idx'th row of the equations matrices to the variable_type_idx'th variable.
-  END TYPE EQUATIONS_MAPPING_LINEAR_TYPE
+  TYPE EquationsMappingLinearType
+    TYPE(EQUATIONS_MAPPING_TYPE), POINTER :: equationsMapping !<A pointer to the equations mapping
+    INTEGER(INTG) :: numberOfLinearMatrixVariables !<The number of dependent variables involved in the linear equations matrix mapping
+    INTEGER(INTG), ALLOCATABLE :: linearMatrixVariableTypes(:) !<linearMatrixVariableTypes(variableIdx). The variable type of the variableIdx'th variable type involved in the equations linear matrix mapping. \todo just make this the size of the number of matrix variables rather than the field number of variable types and merge matrix variable types above???
+    TYPE(VarToEquationsMatricesMapType), ALLOCATABLE :: varToEquationsMatricesMaps(:) !<varToEquationsMatricesMaps(variableIdx). The equations matrices mapping for the variableIdx'th variable.
+    INTEGER(INTG) :: numberOfLinearEquationsMatrices !<The number of linear equations matrices in this mapping
+    TYPE(EquationsMatrixToVarMapType), ALLOCATABLE :: equationsMatrixToVarMaps(:) !<equationsMatrixToVarMaps(matrixIdx). The mappings for the matrixIdx'th equations matrix.
+  END TYPE EquationsMappingLinearType
 
   !>Contains the mapping from the Jacobian back to the nonlinear residual variables.
-  TYPE EQUATIONS_JACOBIAN_TO_VAR_MAP_TYPE
-    INTEGER(INTG) :: JACOBIAN_NUMBER !<The equations Jacobian matrix number
-    INTEGER(INTG) :: VARIABLE_TYPE !<The dependent variable type mapped to this equations matrix
-    TYPE(FIELD_VARIABLE_TYPE), POINTER :: VARIABLE !<A pointer to the field variable that is mapped to this equations matrix
-    TYPE(EQUATIONS_JACOBIAN_TYPE), POINTER :: JACOBIAN !<A pointer to the equations matrix for this variable
-    INTEGER(INTG) :: NUMBER_OF_COLUMNS !<The number of columns in this equations matrix.
-    REAL(DP) :: JACOBIAN_COEFFICIENT !<The multiplicative coefficent for the matrix in the equation set
-    INTEGER(INTG), ALLOCATABLE :: EQUATIONS_COLUMN_TO_DOF_VARIABLE_MAP(:) !<COLUMN_TO_DOF_MAP(column_idx). The variable DOF that the column_idx'th column of this equations matrix is mapped to.
-    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: COLUMN_DOFS_MAPPING !<A pointer to the column dofs domain mapping for the matrix variable
-  END TYPE EQUATIONS_JACOBIAN_TO_VAR_MAP_TYPE
+  TYPE EquationsJacobianToVarMapType
+    INTEGER(INTG) :: jacobianNumber !<The equations Jacobian matrix number
+    INTEGER(INTG) :: variableType !<The dependent variable type mapped to this equations matrix
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: variable!<A pointer to the field variable that is mapped to this equations matrix
+    TYPE(EQUATIONS_JACOBIAN_TYPE), POINTER :: jacobian !<A pointer to the equations matrix for this variable
+    INTEGER(INTG) :: numberOfColumns !<The number of columns in this equations matrix.
+    INTEGER(INTG), ALLOCATABLE :: columnToDofVariableType(:) !<columnToDofVariableType(columnIdx). The variable DOF that the columnIdx'th column of this equations matrix is mapped to.
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: columnDofsMapping !<A pointer to the column dofs domain mapping for the matrix variable
+    REAL(DP) :: jacobianCoefficient !<The multiplicative coefficent for the matrix in the equation set
+ END TYPE EquationsJacobianToVarMapType
 
   !>Contains the mapping for a dependent variable type to the nonlinear Jacobian matrix
-  TYPE VAR_TO_EQUATIONS_JACOBIAN_MAP_TYPE
-    INTEGER(INTG) :: JACOBIAN_NUMBER !<The equations Jacobian matrix number
-    INTEGER(INTG) :: VARIABLE_TYPE !<The variable type for this variable to equations matrices map
-    TYPE(FIELD_VARIABLE_TYPE), POINTER :: VARIABLE !<A pointer to the field variable for this variable to equations matrices map
-    INTEGER(INTG), ALLOCATABLE :: DOF_TO_COLUMNS_MAP(:) !<DOF_TO_COLUMNS_MAP(dof_idx). The Jacobian column number for dof_idx'th variable dof
-    !INTEGER(INTG), ALLOCATABLE :: DOF_TO_ROWS_MAP(:) !<DOF_TO_ROWS_MAP(dof_idx). The row number that the dof_idx'th variable dof is mapped to.
-  END TYPE VAR_TO_EQUATIONS_JACOBIAN_MAP_TYPE
+  TYPE VarToEquationsJacobianMapType
+    INTEGER(INTG) :: jacobianNumber !<The equations Jacobian matrix number
+    INTEGER(INTG) :: variableType !<The variable type for this variable to equations matrices map
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: variable !<A pointer to the field variable for this variable to equations matrices map
+    INTEGER(INTG), ALLOCATABLE :: dofToColumsMap(:) !<dofToColumsMap(dof_idx). The Jacobian column number for dof_idx'th variable dof
+  END TYPE VarToEquationsJacobianMapType
 
+  !>Contains information on a residual in the equations mapping.
+  TYPE EquationsMappingResidualType    
+    INTEGER(INTG) :: residualIndex !<The residual index
+    INTEGER(INTG) :: numberOfResidualVariables !<The number of variables that are mapped to this residual
+    TYPE(VarToEquationsJacobianMapType), ALLOCATABLE :: varToJacobianMap(:) !<varToJacobianMap(variableIdx). The variable to Jacobian map for the variableIdx'th variable mapped to this residual.
+    REAL(DP) :: residualCoefficient !<The coefficient multiplying this residual.
+  END TYPE EquationsMappingResidualType
+  
   !>Contains information on the equations mapping for nonlinear matrices i.e., how a field variable is mapped to residual
   !>vectors, and how the field variables are mapped to the rows and columns of the associated Jacobian matrices of the equations set
   !>of this equations mapping.
   !>There may be multiple residual variables with a Jacobian matrix for each variable
-  TYPE EQUATIONS_MAPPING_NONLINEAR_TYPE
-    TYPE(EQUATIONS_MAPPING_TYPE), POINTER :: EQUATIONS_MAPPING !<A pointer to the equations mapping
-    INTEGER(INTG) :: NUMBER_OF_RESIDUAL_VARIABLES !<The number of residual variables in this mapping
-    TYPE(FIELD_VARIABLE_PTR_TYPE), ALLOCATABLE :: RESIDUAL_VARIABLES(:) !<RESIDUAL_VARIABLES(variable_idx). The variable_idx'th residual variable.
-    TYPE(VAR_TO_EQUATIONS_JACOBIAN_MAP_TYPE), ALLOCATABLE :: VAR_TO_JACOBIAN_MAP(:) !<VAR_TO_JACOBIAN_MAP(variable_idx). The mapping from the residual variable to the Jacobain matrix for the variable_idx'th residual variable.
-    TYPE(EQUATIONS_JACOBIAN_TO_VAR_MAP_TYPE), ALLOCATABLE :: JACOBIAN_TO_VAR_MAP(:) !<JACOBIAN_TO_VAR_MAP(jacobian_idx). The mapping from the Jacobian matrix to the residual variables for the jacobian_idx'th Jacobian.
-    REAL(DP), ALLOCATABLE :: RESIDUAL_COEFFICIENTS(:) !<RESIDUAL_COEFFICIENTS(variableIdx). The multiplicative coefficient applied to the variableIdx'th residual vector.
-    INTEGER(INTG), ALLOCATABLE :: EQUATIONS_ROW_TO_RESIDUAL_DOF_MAP(:) !<EQUATIONS_ROW_TO_RESIDUAL_DOF_MAP(row_idx). The mapping from the row_idx'th row of the equations to the source dof.
-  END TYPE EQUATIONS_MAPPING_NONLINEAR_TYPE
+  TYPE EquationsMappingNonlinearType
+    TYPE(EQUATIONS_MAPPING_TYPE), POINTER :: equationsMapping !<A pointer to the equations mapping
+    INTEGER(INTG) :: numberOfResiduals !<The number of residual vectors in this mapping
+
+
+
+
+
+    
+    INTEGER(INTG), ALLOCATABLE :: numberOfResidualVariables(:) !<numberOfResidualVariables(residualIdx). The number of residual variables for the residualIdx'th residual in this mapping
+    TYPE(VarToEquationsJacobianMapType), ALLOCATABLE :: varToJacobianMap(:,:) !<varToJacobianMap(variableIdx,residualVariableIdx). The mapping from the residual to the Jacobain matrix for the variableIdx'th variable of the residualVariableIdx'th residual.
+    TYPE(EquationsJacobianToVarMapType), ALLOCATABLE :: jacobianToVarMap(:,:) !<jacobianToVarMap(jacobianIdx,residualVariableIdx). The mapping from the Jacobian matrix to the residual for the jacobianIdx'th Jacobian matrix of the residualVariableIdx'th residual.
+    REAL(DP), ALLOCATABLE :: residualCoefficients(:) !<residualCoefficients(residualVariableIdx). The multiplicative coefficient applied to the residualVariableIdx'th residual.
+  END TYPE EquationsMappingNonlinearType
 
   !>Contains information on the equations mapping for a RHS i.e., how a field variable is mapped to the RHS vector for
   !>the equations set of this equations mapping.
-  TYPE EQUATIONS_MAPPING_RHS_TYPE
-    TYPE(EQUATIONS_MAPPING_TYPE), POINTER :: EQUATIONS_MAPPING !<A pointer to the equations mapping
-    INTEGER(INTG) :: RHS_VARIABLE_TYPE !<The variable type number mapped to the RHS vector
-    TYPE(FIELD_VARIABLE_TYPE), POINTER :: RHS_VARIABLE !<A pointer to the variable that is mapped to the RHS vector
-    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: RHS_VARIABLE_MAPPING !<A pointer to the RHS variable domain mapping
-    REAL(DP) :: RHS_COEFFICIENT !<The multiplicative coefficient applied to the RHS vector
-    INTEGER(INTG), ALLOCATABLE :: RHS_DOF_TO_EQUATIONS_ROW_MAP(:) !<RHS_DOF_TO_EQUATIONS_ROW_MAP(residual_dof_idx). The mapping from the rhs_dof_idx'th RHS dof in the rhs variable to the equations row.   
-    INTEGER(INTG), ALLOCATABLE :: EQUATIONS_ROW_TO_RHS_DOF_MAP(:) !<EQUATIONS_ROW_TO_RHS_DOF_MAP(row_idx). The mapping from the row_idx'th row of the equations to the RHS dof.   
-  END TYPE EQUATIONS_MAPPING_RHS_TYPE
+  TYPE EquationsMappingRhsType
+    TYPE(EQUATIONS_MAPPING_TYPE), POINTER :: equationsMapping !<A pointer to the equations mapping
+    INTEGER(INTG) :: numberOfRhs !<The number of RHS vectors
+    INTEGER(INTG) :: rhsVariableTypes(:) !<rhsVariableTypes(rhsIdx). The variable type number mapped to the rhsIdx'th RHS vector
+    TYPE(FIELD_VARIABLE_PTR_TYPE), ALLOCATABLE :: rhsVariables(:) !<rhsVariables(rhsIdx). A pointer to the variable that is mapped to the rhsIdx'th RHS vector
+    TYPE(DOMAIN_MAPPING_PTR_TYPE), ALLOCATABLE :: rhsVariableMapping(:) !<rhsVariableMapping(rhsIdx). A pointer to the rhsIdx'th RHS variable domain mapping
+    REAL(DP) :: rhsCoefficients(:) !<rhsCoefficients(rhsIdx). The multiplicative coefficient applied to the rhsIdx'th RHS vector
+  END TYPE EquationsMappingRhsType
 
   !>Contains information on the equations mapping for a source i.e., how a field variable is mapped to the source vector for
   !>the equations set of this equations mapping.
-  TYPE EQUATIONS_MAPPING_SOURCE_TYPE
-    TYPE(EQUATIONS_MAPPING_TYPE), POINTER :: EQUATIONS_MAPPING !<A pointer to the equations mapping
-    INTEGER(INTG) :: SOURCE_VARIABLE_TYPE !<The variable type number mapped from the source vector
-    TYPE(FIELD_VARIABLE_TYPE), POINTER :: SOURCE_VARIABLE !<A pointer to the source variable 
-    !TYPE(DOMAIN_MAPPING_TYPE), POINTER :: SOURCE_VARIABLE_MAPPING !<A pointer to the domain mapping for the source variable.
-    REAL(DP) :: SOURCE_COEFFICIENT !<The multiplicative coefficient applied to the source vector
-    !INTEGER(INTG), ALLOCATABLE :: SOURCE_DOF_TO_EQUATIONS_ROW_MAP(:) !<SOURCE_DOF_TO_EQUATIONS_ROW_MAP(source_dof_idx). The mapping from the source_dof_idx'th source dof in the source variable to the equations row.   
-    !INTEGER(INTG), ALLOCATABLE :: EQUATIONS_ROW_TO_SOURCE_DOF_MAP(:) !<EQUATIONS_ROW_TO_SOURCE_DOF_MAP(row_idx). The mapping from the row_idx'th row of the equations to the source dof.
-  END TYPE EQUATIONS_MAPPING_SOURCE_TYPE
+  TYPE EquationsMappingSourceType
+    TYPE(EQUATIONS_MAPPING_TYPE), POINTER :: equationsMapping !<A pointer to the equations mapping
+    INTEGER(INTG) :: numberOfSources !<The number of source vectors
+    INTEGER(INTG), ALLOCATABLE :: sourceVariableTypes(:) !<sourceVariableTypes(sourceIdx). The variable type number mapped from the sourceIdx'th source vector
+    TYPE(FIELD_VARIABLE_PTR_TYPE), POINTER :: sourceVariables(:) !<sourceVariables(sourceIdx). A pointer to the sourceIdx'th source variable \todo Allow of multiple variables mapped to a single source vector
+    REAL(DP), ALLOCATABLE :: sourceCoefficients(:) !<sourceCoefficients(sourceIdx). The multiplicative coefficient applied to the sourceIdx'th source vector
+  END TYPE EquationsMappingSourceType
 
   !>Contains information on the create values cache for the equations mapping. Because we do not want to allocate and deallocate
   !>large data structures as the equations mapping options are changed between create start and create finish we cache the
   !>important information and the allocate and process the data structures at create finish.
-  TYPE EQUATIONS_MAPPING_CREATE_VALUES_CACHE_TYPE
-    INTEGER(INTG) :: NUMBER_OF_DYNAMIC_EQUATIONS_MATRICES !<The number of dynamic matrices in the equations mapping
-    INTEGER(INTG) :: DYNAMIC_STIFFNESS_MATRIX_NUMBER !<The dynamic matrix number corresponding to the dynamic stiffness matrix
-    INTEGER(INTG) :: DYNAMIC_DAMPING_MATRIX_NUMBER !<The dynamic matrix number corresponding to the dynamic damping matrix
-    INTEGER(INTG) :: DYNAMIC_MASS_MATRIX_NUMBER !<The dynamic matrix number corresponding to the dynamic mass matrix
-    INTEGER(INTG) :: DYNAMIC_VARIABLE_TYPE !<The dependent variable type mapped to the dynamic equations matrices.
-    REAL(DP), ALLOCATABLE :: DYNAMIC_MATRIX_COEFFICIENTS(:) !<DYNAMIC_MATRIX_COEFFICIENTS(matrix_idx). The coefficient of the matrix_idx'th dynamic matrix in the equations set.
-    INTEGER(INTG) :: NUMBER_OF_LINEAR_EQUATIONS_MATRICES !<The number of linear matrices in the equations mapping
-    INTEGER(INTG), ALLOCATABLE :: LINEAR_MATRIX_VARIABLE_TYPES(:) !<LINEAR_MATRIX_VARIABLE_TYPES(matrix_idx). The dependent variable type mapped to the matrix_idx'th linear equations matrix.
-    REAL(DP), ALLOCATABLE :: LINEAR_MATRIX_COEFFICIENTS(:) !<LINEAR_MATRIX_COEFFICIENTS(matrix_idx). The coefficient of the matrix_idx'th linear matrix in the equations set.
-    INTEGER(INTG) :: NUMBER_OF_RESIDUAL_VARIABLES !<The number of residual variables for the nonlinear equations.
-    INTEGER(INTG), ALLOCATABLE :: RESIDUAL_VARIABLE_TYPES(:) !<RESIDUAL_VARIABLE_TYPES(residualVariableIdx). The varible type of the residualVariableIdx'th residual.
-    REAL(DP), ALLOCATABLE :: RESIDUAL_COEFFICIENTS(:) !< RESIDUAL_COEFFICIENTS(residualVariableIdx). The coefficient multiplying the residualVariableIdx'th residual vector.
+  TYPE EquationsMappingCreateValuesCacheType
+    INTEGER(INTG) :: numberOfDynamicMatrixVariables !<The number of dynamic matrix variables in the equations mapping
+    INTEGER(INTG), ALLOCATABLE :: dynamicVariableTypes(:) !<dynamicsVariableTypes(variableIdx). The dependent variable type of the variableIdx'th dynamic variable.
+    INTEGER(INTG), ALLOCATABLE :: numberOfDynamicEquationsMatrices(:) !<numberOfDynamicEquationsMatrices(variableIdx). The number of dynamic matrices for the variableIdx'th dynamic variable in the equations mapping
+    LOGICAL, ALLOCATABLE :: dynamicStiffnessMatrixNumbers(:) !<dynamicsStiffnessMatrixNumbers(variableIdx'th). .TRUE. if there is a dynamic stiffness matrix for the variableIdx'th dynamic variable, .FALSE. if not.
+    LOGICAL, ALLOCATABLE :: dynamicDampingMatrixNumbers(:) !<dynamicDampingMatrixNumbers(variableIdx'th). .TRUE. if there is a dynamic damping matrix for the variableIdx'th dynamic variable, .FALSE. if not.
+    LOGICAL, ALLOCATABLE :: dynamicMassMatrixNumber(:) !<dynamicMassMatrixNumber(variableIdx'th). .TRUE. if there is a dynamic mass matrix for the variableIdx'th dyanmic variable, .FALSE. if not.
+    REAL(DP), ALLOCATABLE :: dynamicMatrixCoefficients(:) !<dynamicMatrixCoefficients(variableIdx). The coefficient of matrices for the the variableIdx'th dynamic variable in the equations set.
+    INTEGER(INTG) :: numberOfLinearMatrixVariables !<The number of linear matrix variables in the equations mapping
+    INTEGER(INTG), ALLOCATABLE :: linearMatrixVariableTypes(:) !<linearMatrixVariableTypes(variableIdx). The dependent variable typeof the varibleIdx'th linear variable.
+    INTEGER(INTG), ALLOCATABLE :: numberOfLinearEquationsMatrices(:) !<numberOfLinearEquationsMatrices(variableIdx). The number of linear matrices for the variableIdx'th linear variable in the equations mapping
+    REAL(DP), ALLOCATABLE :: linearMatrixCoefficients(:,:) !<linearMatrixCoefficients(matrixIdx,variableIdx). The coefficient of the matrixIdx'th linear matrix for the variableIdx'th linear variable in the equations set.
+    INTEGER(INTG) :: numberOfResiduals !<The number of residual vectors
+    INTEGER(INTG), ALLOCATABLE :: numberOfResidualVariables(:) !<numberOfResidualVaraibles(residualIdx). The number of residual variables in the residualIdx'th residual vector.
+    INTEGER(INTG), ALLOCATABLE :: residualVariableTypes(:,:) !<residualVariableTypes(variableIdx,residualIdx). The varible type of the variableIdx'th variable in the residualIdx'th residual vector.
+    REAL(DP), ALLOCATABLE :: residualCoefficients(:) !<residualCoefficients(residualIdx). The coefficient multiplying the residualIdx'th residual vector.
     INTEGER(INTG) :: lhsVariableType !<The dependent variable type mapped to the LHS rows.
-    INTEGER(INTG) :: RHS_VARIABLE_TYPE !<The dependent variable type mapped to the rhs vector.
-    REAL(DP) :: RHS_COEFFICIENT !<The coefficient multiplying the RHS vector.
-    INTEGER(INTG) :: SOURCE_VARIABLE_TYPE !<The source variable type mapped to the source vector
-    REAL(DP) :: SOURCE_COEFFICIENT !<The coefficient multiplying the source vector.
-  END TYPE EQUATIONS_MAPPING_CREATE_VALUES_CACHE_TYPE
+    INTEGER(INTG) :: numberOfRhs !<The number of RHS vectors.
+    INTEGER(INTG), ALLOCATABLE :: rhsVariableTypes(:) !<rhsVariableTypes(rhsIdx). The dependent variable type mapped to the rhsIdx'th RHS vector.
+    REAL(DP), ALLOCATABLE :: rhsCoefficients(:) !<rhsCoefficients(rhsIdx). The coefficient multiplying the rhsIdx'th RHS vector.
+    INTEGER(INTG) :: numberOfSources !<The number of source vectors
+    INTEGER(INTG), ALLOCATABLE :: sourceVariableTypes(:) !<sourceVariableTypes(sourceIdx). The source variable type mapped to the sourceIdx'th source vector
+    REAL(DP), ALLOCATABLE :: sourceCoefficients(:) !<sourceCoefficients(sourceIdx). The coefficient multiplying the sourceIdx'th source vector.
+  END TYPE EquationsMappingCreateValuesCacheType
 
   !>Contains information on the equations mapping i.e., how field variable DOFS are mapped to the rows and columns of a number
   !>of equations matrices.
-  TYPE EQUATIONS_MAPPING_TYPE
-    TYPE(EQUATIONS_TYPE), POINTER :: EQUATIONS !<A pointer to the equations for this equations mapping
-    LOGICAL :: EQUATIONS_MAPPING_FINISHED !<Is .TRUE. if the equations mapping has finished being created, .FALSE. if not.
-    TYPE(EQUATIONS_MATRICES_TYPE), POINTER :: EQUATIONS_MATRICES !<A pointer to the equations matrices associated with this equations mapping.
+  TYPE EquationsMappingType
+    TYPE(EQUATIONS_TYPE), POINTER :: equations !<A pointer to the equations for this equations mapping
+    LOGICAL :: equationsMappingFinished !<Is .TRUE. if the equations mapping has finished being created, .FALSE. if not.
+    TYPE(EQUATIONS_MATRICES_TYPE), POINTER :: equationsMatrices !<A pointer to the equations matrices associated with this equations mapping.
     !Row mappings
-    INTEGER(INTG) :: NUMBER_OF_ROWS !<The number of local rows (excluding ghost rows) in the equations matrices
-    INTEGER(INTG) :: TOTAL_NUMBER_OF_ROWS !<The number of local rows (including ghost rows) in the equations matrices
-    INTEGER(INTG) :: NUMBER_OF_GLOBAL_ROWS !<The number of global rows in the equations matrices
-    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: ROW_DOFS_MAPPING !<The domain mapping for the equations rows
+    INTEGER(INTG) :: numberOfRows !<The number of local rows (excluding ghost rows) in the equations matrices
+    INTEGER(INTG) :: totalNumberOfRows !<The number of local rows (including ghost rows) in the equations matrices
+    INTEGER(INTG) :: numberOfGlobalRows !<The number of global rows in the equations matrices
+    TYPE(DOMAIN_MAPPING_TYPE), POINTER :: rowDofsMapping !<The domain mapping for the equations rows
     !Equations mapping components
-    TYPE(EQUATIONS_MAPPING_DYNAMIC_TYPE), POINTER :: DYNAMIC_MAPPING !<A pointer to the equations mapping for dynamic matrices
-    TYPE(EQUATIONS_MAPPING_LINEAR_TYPE), POINTER :: LINEAR_MAPPING !<A pointer to the equations mapping for the linear matrices
-    TYPE(EQUATIONS_MAPPING_NONLINEAR_TYPE), POINTER :: NONLINEAR_MAPPING !<A pointer to the equations mapping for the nonlinear matrices and vectors
-    TYPE(EQUATIONS_MAPPING_RHS_TYPE), POINTER :: RHS_MAPPING !<A pointer to the equations mapping for the RHS vector
-    TYPE(EquationsMapping_LhsType), POINTER :: lhsMapping !<A pointer to the equations mapping for the LHS rows
-    TYPE(EQUATIONS_MAPPING_SOURCE_TYPE), POINTER :: SOURCE_MAPPING !<A pointer to the equations mapping for the source vector
+    TYPE(EquationsMappingDynamicType), POINTER :: dynamicMapping !<A pointer to the equations mapping for dynamic matrices
+    TYPE(EquationsMappingLinearType), POINTER :: linearMapping !<A pointer to the equations mapping for the linear matrices
+    TYPE(EquationsMappingNonlinearType), POINTER :: nonlinearMapping !<A pointer to the equations mapping for the nonlinear matrices and vectors
+    TYPE(equationsMappingRhsType), POINTER :: rhsMapping !<A pointer to the equations mapping for the RHS vectors
+    TYPE(EquationsMappingLhsType), POINTER :: lhsMapping !<A pointer to the equations mapping for the LHS rows
+    TYPE(EquationsMappingSourceType), POINTER :: sourceMapping !<A pointer to the equations mapping for the source vectors
     !Create values cache
-    TYPE(EQUATIONS_MAPPING_CREATE_VALUES_CACHE_TYPE), POINTER :: CREATE_VALUES_CACHE !<The create values cache for the equations mapping
-  END TYPE EQUATIONS_MAPPING_TYPE
+    TYPE(EquationsMappingCreateValuesCacheType), POINTER :: createValuesCache !<The create values cache for the equations mapping
+  END TYPE EquationsMappingType
 
   !
   !================================================================================================================================
@@ -1807,6 +1823,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: BOUNDARY_CONDITIONS !<A pointer to the boundary conditions for this boundary conditions variable
     INTEGER(INTG) :: VARIABLE_TYPE !<The type of variable for this variable boundary conditions
     TYPE(FIELD_VARIABLE_TYPE), POINTER :: VARIABLE !<A pointer to the field variable for this boundary condition variable
+    INTEGER(INTG) :: variableConditionType !<The field variable condition type \see BOUNDARY_CONDITIONS_ROUTINES_FieldVariableConditions,BOUNDARY_CONDITIONS_ROUTINES
     INTEGER(INTG), ALLOCATABLE :: DOF_TYPES(:) !<DOF_TYPES(dof_idx). The general boundary condition type (eg. fixed or free) of the dof_idx'th dof in the dependent field variable. \see OPENCMISS_BoundaryConditionsTypes,OPENCMISS
     INTEGER(INTG), ALLOCATABLE :: CONDITION_TYPES(:) !<CONDITION_TYPES(dof_idx). The specific boundary condition type (eg. incremented pressure) of the dof_idx'th dof of the dependent field variable, which might be specific to an equation set. The solver routines should not need to use this array, and should only need the DOF_TYPES array. \see OPENCMISS_BoundaryConditionsDOFTypes,OPENCMISS
     TYPE(BOUNDARY_CONDITIONS_DIRICHLET_TYPE), POINTER :: DIRICHLET_BOUNDARY_CONDITIONS  !<A pointer to the dirichlet boundary condition type for this boundary condition variable
@@ -3045,13 +3062,13 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
     TYPE(LIST_PTR_TYPE), POINTER :: equationsColVariablesList(:) !<equationsColVariablesList(solverMatrixIdx). The list of equations variables in the solver mapping columns  for the solverMatrixIdx'th solver matrix.
     TYPE(LIST_TYPE), POINTER :: interfaceRowVariablesList !<The list of interface variables in the solver mapping rows.
     TYPE(LIST_PTR_TYPE), POINTER :: interfaceColVariablesList(:) !<interfaceColVariablesList(solverMatrixIdx). The list of interface condition variables in the solver mapping columns for the solverMatrixIdx'th solver matrix.
-    TYPE(LIST_PTR_TYPE), POINTER :: interfaceIndices(:) !<interfaceIndices(equationsSetIdx). The list of interface condition indices in the equationsSetIdx'th equations set.
-    INTEGER, ALLOCATABLE :: dynamicVariableType(:,:) !<dynamicVariableType(equationsSetIdx,solverMatrixIdx). The variable type that is mapped to the dynamic matrices for the equationsSetIdx'th equations set.
+    TYPE(LIST_PTR_TYPE), POINTER :: interfaceIndices(:,:) !<interfaceIndices(equationsSetIdx,solverMatrixIdx). The list of interface condition indices in the equationsSetIdx'th equations set for the solverMatrixIdx'th solver matrix.
+    INTEGER, ALLOCATABLE :: dynamicVariableType(:,:) !<dynamicVariableType(0:..,equationsSetIdx). The variable type that is mapped to the dynamic matrices for the equationsSetIdx'th equations set.
     INTEGER(INTG), ALLOCATABLE :: matrixVariableTypes(:,:,:) !<matrixVariableTypes(0:..,equationsSetIdx,SolverMatrixIdx). The list of matrix variable types in the equationsSetIdx'th equations set for the matrixIdx'th solver matrix. matrixVariableTypes(0,equationsSetIdx,matrixIdx) is the number of variable types in the equationsSetIdx'th equations set mapped to the matrixIdx'th solver matrix and matrixVariableTypes(1..,equationsSetIdx,matrixIdx) is the list of the variable types in the equations set.
-    INTEGER(INTG), ALLOCATABLE :: residualVariableTypes(:,:,:) !<residualVariableTypes(0:..,equationsSetIdx,solverMatrixIdx). The list of residual variable types in the equationsSetIdx'th equations set. residualVariableTypes(0,equationsSetIdx) is the number of variable types in the equationsSetIdx'th equations set and residualVariableTypes(1..,equationsSetIdx) is the list of the variable types in the equations set.
-    INTEGER(INTG), ALLOCATABLE :: lhsVariableType(:) !<lhsVariableType(equationsSetIdx). The variable type that is mapped to the solution LHS for the equations_set_idx'th equations set.
-    INTEGER(INTG), ALLOCATABLE :: rhsVariableType(:) !<rhsVariableType(equationsSetIdx). The variable type that is mapped to the solution RHS for the equationsSetIdx'th equations set
-    INTEGER, ALLOCATABLE :: sourceVariableType(:) !<sourceVariableType(equationsSetIdx). The source variable type that is mapped to the source vector for the equationsSetIdx'th equations set.
+    INTEGER(INTG), ALLOCATABLE :: residualVariableTypes(:,:,:) !<residualVariableTypes(0:..,0:..residualVariableIdx,equationsSetIdx). The list of residual variable types in the residualVariableIdx'th residual variable in the equationsSetIdx'th equations set. residualVariableTypes(0,0,equationsSetIdx) is the number of residual variables in the equationsSetIdx'th equations set. residualVariableTypes(0,residualVariableIdx,equationsSetIdx) is the number of variable types in the residualVariableIdx'th residual variable of the equationsSetIdx'th equations set and residualVariableTypes(1..,residualVariableIdx,equationsSetIdx) is the list of the variable types in the equations set.
+    INTEGER(INTG), ALLOCATABLE :: lhsVariableType(:) !<lhsVariableType(equationsSetIdx). The variable type that is mapped to the solution LHS for the equationsSetIdx'th equations set.
+    INTEGER(INTG), ALLOCATABLE :: rhsVariableType(:,:) !<rhsVariableType(0:..,equationsSetIdx). The list of RHS variable types in the equationsSetIdx'th equations set. rhsVariableType(0,equationsSetIdx) is the number of variable types in the equationsSetIdx'th equation set and rhsVariableTypes(1..,equationsSetIdx) is the list of variable types in the equations set. 
+    INTEGER, ALLOCATABLE :: sourceVariableType(:,:) !<sourceVariableType(0..,equationsSetIdx). The list of source variable types that are mapped to the source vector for the equationsSetIdx'th equations set. sourceVariableType(0,equations is the number of variable types in the equationsSetIdx'th equations set and sourceVariableType(1..,equationsSetIdx) is the list of the variable types in the equations set. 
   END TYPE SolverMappingCreateValuesCacheType
 
   TYPE SolverMappingVariableEquationMatrixType

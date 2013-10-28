@@ -108,6 +108,14 @@ MODULE BOUNDARY_CONDITIONS_ROUTINES
 
   INTEGER(INTG), PARAMETER :: MAX_BOUNDARY_CONDITION_NUMBER=22 !The maximum boundary condition type identifier, used for allocating an array with an entry for each type
 
+
+  !> \addtogroup BOUNDARY_CONDITIONS_ROUTINES_FieldVariableConditions BOUNDARY_CONDITIONS_ROUTINES::FieldVariableConditions
+  !> \brief Field Variable conditions.
+  !>@{
+  INTEGER(INTG), PARAMETER :: BOUNDARY_CONDITION_FIELD_VARIABLE_FREE=0 !<The field variable is free (unknown. \see BOUNDARY_CONDITIONS_ROUTINES_FieldVariableConditions,BOUNDARY_CONDITIONS_ROUTINES
+  INTEGER(INTG), PARAMETER :: BOUNDARY_CONDITION_FIELD_VARIABLE_FIXED=1 !<The field variable is fixed (known). \see BOUNDARY_CONDITIONS_ROUTINES_FieldVariableConditions,BOUNDARY_CONDITIONS_ROUTINES
+  !>@}
+  
   !> \addtogroup BOUNDARY_CONDITIONS_ROUTINES_SparsityTypes BOUNDARY_CONDITIONS_ROUTINES::BoundaryConditions
   !> \brief Storage type for matrices used by boundary conditions.
   !>@{
@@ -143,6 +151,8 @@ MODULE BOUNDARY_CONDITIONS_ROUTINES
     & BOUNDARY_CONDITION_CORRECTION_MASS_INCREASE,BOUNDARY_CONDITION_IMPERMEABLE_WALL,BOUNDARY_CONDITION_NEUMANN_INTEGRATED_ONLY, &
     & BOUNDARY_CONDITION_NEUMANN_POINT_INCREMENTED
 
+  PUBLIC BOUNDARY_CONDITION_FIELD_VARIABLE_FREE,BOUNDARY_CONDITION_FIELD_VARIABLE_FIXED
+
   PUBLIC BOUNDARY_CONDITION_SPARSE_MATRICES,BOUNDARY_CONDITION_FULL_MATRICES
 
   PUBLIC BOUNDARY_CONDITIONS_CREATE_FINISH,BOUNDARY_CONDITIONS_CREATE_START,BOUNDARY_CONDITIONS_DESTROY
@@ -155,6 +165,8 @@ MODULE BOUNDARY_CONDITIONS_ROUTINES
     & BoundaryConditions_NeumannSparsityTypeSet
 
   PUBLIC BoundaryConditions_ConstrainNodeDofsEqual
+
+  PUBLIC BoundaryConditions_FieldVariableConditionGet,BoundaryConditions_FieldVariableConditionSet
 
 CONTAINS  
 
@@ -3451,6 +3463,83 @@ CONTAINS
   !================================================================================================================================
   !
 
+  !>Gets the type of field variable condition for boundary conditions. 
+  SUBROUTINE BoundaryConditions_FieldVariableConditionGet(boundaryConditions,field,variableType,condition,err,error,*)
+
+    !Argument variables
+    TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: boundaryConditions !<A pointer to the boundary conditions to get the field variable condition for
+    TYPE(FIELD_TYPE), POINTER :: field !<The field to get the condition for
+    INTEGER(INTG), INTENT(IN) :: variableType !<The field variable type to get the condition at
+    INTEGER(INTG), INTENT(OUT) :: condition !<On return, the field condition type \see BOUNDARY_CONDITIONS_ROUTINES_FieldVariableConditions,BOUNDARY_CONDITIONS_ROUTINES
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local variables
+
+    CALL ENTERS("BoundaryConditions_FieldVariableConditionGet",err,error,*999)
+
+    IF(ASSOCIATED(boundaryConditions)) THEN
+      CALL FIELD_VARIABLE_GET(field,variableType,fieldVariable,err,error,*999)
+      CALL BOUNDARY_CONDITIONS_VARIABLE_GET(boundaryConditions,fieldVariable,boundaryConditionsVariable,err,error,*999)
+      condition=boundaryConditionsVariable%variableConditionType
+    ELSE
+      CALL FlagError("Boundary conditions is not associated.",err,error,*999)
+    ENDIF
+    
+    CALL EXITS("BoundaryConditions_FieldVariableConditionGet")
+    RETURN
+999 CALL ERRORS("BoundaryConditions_FieldVariableConditionGet",err,error)
+    CALL EXITS("BoundaryConditions_FieldVariableConditionGet")
+    RETURN 1
+  END SUBROUTINE BoundaryConditions_FieldVariableConditionGet
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Sets the type of field variable condition for boundary conditions. 
+  SUBROUTINE BoundaryConditions_FieldVariableConditionSet(boundaryConditions,field,variableType,condition,err,error,*)
+
+    !Argument variables
+    TYPE(BOUNDARY_CONDITIONS_TYPE), POINTER :: boundaryConditions !<A pointer to the boundary conditions to set the field variable condition for
+    TYPE(FIELD_TYPE), POINTER :: field !<The field to set the condition for
+    INTEGER(INTG), INTENT(IN) :: variableType !<The field variable type to set the condition at
+    INTEGER(INTG), INTENT(IN) :: condition !<The field condition type to set \see BOUNDARY_CONDITIONS_ROUTINES_FieldVariableConditions,BOUNDARY_CONDITIONS_ROUTINES
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
+    !Local variables
+    TYPE(BOUNDARY_CONDITIONS_VARIABLE_TYPE), POINTER :: boundaryConditionsVariable
+    TYPE(FIELD_VARIABLE_TYPE), POINTER :: fieldVariable
+    TYPE(VARYING_STRING) :: localError
+
+    CALL ENTERS("BoundaryConditions_FieldVariableConditionSet",err,error,*999)
+
+    IF(ASSOCIATED(boundaryConditions)) THEN
+      CALL Field_VariableGet(field,variableType,fieldVariable,err,error,*999)
+      CALL BOUNDARY_CONDITIONS_VARIABLE_GET(boundaryConditions,fieldVariable,boundaryConditionsVariable,err,error,*999)
+      SELECT CASE(condition)
+      CASE(BOUNDARY_CONDITION_FIELD_VARIABLE_FREE)
+        boundaryConditionsVariable%variableConditionType=BOUNDARY_CONDITION_FIELD_VARIABLE_FREE
+      CASE(BOUNDARY_CONDITION_FIELD_VARIABLE_FIXED)
+        boundaryConditionsVariable%variableConditionType=BOUNDARY_CONDITION_FIELD_VARIABLE_FIXED
+      CASE DEFAULT
+        localError="The field variable condition type of "//TRIM(NumberToVString(condition,"*",err,error))//" is invalid."
+        CALL FlagError(localError,err,error,*999)
+      END SELECT
+    ELSE
+      CALL FlagError("Boundary conditions is not associated.",err,error,*999)
+    ENDIF
+  
+    CALL EXITS("BoundaryConditions_FieldVariableConditionSet")
+    RETURN
+999 CALL ERRORS("BoundaryConditions_FieldVariableConditionSet",err,error)
+    CALL EXITS("BoundaryConditions_FieldVariableConditionSet")
+    RETURN 1
+  END SUBROUTINE BoundaryConditions_FieldVariableConditionSet
+
+  !
+  !================================================================================================================================
+  !
+
   !>Finalise the boundary conditions variable and deallocate all memory.
   SUBROUTINE BOUNDARY_CONDITIONS_VARIABLE_FINALISE(BOUNDARY_CONDITIONS_VARIABLE,ERR,ERROR,*)
 
@@ -3584,6 +3673,7 @@ CONTAINS
             BOUNDARY_CONDITIONS_VARIABLE%BOUNDARY_CONDITIONS=>BOUNDARY_CONDITIONS
             BOUNDARY_CONDITIONS_VARIABLE%VARIABLE_TYPE=FIELD_VARIABLE%VARIABLE_TYPE
             BOUNDARY_CONDITIONS_VARIABLE%VARIABLE=>FIELD_VARIABLE
+            BOUNDARY_CONDITIONS_VARIABLE%variableConditionType=BOUNDARY_CONDITION_FIELD_VARIABLE_FREE
             ALLOCATE(BOUNDARY_CONDITIONS_VARIABLE%CONDITION_TYPES(VARIABLE_DOMAIN_MAPPING%NUMBER_OF_GLOBAL),STAT=ERR)
             IF(ERR/=0) CALL FLAG_ERROR("Could not allocate global boundary condition types.",ERR,ERROR,*999)
             ALLOCATE(BOUNDARY_CONDITIONS_VARIABLE%DOF_TYPES(VARIABLE_DOMAIN_MAPPING%NUMBER_OF_GLOBAL),STAT=ERR)
