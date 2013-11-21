@@ -1715,7 +1715,7 @@ END TYPE GENERATED_MESH_ELLIPSOID_TYPE
   !>important information and the allocate and process the data structures at create finish.
   TYPE EquationsMappingCreateValuesCacheType
     INTEGER(INTG) :: numberOfDynamicMatrixVariables !<The number of dynamic matrix variables in the equations mapping
-    INTEGER(INTG), ALLOCATABLE :: dynamicVariableTypes(:) !<dynamicsVariableTypes(variableIdx). The dependent variable type of the variableIdx'th dynamic variable.
+    INTEGER(INTG), ALLOCATABLE :: dynamicMatrixVariableTypes(:) !<dynamicMatrixVariableTypes(variableIdx). The dependent variable type of the variableIdx'th dynamic variable.
     INTEGER(INTG), ALLOCATABLE :: numberOfDynamicEquationsMatrices(:) !<numberOfDynamicEquationsMatrices(variableIdx). The number of dynamic matrices for the variableIdx'th dynamic variable in the equations mapping
     LOGICAL, ALLOCATABLE :: dynamicStiffnessMatrixNumbers(:) !<dynamicsStiffnessMatrixNumbers(variableIdx'th). .TRUE. if there is a dynamic stiffness matrix for the variableIdx'th dynamic variable, .FALSE. if not.
     LOGICAL, ALLOCATABLE :: dynamicDampingMatrixNumbers(:) !<dynamicDampingMatrixNumbers(variableIdx'th). .TRUE. if there is a dynamic damping matrix for the variableIdx'th dynamic variable, .FALSE. if not.
