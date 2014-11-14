@@ -1030,6 +1030,14 @@ MODULE OPENCMISS
 
   !Interfaces
 
+  !>Get the initial value of a CellML model variable.
+  INTERFACE CMISSCellML_VariableInitialValueGet
+    MODULE PROCEDURE CMISSCellML_VariableInitialValueGetNumberC
+    MODULE PROCEDURE CMISSCellML_VariableInitialValueGetObjC
+    MODULE PROCEDURE CMISSCellML_VariableInitialValueGetNumberVS
+    MODULE PROCEDURE CMISSCellML_VariableInitialValueGetObjVS
+  END INTERFACE CMISSCellML_VariableInitialValueGet
+
   !>Set a CellML model variable as being known (the value will be set from an OpenCMISS field)
   INTERFACE CMISSCellML_VariableSetAsKnown
     MODULE PROCEDURE CMISSCellML_VariableSetAsKnownNumberC
@@ -1187,6 +1195,8 @@ MODULE OPENCMISS
   END INTERFACE !CMISSCellML_Generate
 
   PUBLIC CMISS_CELLML_MODELS_FIELD,CMISS_CELLML_STATE_FIELD,CMISS_CELLML_INTERMEDIATE_FIELD,CMISS_CELLML_PARAMETERS_FIELD
+
+  PUBLIC CMISSCellML_VariableInitialValueGet
 
   PUBLIC CMISSCellML_VariableSetAsKnown,CMISSCellML_VariableSetAsWanted
 
@@ -12875,6 +12885,160 @@ CONTAINS
 !! CMISS_CELLML
 !!
 !!==================================================================================================================================
+
+  !>Gets the initial value of a CellML model variable specified by user number and a character string name.
+  SUBROUTINE CMISSCellML_VariableInitialValueGetNumberC(regionUserNumber,cellmlUserNumber,modelIdx,variableName, &
+    & value,err)
+
+    !Argument variables
+    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the CellML enviroment.
+    INTEGER(INTG), INTENT(IN) :: cellmlUserNumber !<The user number of the CellML enviroment.
+    INTEGER(INTG), INTENT(IN) :: modelIdx !<The index of the CellML model in which to find the given variable.
+    CHARACTER(LEN=*), INTENT(IN) :: variableName !<The CellML variable name to get the initial value for (in the format 'component_name/variable_name').
+    REAL(DP), INTENT(OUT) :: value !<On return, the initial value of the specied CellML model variable.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+    TYPE(CELLML_TYPE), POINTER :: cellml
+    TYPE(REGION_TYPE), POINTER :: region
+    TYPE(VARYING_STRING) :: localError
+
+    CALL Enters("CMISSCellML_VariableInitialValueGetNumberC",err,error,*999)
+
+    NULLIFY(region)
+    NULLIFY(cellml)
+    CALL REGION_USER_NUMBER_FIND(regionUserNumber,region,err,error,*999)
+    IF(ASSOCIATED(region)) THEN
+      CALL CELLML_USER_NUMBER_FIND(cellmlUserNumber,region,cellml,err,error,*999)
+      IF(ASSOCIATED(cellml)) THEN
+        CALL CellML_VariableInitialValueGet(cellml,modelIdx,variableName,value,err,error,*999)
+      ELSE
+        localError="A CellML environment with an user number of "//TRIM(NumberToVString(cellmlUserNumber,"*",err,error))// &
+          & " does not exist in region number "//TRIM(NumberToVString(regionUserNumber,"*",err,error))//"."
+        CALL FlagError(localError,err,error,*999)
+      END IF
+    ELSE
+      localError="A region with an user number of "//TRIM(NumberToVString(regionUserNumber,"*",err,error))// &
+        & " does not exist."
+      CALL FlagError(localError,err,error,*999)
+    END IF
+
+    CALL Exits("CMISSCellML_VariableInitialValueGetNumberC")
+    RETURN
+999 CALL Errors("CMISSCellML_VariableInitialValueGetNumberC",err,error)
+    CALL Exits("CMISSCellML_VariableInitialValueGetNumberC")
+    CALL CMISS_HANDLE_ERROR(err,error)
+    RETURN
+
+  END SUBROUTINE CMISSCellML_VariableInitialValueGetNumberC
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Gets the initial value of a CellML model variable specified by an object and a character string name.
+  SUBROUTINE CMISSCellML_VariableInitialValueGetObjC(cellml,modelIdx,variableName,VALUE,err)
+
+    !Argument variables
+    TYPE(CMISSCellMLType), INTENT(IN) :: cellml !<The CellML enviroment.
+    INTEGER(INTG), INTENT(IN) :: modelIdx !<The index of the CellML model in which to find the given variable.
+    CHARACTER(LEN=*), INTENT(IN) :: variableName !<The CellML variable name to get the initial value for (in the format 'component_name/variable_name').
+    REAL(DP), INTENT(OUT) :: value !<On return, the initial value of the specied CellML model variable.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+
+    CALL Enters("CMISSCellML_VariableInitialValueGetObjC",err,error,*999)
+
+    CALL CellML_VariableInitialValueGet(cellml%cellml,modelIdx,variableName,value,err,error,*999)
+
+    CALL Exits("CMISSCellML_VariableInitialValueGetObjC")
+    RETURN
+999 CALL Errors("CMISSCellML_VariableInitialValueGetObjC",err,error)
+    CALL Exits("CMISSCellML_VariableInitialValueGetObjC")
+    CALL CMISS_HANDLE_ERROR(err,error)
+    RETURN
+
+  END SUBROUTINE CMISSCellML_VariableInitialValueGetObjC
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Gets the initial value of a CellML model variable specified by user number and a varying string name.
+  SUBROUTINE CMISSCellML_VariableInitialValueGetNumberVS(regionUserNumber,cellmlUserNumber,modelIdx,variableName,VALUE,err)
+
+    !Argument variables
+    INTEGER(INTG), INTENT(IN) :: regionUserNumber !<The user number of the region containing the CellML enviroment.
+    INTEGER(INTG), INTENT(IN) :: cellmlUserNumber !<The user number of the CellML enviroment.
+    INTEGER(INTG), INTENT(IN) :: modelIdx !<The index of the CellML model in which to find the given variable.
+    TYPE(VARYING_STRING), INTENT(IN) :: variableName  !<The CellML variable name to get the initial value for (in the format 'component_name/variable_name').
+    REAL(DP), INTENT(OUT) :: value !<On return, the initial value of the specied CellML model variable.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+    TYPE(CELLML_TYPE), POINTER :: cellml
+    TYPE(REGION_TYPE), POINTER :: region
+    TYPE(VARYING_STRING) :: localError
+
+    CALL ENTERS("CMISSCellML_VariableInitialValueGetNumberVS",err,error,*999)
+
+    NULLIFY(region)
+    NULLIFY(cellml)
+    CALL REGION_USER_NUMBER_FIND(regionUserNumber,region,err,error,*999)
+    IF(ASSOCIATED(region)) THEN
+      CALL CELLML_USER_NUMBER_FIND(cellmlUserNumber,region,cellml,err,error,*999)
+      IF(ASSOCIATED(cellml)) THEN
+        CALL CellML_VariableInitialValueGet(cellml,modelIdx,variableName,value,err,error,*999)
+      ELSE
+        localError="A CellML environment with an user number of "//TRIM(NumberToVString(cellmlUserNumber,"*",err,error))// &
+          & " does not exist in region number "//TRIM(NumberToVstring(regionUserNumber,"*",err,error))//"."
+        CALL FlagError(localError,err,error,*999)
+      END IF
+    ELSE
+      localError="A region with an user number of "//TRIM(NumberToVString(regionUserNumber,"*",err,error))// &
+        & " does not exist."
+      CALL FlagError(localError,err,error,*999)
+    END IF
+
+    CALL Exits("CMISSCellML_VariableInitialValueGetNumberVS")
+    RETURN
+999 CALL Errors("CMISSCellML_VariableInitialValueGetNumberVS",err,error)
+    CALL Exits("CMISSCellML_VariableInitialValueGetNumberVS")
+    CALL CMISS_HANDLE_ERROR(err,error)
+    RETURN
+
+  END SUBROUTINE CMISSCellML_VariableInitialValueGetNumberVS
+
+  !
+  !================================================================================================================================
+  !
+
+  !>Gets the initial value of a CellML model variable specified by object and a varying string name.
+  !>Sets a CellML model variable to be known by object.
+  SUBROUTINE CMISSCellML_VariableInitialValueGetObjVS(cellml,modelIdx,variableName,VALUE,err)
+
+    !Argument variables
+    TYPE(CMISSCellMLType), INTENT(IN) :: cellml !<The CellML enviroment.
+    INTEGER(INTG), INTENT(IN) :: modelIdx  !<The index of the CellML model in which to find the given variable.
+    TYPE(VARYING_STRING), INTENT(IN) :: variableName !<The CellML variable name to get the initial value for (in the format 'component_name/variable_name').
+    REAL(DP), INTENT(OUT) :: value !<On return, the initial value of the specied CellML model variable.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    !Local variables
+
+    CALL Enters("CMISSCellML_VariableInitialValueGetObjVS",err,error,*999)
+
+    CALL CellML_VariableInitialValueGet(cellml%cellml,modelIdx,variableName,value,err,error,*999)
+
+    CALL Exits("CMISSCellML_VariableInitialValueGetObjVS")
+    RETURN
+999 CALL Errors("CMISSCellML_VariableInitialValueGetObjVS",err,error)
+    CALL Exits("CMISSCellML_VariableInitialValueGetObjVS")
+    CALL CMISS_HANDLE_ERROR(err,error)
+    RETURN
+
+  END SUBROUTINE CMISSCellML_VariableInitialValueGetObjVS
+
+  !
+  !================================================================================================================================
+  !
 
   !>Sets a CellML model variable to be known by user number.
   SUBROUTINE CMISSCellML_VariableSetAsKnownNumberC(regionUserNumber,CellMLUserNumber,CellMLModelUserNumber,variableID,err)

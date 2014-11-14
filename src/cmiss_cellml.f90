@@ -117,6 +117,11 @@ MODULE CMISS_CELLML
     MODULE PROCEDURE CELLML_MODEL_IMPORT_VS
   END INTERFACE !CELLML_MODEL_IMPORT
   
+  INTERFACE Cellml_VariableInitialValueGet
+    MODULE PROCEDURE Cellml_VariableInitialValueGetC
+    MODULE PROCEDURE Cellml_VariableInitialValueGetVS
+  END INTERFACE Cellml_VariableInitialValueGet
+
   INTERFACE CELLML_VARIABLE_SET_AS_KNOWN
     MODULE PROCEDURE CELLML_VARIABLE_SET_AS_KNOWN_C
     MODULE PROCEDURE CELLML_VARIABLE_SET_AS_KNOWN_VS
@@ -158,6 +163,8 @@ MODULE CMISS_CELLML
   
   PUBLIC CELLML_MODEL_IMPORT
 
+  PUBLIC Cellml_VariableInitialValueGet
+  
   PUBLIC CELLML_VARIABLE_SET_AS_KNOWN,CELLML_VARIABLE_SET_AS_WANTED
 
   PUBLIC CELLML_FIELD_MAPS_CREATE_START,CELLML_FIELD_MAPS_CREATE_FINISH
@@ -1866,6 +1873,111 @@ CONTAINS
     CALL EXITS("CELLML_VARIABLE_SET_AS_KNOWN_C")
     RETURN 1
   END SUBROUTINE CELLML_VARIABLE_SET_AS_KNOWN_C
+
+  !
+  !=================================================================================================================================
+  !
+
+  !>Gets the initial value of a CellML variable specified by a character name
+  SUBROUTINE CellML_VariableInitialValueGetC(cellml,modelIdx,variableName,VALUE,err,error,*)
+
+    !Argument variables
+    TYPE(CELLML_TYPE), POINTER :: cellml !<The CellML environment object in which to get the initial value of a model variable.
+    INTEGER(INTG), INTENT(IN) :: modelIdx !<The index of the CellML model in which to find the initial value of the given variable.
+    CHARACTER(LEN=*), INTENT(IN) :: variableName !<The name of the CellML variable to get the initial value for (in the format 'component_name/variable_name').
+    REAL(DP), INTENT(OUT) :: value !<On return, the initial value of the specified CellML model variable.
+    INTEGER(INTG), INTENT(OUT) :: ERR !<The error code.
+    TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string.
+    !Local variables
+    CHARACTER(LEN=MAXSTRLEN) :: cName
+    INTEGER(INTG) :: cNameL
+    INTEGER(C_INT) :: errorCode
+    TYPE(CELLML_MODEL_TYPE), POINTER :: cellmlModel
+    TYPE(VARYING_STRING) :: localError
+
+    CALL Enters("CellML_VariableInitialValueGetC",err,error,*999)
+
+#ifdef USECELLML
+
+    IF(ASSOCIATED(cellml)) THEN
+      IF(.NOT.cellml%CELLML_FINISHED) THEN
+        CALL FlagError("CellML environment has not been finished.",err,error,*999)
+      ELSE
+        IF(modelIdx>0.AND.modelIdx<=cellml%NUMBER_OF_MODELS) THEN
+          cellmlModel=>cellml%models(modelIdx)%ptr
+          IF(ASSOCIATED(cellmlModel)) THEN
+            !All input arguments are ok.
+            cNameL = LEN_TRIM(variableName)
+            WRITE(cName,'(A,A)') variableName(1:cNameL),C_NULL_CHAR
+            errorCode = CELLML_MODEL_DEFINITION_GET_INITIAL_VALUE(cellmlModel%ptr,cName,value)
+            IF(errorCode /= 0) THEN
+              localError="Cannot get the initial value for variable "//TRIM(variableName(1:cNameL))// &
+                & ". Error code "//TRIM(NumberToVstring(errorCode,"*",err,error))//"."
+              CALL FlagError(localError,err,error,*999)
+            ENDIF
+          ELSE
+            CALL FlagError("CellML model is not associated.",err,error,*999)
+          ENDIF
+        ELSE
+          localError="The specified model index of "//TRIM(NumberToVString(modelIdx,"*",err,error))// &
+            & " is invalid. The modex index should be >= 1 and <= "// &
+            & TRIM(NumberToVstring(cellml%NUMBER_OF_MODELS,"*",err,error))//"."
+          CALL FlagError(localError,err,error,*999)
+        ENDIF
+      ENDIF
+    ELSE
+      CALL FlagError("The CellML environment is not associated.",err,error,*999)
+    ENDIF
+
+#else
+
+    CALL FlagError("Must compile with USECELLML=true to use CellML functionality.",err,error,*999)
+
+#endif
+
+    CALL Exits("CellML_VariableInitialValueGetC")
+    RETURN
+999 CALL Errors("CellML_VariableInitialValueGetC",err,error)
+    CALL Exits("CellML_VariableInitialValueGetC")
+    RETURN 1
+    
+  END SUBROUTINE CellML_VariableInitialValueGetC
+
+  !
+  !=================================================================================================================================
+  !
+
+  !>Gets the initial value of a CellML variable specified by a varying string name
+  SUBROUTINE CellML_VariableInitialValueGetVS(cellml,modelIdx,variableName,value,err,error,*)
+
+    !Argument variables
+    TYPE(CELLML_TYPE), POINTER :: cellml !<The CellML environment object in which to get the initial value of a model variable.
+    INTEGER(INTG), INTENT(IN) :: modelIdx !<The index of the CellML model in which to find the initial value of the given variable.
+    TYPE(VARYING_STRING), INTENT(IN) :: variableName !<The name of the CellML variable to get the initial value for (in the format 'component_name/variable_name').
+    REAL(DP), INTENT(OUT) :: value !<On return, the initial value of the specified CellML model variable.
+    INTEGER(INTG), INTENT(OUT) :: err !<The error code.
+    TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string.
+    !Local variables
+
+    CALL Enters("CellML_VariableInitialValueGetVS",err,error,*999)
+
+#ifdef USECELLML
+
+    CALL CellML_VariableInitialValueGet(cellml,modelIdx,CHAR(variableName),value,err,error,*999)
+
+#else
+
+    CALL FlagError("Must compile with USECELLML=true to use CellML functionality.",err,error,*999)
+
+#endif
+
+    CALL Exits("CellML_VariableInitialValueGetVS")
+    RETURN
+999 CALL Errors("CellML_VariableInitialValueGetVS",err,error)
+    CALL Exits("CellML_VariableInitialValueGetVS")
+    RETURN 1
+    
+  END SUBROUTINE CellML_VariableInitialValueGetVS
 
   !
   !=================================================================================================================================
