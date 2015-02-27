@@ -9689,11 +9689,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
-    INTEGER(INTG) :: meshComponentNumber,meshNumber
-    TYPE(MESH_TYPE), POINTER :: mesh
-    TYPE(MeshComponentTopologyType), POINTER :: meshComponentTopology
-    TYPE(VARYING_STRING) :: localError
-
+ 
     CALL Enters("MeshTopologyNodesNumberOfNodesGet",err,error,*999)
 
     IF(ASSOCIATED(meshNodes)) THEN

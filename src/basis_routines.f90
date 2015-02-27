@@ -1473,10 +1473,10 @@ CONTAINS
     !Local Variables
     INTEGER(INTG) :: maximumNumberOfNodes,numberOfDerivatives,xiIdx,xiIdx1,xiIdx2,xiIdx3,derivativeIdx,localNode,localLineNodeIdx, &
       & elementParameter,oldNumberOfDerivatives,position(4),maximumNodeExtent(3),collapsedXi(3),numberOfNodes,numberOfLocalLines, &
-      & nodeCount,specialNodeCount,nodesInLine(4),numberOfLocalFaces,localFaceIdx,localNodeIdx,localNodeIdx1, &
+      & nodeCount,specialNodeCount,nodesInLine(4),numberOfLocalFaces,localFaceIdx,localNode1,localNodeIdx,localNodeIdx1, &
       & localNodeIdx2,localNodeIdx3,directionIdx,localFaceDerivative,localNodeCount,localLineParameter,localFaceParameter
     LOGICAL, ALLOCATABLE :: nodeAtCollapse(:)
-    LOGICAL :: atCollapse,collapsedFace,firstCollapsedPosition,processNode
+    LOGICAL :: atCollapse,collapsedFace,firstCollapsedPosition,processNode,specialEdge
     
     CALL Enters("Basis_LHTPBasisCreate",ERR,error,*999)
 
@@ -1615,8 +1615,8 @@ CONTAINS
           IF(processNode) THEN
             localNode=localNode+1
             basis%NODE_POSITION_INDEX(localNode,:)=position(1:basis%NUMBER_OF_XI)
-            !!Should the inverse of the node position index be adjusted so that the collapsed positions point to the collapsed localNode?
-            !!At the moment this is not the case and they are just set to zero.
+            !!Should the inverse of the node position index be adjusted so that the collapsed positions point to the collapsed
+            !!localNode? At the moment this is not the case and they are just set to zero.
             SELECT CASE(basis%NUMBER_OF_XI)
             CASE(1)
               basis%NODE_POSITION_INDEX_INV(basis%NODE_POSITION_INDEX(localNode,1),1,1,1)=localNode
@@ -1628,19 +1628,6 @@ CONTAINS
                 & basis%NODE_POSITION_INDEX(localNode,3),1)=localNode
             CASE DEFAULT
               CALL FlagError("Invalid number of xi directions.",err,error,*999)
-            END SELECT
-          ELSEIF (atCollapse.AND.(.NOT.firstCollapsedPosition)) THEN
-            !The second node in the collapsed xi is set to the same node number as the first node. 
-            basis%NODE_POSITION_INDEX(localNode,:)=position(1:basis%NUMBER_OF_XI)
-            SELECT CASE(basis%NUMBER_OF_XI)
-            CASE(1)
-              basis%NODE_POSITION_INDEX_INV(basis%NODE_POSITION_INDEX(localNode,1),1,1,1)=localNode
-            CASE(2)
-              basis%NODE_POSITION_INDEX_INV(basis%NODE_POSITION_INDEX(localNode,1),basis%NODE_POSITION_INDEX(localNode,2),1,1)= &
-                & localNode
-            CASE(3)
-              basis%NODE_POSITION_INDEX_INV(basis%NODE_POSITION_INDEX(localNode,1),basis%NODE_POSITION_INDEX(localNode,2), &
-                & basis%NODE_POSITION_INDEX(localNode,3),1)=localNode
             END SELECT
           ENDIF
           position(1)=position(1)+1
@@ -2194,7 +2181,7 @@ CONTAINS
               ELSE
                 !The -'ve xi direction
                 localNodeIdx1=1
-                !Compute if the face in the +xiIdx1 direction is collapsed.
+                !Compute if the face in the -xiIdx1 direction is collapsed.
                 collapsedFace=basis%COLLAPSED_XI(xiIdx1)==BASIS_COLLAPSED_AT_XI0
               ENDIF
               localNodeCount=0
@@ -2203,13 +2190,40 @@ CONTAINS
                 localFaceIdx=localFaceIdx+1
                 !Loop over the local nodes in the face
                 DO localNodeIdx3=1,maximumNodeExtent(xiIdx2)
+                  specialEdge=.FALSE.
+                  IF((basis%COLLAPSED_XI(xiIdx1)==BASIS_XI_COLLAPSED).AND. &
+                    & (basis%COLLAPSED_XI(xiIdx2)==BASIS_COLLAPSED_AT_XI0).AND. &
+                    & localNodeIdx3==1) THEN
+                    localNode1=1
+                    specialEdge=.TRUE.
+                  ELSE IF((basis%COLLAPSED_XI(xiIdx1)==BASIS_XI_COLLAPSED).AND. &
+                    & (basis%COLLAPSED_XI(xiIdx2)==BASIS_COLLAPSED_AT_XI1).AND. &
+                    & localNodeIdx3==maximumNodeExtent(xiIdx2)) THEN
+                    localNode1=maximumNodeExtent(xiIdx1)
+                    specialEdge=.TRUE.
+                  ELSE
+                    localNode1=localNodeIdx1
+                  ENDIF
                   DO localNodeIdx2=1,maximumNodeExtent(xiIdx3)
+                    IF(.NOT.specialEdge) THEN
+                      IF((basis%COLLAPSED_XI(xiIdx1)==BASIS_XI_COLLAPSED).AND. &
+                        & (basis%COLLAPSED_XI(xiIdx3)==BASIS_COLLAPSED_AT_XI0).AND. &
+                        & localNodeIdx2==1) THEN
+                        localNode1=1
+                      ELSE IF((basis%COLLAPSED_XI(xiIdx1)==BASIS_XI_COLLAPSED).AND. &
+                        (basis%COLLAPSED_XI(xiIdx3)==BASIS_COLLAPSED_AT_XI1).AND. &
+                        & localNodeIdx2==maximumNodeExtent(xiIdx3)) THEN
+                        localNode1=maximumNodeExtent(xiIdx1)
+                      ELSE
+                        localNode1=localNodeIdx1
+                      ENDIF
+                    ENDIF
                     IF(xiIdx1==1) THEN
-                      localNodeIdx=basis%NODE_POSITION_INDEX_INV(localNodeIdx1,localNodeIdx2,localNodeIdx3,1)
+                      localNodeIdx=basis%NODE_POSITION_INDEX_INV(localNode1,localNodeIdx2,localNodeIdx3,1)
                     ELSE IF(xiIdx1==2) THEN
-                      localNodeIdx=basis%NODE_POSITION_INDEX_INV(localNodeIdx2,localNodeIdx1,localNodeIdx3,1)
+                      localNodeIdx=basis%NODE_POSITION_INDEX_INV(localNodeIdx2,localNode1,localNodeIdx3,1)
                     ELSE
-                      localNodeIdx=basis%NODE_POSITION_INDEX_INV(localNodeIdx2,localNodeIdx3,localNodeIdx1,1)
+                      localNodeIdx=basis%NODE_POSITION_INDEX_INV(localNodeIdx2,localNodeIdx3,localNode1,1)
                     ENDIF
                     IF(localNodeIdx/=0) THEN
                       !The node hasn't been collapsed
