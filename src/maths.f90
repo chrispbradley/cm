@@ -41,6 +41,8 @@
 !> the terms of any one of the MPL, the GPL or the LGPL.
 !>
 
+#include "macros.h"
+
 !> This module contains all mathematics support routines.
 MODULE MATHS
 
@@ -242,7 +244,7 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     !Local variables
     
-    CALL ENTERS("CROSS_PRODUCT_INTG",ERR,ERROR,*999)
+ENTERS("CROSS_PRODUCT_INTG",ERR,ERROR,*999)
 
     IF(SIZE(A,1)==SIZE(B,1)) THEN
       IF(SIZE(C,1)==3) THEN
@@ -261,11 +263,9 @@ CONTAINS
       CALL FLAG_ERROR("The vectors A and B are not the same size",ERR,ERROR,*999)
     ENDIF
 
-    CALL EXITS("CROSS_PRODUCT_INTG")
-    RETURN
-999 CALL ERRORS("CROSS_PRODUCT_INTG",ERR,ERROR)
-    CALL EXITS("CROSS_PRODUCT_INTG")
-    RETURN 1
+EXITS("CROSS_PRODUCT_INTG")
+ERROREXITS(999,"CROSS_PRODUCT_INTG",ERR,ERROR)
+
   END SUBROUTINE CROSS_PRODUCT_INTG
   
   !
