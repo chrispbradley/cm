@@ -23,7 +23,7 @@
  * Kingdom and King's College, London, United Kingdom. Portions created
  * by the University of Auckland, the University of Oxford and King's
  * College, London are Copyright (C) 2007-2010 by the University of
- * Auckland, the University of Oxford and King's College, London.
+ * Auckland, and the University of Oxford.
  * All Rights Reserved.
  *
  * Contributor(s):
@@ -50,23 +50,20 @@
 #ifdef ENTERSEXITS
 
 #define ENTERS(routinename,err,error,linenum) \
-    CALL Enters("#routinename",err,error,*linenum)
+    CALL Enters(routinename,err,error,linenum)
 
 #define EXITS(routinename) \
-    CALL Exits("#routinename") \
-    RETURN
+    CALL Exits(routinename); RETURN
 
-#define ERROREXITS(linenum,routinename,err,error) \
-linenum CALL Errors("#routinename",err,error) \
-    CALL Exits("#routinename") \
-    RETURN 1
+#define ERRORSEXITS(routinename,err,error,returncode) \
+   CALL Errors(routinename,err,error); CALL Exits(routinename); RETURN returncode
 
 #else
 
 #define ENTERS(routinename,err,error,linenum) 
 
-#define EXITS(routinename) 
+#define EXITS(routinename) RETURN
 
-#define ERROREXITS(linenum,routinename,err,error)
+#define ERRORSEXITS(routinename,err,error,returncode) RETURN returncode
 
 #endif
