@@ -169,10 +169,10 @@ CONTAINS
       IF(DATA_PROJECTION%DATA_PROJECTION_FINISHED) THEN
         ABSOLUTE_TOLERANCE=DATA_PROJECTION%ABSOLUTE_TOLERANCE       
       ELSE
-        CALL FLAG_ERROR("Data projection have not been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data projection have not been finished.",ERR,ERROR,*999)
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
     
     EXITS("DATA_PROJECTION_ABSOLUTE_TOLERANCE_GET")
@@ -200,16 +200,16 @@ CONTAINS
 
     IF(ASSOCIATED(DATA_PROJECTION)) THEN
       IF(DATA_PROJECTION%DATA_PROJECTION_FINISHED) THEN
-        CALL FLAG_ERROR("Data projection have been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data projection have been finished.",ERR,ERROR,*999)
       ELSE      
         IF(ABSOLUTE_TOLERANCE>=0) THEN
           DATA_PROJECTION%ABSOLUTE_TOLERANCE=ABSOLUTE_TOLERANCE
         ELSE
-          CALL FLAG_ERROR("Data projection absolute tolerance must be a positive real number.",ERR,ERROR,*999)
+          CALL FlagError("Data projection absolute tolerance must be a positive real number.",ERR,ERROR,*999)
         ENDIF
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
     
     EXITS("DATA_PROJECTION_ABSOLUTE_TOLERANCE_SET")
@@ -304,10 +304,10 @@ CONTAINS
         ENDDO
         !CLOSEST_DISTANCES=SQRT(CLOSEST_DISTANCES) !return shortest distances
       ELSE
-        CALL FLAG_ERROR("Data projection have not been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data projection have not been finished.",ERR,ERROR,*999)
       ENDIF    
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
     
     EXITS("DATA_PROJECTION_CLOSEST_ELEMENTS_FIND")
@@ -413,10 +413,10 @@ CONTAINS
         ENDDO
         !CLOSEST_DISTANCES=SQRT(CLOSEST_DISTANCES) !return shortest distances
       ELSE
-        CALL FLAG_ERROR("Data projection have not been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data projection have not been finished.",ERR,ERROR,*999)
       ENDIF    
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
     
     EXITS("DATA_PROJECTION_CLOSEST_FACES_FIND")
@@ -522,10 +522,10 @@ CONTAINS
         ENDDO
         !CLOSEST_DISTANCES=SQRT(CLOSEST_DISTANCES) !return shortest distances
       ELSE
-        CALL FLAG_ERROR("Data projection have not been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data projection have not been finished.",ERR,ERROR,*999)
       ENDIF    
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
     
     EXITS("DATA_PROJECTION_CLOSEST_LINES_FIND")
@@ -555,23 +555,23 @@ CONTAINS
         IF(DATA_PROJECTION%DATA_POINTS%DATA_POINTS_FINISHED) THEN !Has to be finished
           IF(ASSOCIATED(DATA_PROJECTION%MESH)) THEN !Has to be associated
             IF(DATA_PROJECTION%DATA_PROJECTION_FINISHED) THEN !Cannot be finished
-              CALL FLAG_ERROR("Data projection have already been finished.",ERR,ERROR,*999)
+              CALL FlagError("Data projection have already been finished.",ERR,ERROR,*999)
             ELSE
               DATA_PROJECTION%DATA_PROJECTION_FINISHED=.TRUE.
               CALL DataProjection_DataProjectionResultInitialise(DATA_PROJECTION,ERR,ERROR, &
                 & *999) !<Initialise data projection part in data points
             ENDIF         
           ELSE
-            CALL FLAG_ERROR("Data projection mesh is not associated.",ERR,ERROR,*999)
+            CALL FlagError("Data projection mesh is not associated.",ERR,ERROR,*999)
           ENDIF
         ELSE
-          CALL FLAG_ERROR("Data projection data points have not been finished.",ERR,ERROR,*999)
+          CALL FlagError("Data projection data points have not been finished.",ERR,ERROR,*999)
         ENDIF     
       ELSE
-        CALL FLAG_ERROR("Data projection data points is not associated.",ERR,ERROR,*999)
+        CALL FlagError("Data projection data points is not associated.",ERR,ERROR,*999)
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
     
     EXITS("DATA_PROJECTION_CREATE_FINISH")
@@ -607,25 +607,25 @@ CONTAINS
       IF(DATA_POINTS%DATA_POINTS_FINISHED) THEN !Has to be finished
         IF(ASSOCIATED(MESH)) THEN !Has to be associated
           IF(ASSOCIATED(DATA_PROJECTION)) THEN !Cannot be associated
-            CALL FLAG_ERROR("Data projection is already associated.",ERR,ERROR,*999)
+            CALL FlagError("Data projection is already associated.",ERR,ERROR,*999)
           ELSE
             IF(ASSOCIATED(DATA_POINTS%REGION)) THEN
               DATA_POINTS_REGION_DIMENSIONS=DATA_POINTS%REGION%COORDINATE_SYSTEM%NUMBER_OF_DIMENSIONS
             ELSEIF(ASSOCIATED(DATA_POINTS%INTERFACE)) THEN
               DATA_POINTS_REGION_DIMENSIONS=DATA_POINTS%INTERFACE%COORDINATE_SYSTEM%NUMBER_OF_DIMENSIONS
             ELSE
-              CALL FLAG_ERROR("Data points is not associated with a region or a interface.",ERR,ERROR,*999)
+              CALL FlagError("Data points is not associated with a region or a interface.",ERR,ERROR,*999)
             ENDIF
             IF(ASSOCIATED(MESH%REGION)) THEN
               MESH_REGION_DIMENSIONS=MESH%REGION%COORDINATE_SYSTEM%NUMBER_OF_DIMENSIONS
             ELSEIF(ASSOCIATED(MESH%INTERFACE)) THEN
               MESH_REGION_DIMENSIONS=MESH%INTERFACE%COORDINATE_SYSTEM%NUMBER_OF_DIMENSIONS
             ELSE
-              CALL FLAG_ERROR("Mesh is not associated with a region or a interface.",ERR,ERROR,*999)
+              CALL FlagError("Mesh is not associated with a region or a interface.",ERR,ERROR,*999)
             ENDIF
             IF(DATA_POINTS_REGION_DIMENSIONS==MESH_REGION_DIMENSIONS) THEN !Dimension has to be equal
               ALLOCATE(DATA_PROJECTION,STAT=ERR)
-              IF(ERR/=0) CALL FLAG_ERROR("Could not allocate data projection.",ERR,ERROR,*999)
+              IF(ERR/=0) CALL FlagError("Could not allocate data projection.",ERR,ERROR,*999)
               DATA_PROJECTION%USER_NUMBER=DATA_PROJECTION_USER_NUMBER
               DATA_PROJECTION%LABEL=""
               CALL TREE_ITEM_INSERT(DATA_POINTS%DATA_PROJECTIONS_TREE,DATA_PROJECTION_USER_NUMBER, &
@@ -649,7 +649,7 @@ CONTAINS
                   DATA_PROJECTION%NUMBER_OF_XI=2
                   DATA_PROJECTION%PROJECTION_TYPE=DATA_PROJECTION_BOUNDARY_FACES_PROJECTION_TYPE
                 CASE DEFAULT
-                  CALL FLAG_ERROR("Mesh dimensions out of bond [1,3].",ERR,ERROR,*999)
+                  CALL FlagError("Mesh dimensions out of bond [1,3].",ERR,ERROR,*999)
                 END SELECT
               ENDIF
               SELECT CASE(DATA_PROJECTION%NUMBER_OF_XI) !mesh dimension = data dimension
@@ -660,10 +660,10 @@ CONTAINS
               CASE (3)
                 DATA_PROJECTION%NUMBER_OF_CLOSEST_ELEMENTS=8
               CASE DEFAULT
-                CALL FLAG_ERROR("Mesh dimensions out of bond [1,3].",ERR,ERROR,*999)
+                CALL FlagError("Mesh dimensions out of bond [1,3].",ERR,ERROR,*999)
               END SELECT 
               ALLOCATE(DATA_PROJECTION%STARTING_XI(DATA_PROJECTION%NUMBER_OF_XI),STAT=ERR)
-              IF(ERR/=0) CALL FLAG_ERROR("Could not allocate data points data projection starting xi.",ERR,ERROR,*999)
+              IF(ERR/=0) CALL FlagError("Could not allocate data points data projection starting xi.",ERR,ERROR,*999)
               DO xi_idx=1,DATA_PROJECTION%NUMBER_OF_XI
                 DATA_PROJECTION%STARTING_XI(xi_idx)=0.5_DP !<initialised to 0.5 in each xi direction
               ENDDO !xi_idx              
@@ -671,15 +671,15 @@ CONTAINS
               DATA_PROJECTION%RELATIVE_TOLERANCE=1.0E-6_DP
               IF(DATA_POINTS%NUMBER_OF_DATA_PROJECTIONS>0) THEN
                 ALLOCATE(NEW_DATA_PROJECTIONS_PTR(DATA_POINTS%NUMBER_OF_DATA_PROJECTIONS+1),STAT=ERR)
-                IF(ERR/=0) CALL FLAG_ERROR("Could not allocate new data projections.",ERR,ERROR,*999)
+                IF(ERR/=0) CALL FlagError("Could not allocate new data projections.",ERR,ERROR,*999)
                 DO data_projection_idx=1,DATA_POINTS%NUMBER_OF_DATA_PROJECTIONS
                   NEW_DATA_PROJECTIONS_PTR(data_projection_idx)%PTR=>DATA_POINTS%DATA_PROJECTIONS(data_projection_idx)%PTR
                 ENDDO !xi_idx
               ELSE IF(DATA_POINTS%NUMBER_OF_DATA_PROJECTIONS==0) THEN
                 ALLOCATE(NEW_DATA_PROJECTIONS_PTR(DATA_POINTS%NUMBER_OF_DATA_PROJECTIONS+1),STAT=ERR)
-                IF(ERR/=0) CALL FLAG_ERROR("Could not allocate new data projections.",ERR,ERROR,*999)
+                IF(ERR/=0) CALL FlagError("Could not allocate new data projections.",ERR,ERROR,*999)
               ELSE
-                CALL FLAG_ERROR("The number of data projections is < 0.",ERR,ERROR,*999)
+                CALL FlagError("The number of data projections is < 0.",ERR,ERROR,*999)
               ENDIF
               !Return the pointer
               NEW_DATA_PROJECTIONS_PTR(DATA_POINTS%NUMBER_OF_DATA_PROJECTIONS+1)%PTR=>DATA_PROJECTION
@@ -687,18 +687,18 @@ CONTAINS
               DATA_POINTS%NUMBER_OF_DATA_PROJECTIONS=DATA_POINTS%NUMBER_OF_DATA_PROJECTIONS+1
               DATA_PROJECTION%GLOBAL_NUMBER=DATA_POINTS%NUMBER_OF_DATA_PROJECTIONS
             ELSE
-              CALL FLAG_ERROR("Dimensions bewtween the mesh region/interface and data points region/interface does not match.", &
+              CALL FlagError("Dimensions bewtween the mesh region/interface and data points region/interface does not match.", &
                 & ERR,ERROR,*999)        
             ENDIF !DATA_POINTS_REGION_DIMENSIONS==MESH_REGION_DIMENSIONS
           ENDIF !ASSOCIATED(DATA_PROJECTION)
         ELSE
-          CALL FLAG_ERROR("Mesh is not associated.",ERR,ERROR,*999)
+          CALL FlagError("Mesh is not associated.",ERR,ERROR,*999)
         ENDIF !ASSOCIATED(MESH)
       ELSE
-        CALL FLAG_ERROR("Data points have not been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data points have not been finished.",ERR,ERROR,*999)
       ENDIF !DATA_POINTS%DATA_POINTS_FINISHED
     ELSE
-      CALL FLAG_ERROR("Data points is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data points is not associated.",ERR,ERROR,*999)
     ENDIF !ASSOCIATED(DATA_POINTS)
     
     EXITS("DATA_PROJECTION_CREATE_START_DATA_POINTS")
@@ -740,10 +740,10 @@ CONTAINS
           dataPointExist=.TRUE.
         ENDIF
       ELSE
-        CALL FLAG_ERROR("Data points is not associated.",err,error,*999)
+        CALL FlagError("Data points is not associated.",err,error,*999)
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",err,error,*999)
+      CALL FlagError("Data projection is not associated.",err,error,*999)
     ENDIF
 
     EXITS("DataProjection_DataPointCheckExist")
@@ -777,7 +777,7 @@ CONTAINS
           IF(DATA_PROJECTION%DATA_POINTS%DATA_POINTS_FINISHED) THEN
             NUMBER_OF_DATA_POINTS = DATA_PROJECTION%DATA_POINTS%NUMBER_OF_DATA_POINTS
             ALLOCATE(DATA_PROJECTION%DATA_PROJECTION_RESULTS(NUMBER_OF_DATA_POINTS),STAT=ERR)
-            IF(ERR/=0) CALL FLAG_ERROR("Could not allocate data projection data projection results.",ERR,ERROR,*999)
+            IF(ERR/=0) CALL FlagError("Could not allocate data projection data projection results.",ERR,ERROR,*999)
             DO data_point_idx=1,NUMBER_OF_DATA_POINTS
               DATA_PROJECTION%DATA_PROJECTION_RESULTS(data_point_idx)%USER_NUMBER=DATA_PROJECTION%DATA_POINTS%DATA_POINTS( &
                 & data_point_idx)%USER_NUMBER
@@ -787,22 +787,22 @@ CONTAINS
               DATA_PROJECTION%DATA_PROJECTION_RESULTS(data_point_idx)%ELEMENT_LINE_NUMBER=0
               DATA_PROJECTION%DATA_PROJECTION_RESULTS(data_point_idx)%EXIT_TAG=DATA_PROJECTION_EXIT_TAG_NO_ELEMENT
               ALLOCATE(DATA_PROJECTION%DATA_PROJECTION_RESULTS(data_point_idx)%XI(DATA_PROJECTION%NUMBER_OF_XI),STAT=ERR)
-              IF(ERR/=0) CALL FLAG_ERROR("Could not allocate data projection data projection results "// &
+              IF(ERR/=0) CALL FlagError("Could not allocate data projection data projection results "// &
                 & "("//TRIM(NUMBER_TO_VSTRING (data_point_idx,"*",ERR,ERROR))//") xi.",ERR,ERROR,*999)
               DATA_PROJECTION%DATA_PROJECTION_RESULTS(data_point_idx)%XI(1:DATA_PROJECTION%NUMBER_OF_XI)= &
                 & DATA_PROJECTION%STARTING_XI(1:DATA_PROJECTION%NUMBER_OF_XI)
             ENDDO !data_point_idx
           ELSE
-            CALL FLAG_ERROR("Data projection data points have not been finished.",ERR,ERROR,*999)
+            CALL FlagError("Data projection data points have not been finished.",ERR,ERROR,*999)
           ENDIF
         ELSE
-          CALL FLAG_ERROR("Data projection data points is not associated.",ERR,ERROR,*999)
+          CALL FlagError("Data projection data points is not associated.",ERR,ERROR,*999)
         ENDIF
       ELSE
-        CALL FLAG_ERROR("Data projection have not been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data projection have not been finished.",ERR,ERROR,*999)
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
     
     EXITS("DataProjection_DataProjectionResultInitialise")
@@ -831,7 +831,7 @@ CONTAINS
     IF(ASSOCIATED(DATA_PROJECTION)) THEN
       CALL DATA_PROJECTION_FINALISE(DATA_PROJECTION,ERR,ERROR,*999)
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
     
     EXITS("DATA_PROJECTION_DESTROY")
@@ -877,7 +877,7 @@ CONTAINS
       ENDIF
       DEALLOCATE(DATA_PROJECTION)
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
     
     EXITS("DATA_PROJECTION_FINALISE")
@@ -917,13 +917,13 @@ CONTAINS
         ELSE
           LOCAL_ERROR="Tree node is not associates (cannot find the user number "//TRIM(NUMBER_TO_VSTRING(USER_NUMBER,"*",ERR, &
             & ERROR))//"."
-          CALL FLAG_ERROR(LOCAL_ERROR,ERR,ERROR,*999)
+          CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
         ENDIF
       ELSE
-        CALL FLAG_ERROR("Data points is not associated.",ERR,ERROR,*999)
+        CALL FlagError("Data points is not associated.",ERR,ERROR,*999)
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
     
     EXITS("DataProjection_DataPointGlobalNumberGet")
@@ -1016,9 +1016,9 @@ CONTAINS
                 SELECT CASE(DATA_PROJECTION%PROJECTION_TYPE)
                 CASE (DATA_PROJECTION_BOUNDARY_LINES_PROJECTION_TYPE)  !identify all non-ghost boundary lines
                   ALLOCATE(CANDIDATE_ELEMENTS(NUMBER_OF_LINES),STAT=ERR)
-                  IF(ERR/=0) CALL FLAG_ERROR("Could not allocate candidate elements.",ERR,ERROR,*999)
+                  IF(ERR/=0) CALL FlagError("Could not allocate candidate elements.",ERR,ERROR,*999)
                   ALLOCATE(CANDIDATE_FACES(NUMBER_OF_LINES),STAT=ERR)
-                  IF(ERR/=0) CALL FLAG_ERROR("Could not allocate candidate lines.",ERR,ERROR,*999)
+                  IF(ERR/=0) CALL FlagError("Could not allocate candidate lines.",ERR,ERROR,*999)
                   DO ne=1,SIZE(DATA_PROJECTION%candidateElementNumbers,1) !Loop through all candidate element defined by user number
                     CALL DECOMPOSITION_TOPOLOGY_ELEMENT_CHECK_EXISTS(DECOMPOSITION%TOPOLOGY,DATA_PROJECTION% &
                       & candidateElementNumbers(ne),elementExists,localElementNumber,ghostElement,ERR,ERROR,*999) !Check if element exists on current domain, get local number
@@ -1031,9 +1031,9 @@ CONTAINS
                 CASE (DATA_PROJECTION_BOUNDARY_FACES_PROJECTION_TYPE) !identify all non-ghost boundary faces
                   IF(DECOMPOSITION%MESH%NUMBER_OF_DIMENSIONS>=2) THEN
                     ALLOCATE(CANDIDATE_ELEMENTS(NUMBER_OF_FACES),STAT=ERR)
-                    IF(ERR/=0) CALL FLAG_ERROR("Could not allocate candidate elements.",ERR,ERROR,*999)
+                    IF(ERR/=0) CALL FlagError("Could not allocate candidate elements.",ERR,ERROR,*999)
                     ALLOCATE(CANDIDATE_FACES(NUMBER_OF_FACES),STAT=ERR)
-                    IF(ERR/=0) CALL FLAG_ERROR("Could not allocate candidate faces.",ERR,ERROR,*999)
+                    IF(ERR/=0) CALL FlagError("Could not allocate candidate faces.",ERR,ERROR,*999)
                     DO ne=1,SIZE(DATA_PROJECTION%candidateElementNumbers,1) !Loop through all candidate element defined by user number
                       CALL DECOMPOSITION_TOPOLOGY_ELEMENT_CHECK_EXISTS(DECOMPOSITION%TOPOLOGY,DATA_PROJECTION% &
                         & candidateElementNumbers(ne),elementExists,localElementNumber,ghostElement,ERR,ERROR,*999) !Check if element exists on current domain, get local number
@@ -1044,12 +1044,12 @@ CONTAINS
                       ENDIF
                     ENDDO !ne
                   ELSE
-                    CALL FLAG_ERROR("Decomposition mesh number of dimensions has to be 2 or greater.",ERR,ERROR,*999)        
+                    CALL FlagError("Decomposition mesh number of dimensions has to be 2 or greater.",ERR,ERROR,*999)        
                   ENDIF
                 CASE (DATA_PROJECTION_ALL_ELEMENTS_PROJECTION_TYPE) !identify all non-ghost elements
                   IF(DATA_PROJECTION%NUMBER_OF_XI==DECOMPOSITION%MESH%NUMBER_OF_DIMENSIONS) THEN
                     ALLOCATE(CANDIDATE_ELEMENTS(NUMBER_OF_ELEMENTS),STAT=ERR)
-                    IF(ERR/=0) CALL FLAG_ERROR("Could not allocate candidate elements.",ERR,ERROR,*999)
+                    IF(ERR/=0) CALL FlagError("Could not allocate candidate elements.",ERR,ERROR,*999)
                     DO ne=1,SIZE(DATA_PROJECTION%candidateElementNumbers,1) !Loop through all candidate element defined by user number
                       CALL DECOMPOSITION_TOPOLOGY_ELEMENT_CHECK_EXISTS(DECOMPOSITION%TOPOLOGY,DATA_PROJECTION% &
                         & candidateElementNumbers(ne),elementExists,localElementNumber,ghostElement,ERR,ERROR,*999) !Check if element exists on current domain, get local number
@@ -1059,19 +1059,19 @@ CONTAINS
                       ENDIF
                     ENDDO !ne
                   ELSE
-                    CALL FLAG_ERROR("Data projection number of xi has to equal to decomposition mesh number of dimensions",ERR, &
+                    CALL FlagError("Data projection number of xi has to equal to decomposition mesh number of dimensions",ERR, &
                       & ERROR,*999)
                   ENDIF
                 CASE DEFAULT
-                  CALL FLAG_ERROR("No match for data projection type found",ERR,ERROR,*999)
+                  CALL FlagError("No match for data projection type found",ERR,ERROR,*999)
                 END SELECT !DATA_PROJECTION%PROJECTION_TYPE           
               ELSE !If user didn't define candidate element number
                 SELECT CASE(DATA_PROJECTION%PROJECTION_TYPE)
                   CASE (DATA_PROJECTION_BOUNDARY_LINES_PROJECTION_TYPE)  !identify all non-ghost boundary lines
                     ALLOCATE(CANDIDATE_ELEMENTS(NUMBER_OF_LINES),STAT=ERR)
-                    IF(ERR/=0) CALL FLAG_ERROR("Could not allocate candidate elements.",ERR,ERROR,*999)
+                    IF(ERR/=0) CALL FlagError("Could not allocate candidate elements.",ERR,ERROR,*999)
                     ALLOCATE(CANDIDATE_FACES(NUMBER_OF_LINES),STAT=ERR)
-                    IF(ERR/=0) CALL FLAG_ERROR("Could not allocate candidate lines.",ERR,ERROR,*999)
+                    IF(ERR/=0) CALL FlagError("Could not allocate candidate lines.",ERR,ERROR,*999)
                     DO ne=1,DOMAIN%MAPPINGS%ELEMENTS%NUMBER_OF_LOCAL
                       IF(DECOMPOSITION%TOPOLOGY%ELEMENTS%ELEMENTS(ne)%BOUNDARY_ELEMENT) THEN
                         DO nse=1,SIZE(DECOMPOSITION%TOPOLOGY%ELEMENTS%ELEMENTS(ne)%ELEMENT_LINES,1)
@@ -1087,9 +1087,9 @@ CONTAINS
                   CASE (DATA_PROJECTION_BOUNDARY_FACES_PROJECTION_TYPE) !identify all non-ghost boundary faces
                     IF(DECOMPOSITION%MESH%NUMBER_OF_DIMENSIONS>=2) THEN
                       ALLOCATE(CANDIDATE_ELEMENTS(NUMBER_OF_FACES),STAT=ERR)
-                      IF(ERR/=0) CALL FLAG_ERROR("Could not allocate candidate elements.",ERR,ERROR,*999)
+                      IF(ERR/=0) CALL FlagError("Could not allocate candidate elements.",ERR,ERROR,*999)
                       ALLOCATE(CANDIDATE_FACES(NUMBER_OF_FACES),STAT=ERR)
-                      IF(ERR/=0) CALL FLAG_ERROR("Could not allocate candidate faces.",ERR,ERROR,*999)
+                      IF(ERR/=0) CALL FlagError("Could not allocate candidate faces.",ERR,ERROR,*999)
                       DO ne=1,DOMAIN%MAPPINGS%ELEMENTS%NUMBER_OF_LOCAL
                         IF(DECOMPOSITION%TOPOLOGY%ELEMENTS%ELEMENTS(ne)%BOUNDARY_ELEMENT) THEN
                           DO nse=1,SIZE(DECOMPOSITION%TOPOLOGY%ELEMENTS%ELEMENTS(ne)%ELEMENT_FACES,1)
@@ -1103,22 +1103,22 @@ CONTAINS
                         ENDIF !boundary element
                       ENDDO !ne
                     ELSE
-                      CALL FLAG_ERROR("Decomposition mesh number of dimensions has to be 2 or greater.",ERR,ERROR,*999)        
+                      CALL FlagError("Decomposition mesh number of dimensions has to be 2 or greater.",ERR,ERROR,*999)        
                     ENDIF
                   CASE (DATA_PROJECTION_ALL_ELEMENTS_PROJECTION_TYPE) !identify all non-ghost elements
                     IF(DATA_PROJECTION%NUMBER_OF_XI==DECOMPOSITION%MESH%NUMBER_OF_DIMENSIONS) THEN
                       ALLOCATE(CANDIDATE_ELEMENTS(NUMBER_OF_ELEMENTS),STAT=ERR)
-                      IF(ERR/=0) CALL FLAG_ERROR("Could not allocate candidate elements.",ERR,ERROR,*999)
+                      IF(ERR/=0) CALL FlagError("Could not allocate candidate elements.",ERR,ERROR,*999)
                       DO ne=1,DOMAIN%MAPPINGS%ELEMENTS%NUMBER_OF_LOCAL
                         NUMBER_OF_CANDIDATES=NUMBER_OF_CANDIDATES+1
                         CANDIDATE_ELEMENTS(NUMBER_OF_CANDIDATES)=ne
                       ENDDO
                     ELSE
-                      CALL FLAG_ERROR("Data projection number of xi has to equal to decomposition mesh number of dimensions",ERR, &
+                      CALL FlagError("Data projection number of xi has to equal to decomposition mesh number of dimensions",ERR, &
                         & ERROR,*999)
                     ENDIF
                   CASE DEFAULT
-                    CALL FLAG_ERROR("No match for data projection type found",ERR,ERROR,*999)
+                    CALL FlagError("No match for data projection type found",ERR,ERROR,*999)
                 END SELECT !DATA_PROJECTION%PROJECTION_TYPE
               ENDIF
               !#####################################################################################################################
@@ -1126,13 +1126,13 @@ CONTAINS
               !the clostest elements/faces/lines are required to shrink down on the list of possible projection candiates
               NUMBER_OF_CLOSEST_CANDIDATES=MIN(DATA_PROJECTION%NUMBER_OF_CLOSEST_ELEMENTS,NUMBER_OF_CANDIDATES)
               ALLOCATE(CLOSEST_ELEMENTS(NUMBER_OF_DATA_POINTS,NUMBER_OF_CLOSEST_CANDIDATES),STAT=ERR)!the information for each data point has to be stored in the corresponding rows for them to be contiguous in memory for easy MPI access
-              IF(ERR/=0) CALL FLAG_ERROR("Could not allocate closest elements.",ERR,ERROR,*999)
+              IF(ERR/=0) CALL FlagError("Could not allocate closest elements.",ERR,ERROR,*999)
               IF(BOUNDARY_PROJECTION) THEN
                 ALLOCATE(CLOSEST_FACES(NUMBER_OF_DATA_POINTS,NUMBER_OF_CLOSEST_CANDIDATES),STAT=ERR)
-                IF(ERR/=0) CALL FLAG_ERROR("Could not allocate closest sub element.",ERR,ERROR,*999)          
+                IF(ERR/=0) CALL FlagError("Could not allocate closest sub element.",ERR,ERROR,*999)          
               ENDIF
               ALLOCATE(CLOSEST_DISTANCES(NUMBER_OF_DATA_POINTS,NUMBER_OF_CLOSEST_CANDIDATES),STAT=ERR)!the information for each data point has to be stored in the corresponding rows for them to be contiguous in memory for easy MPI access
-              IF(ERR/=0) CALL FLAG_ERROR("Could not allocate closest distances.",ERR,ERROR,*999) 
+              IF(ERR/=0) CALL FlagError("Could not allocate closest distances.",ERR,ERROR,*999) 
               SELECT CASE(DATA_PROJECTION%PROJECTION_TYPE)
                 CASE (DATA_PROJECTION_BOUNDARY_LINES_PROJECTION_TYPE) !find closest candidate lines
                   DO data_point_idx=1,NUMBER_OF_DATA_POINTS
@@ -1156,7 +1156,7 @@ CONTAINS
                     !CLOSEST_ELEMENTS(data_point_idx,:)=DOMAIN%MAPPINGS%ELEMENTS%LOCAL_TO_GLOBAL_MAP(CLOSEST_ELEMENTS(data_point_idx,:)) !local to global element number mapping
                   ENDDO !data_point_idx
                 CASE DEFAULT
-                  CALL FLAG_ERROR("No match for data projection type found",ERR,ERROR,*999)
+                  CALL FlagError("No match for data projection type found",ERR,ERROR,*999)
               END SELECT
               !#####################################################################################################################
               !Newton project data point to the list of closest elements, faces or lines
@@ -1164,27 +1164,27 @@ CONTAINS
               IF(NUMBER_COMPUTATIONAL_NODES>1) THEN !use mpi
                 !allocate arrays for mpi communication
                 ALLOCATE(GLOBAL_TO_LOCAL_NUMBER_OF_CLOSEST_CANDIDATES(NUMBER_OF_DATA_POINTS),STAT=ERR)
-                IF(ERR/=0) CALL FLAG_ERROR("Could not allocate global to local number of closest elements.",ERR,ERROR,*999)
+                IF(ERR/=0) CALL FlagError("Could not allocate global to local number of closest elements.",ERR,ERROR,*999)
                 ALLOCATE(GLOBAL_NUMBER_OF_CLOSEST_CANDIDATES(NUMBER_COMPUTATIONAL_NODES),STAT=ERR) 
-                IF(ERR/=0) CALL FLAG_ERROR("Could not allocate all number of closest candidates.",ERR,ERROR,*999)
+                IF(ERR/=0) CALL FlagError("Could not allocate all number of closest candidates.",ERR,ERROR,*999)
                 ALLOCATE(GLOBAL_MPI_DISPLACEMENTS(NUMBER_COMPUTATIONAL_NODES),STAT=ERR) 
-                IF(ERR/=0) CALL FLAG_ERROR("Could not allocate all displacements.",ERR,ERROR,*999)
+                IF(ERR/=0) CALL FlagError("Could not allocate all displacements.",ERR,ERROR,*999)
                 ALLOCATE(GLOBAL_NUMBER_OF_PROJECTED_POINTS(NUMBER_COMPUTATIONAL_NODES),STAT=ERR) 
-                IF(ERR/=0) CALL FLAG_ERROR("Could not allocate all number of projected points.",ERR,ERROR,*999)
+                IF(ERR/=0) CALL FlagError("Could not allocate all number of projected points.",ERR,ERROR,*999)
                 ALLOCATE(PROJECTION_EXIT_TAG(NUMBER_OF_DATA_POINTS),STAT=ERR)
-                IF(ERR/=0) CALL FLAG_ERROR("Could not allocate projected.",ERR,ERROR,*999)
+                IF(ERR/=0) CALL FlagError("Could not allocate projected.",ERR,ERROR,*999)
                 ALLOCATE(PROJECTED_ELEMENT(NUMBER_OF_DATA_POINTS),STAT=ERR)
-                IF(ERR/=0) CALL FLAG_ERROR("Could not allocate projected element.",ERR,ERROR,*999)
+                IF(ERR/=0) CALL FlagError("Could not allocate projected element.",ERR,ERROR,*999)
                 IF(BOUNDARY_PROJECTION) THEN
                   ALLOCATE(PROJECTED_FACE(NUMBER_OF_DATA_POINTS),STAT=ERR)
-                  IF(ERR/=0) CALL FLAG_ERROR("Could not allocate projected sub element.",ERR,ERROR,*999)
+                  IF(ERR/=0) CALL FlagError("Could not allocate projected sub element.",ERR,ERROR,*999)
                 ENDIF
                 ALLOCATE(PROJECTED_DISTANCE(2,NUMBER_OF_DATA_POINTS),STAT=ERR) !PROJECTED_DISTANCE(2,:) stores the compuational node number, the information for each data point has to be stored in the corresponding column for MPI_ALLREDUCE with location return to work
-                IF(ERR/=0) CALL FLAG_ERROR("Could not allocate projected distance.",ERR,ERROR,*999)
+                IF(ERR/=0) CALL FlagError("Could not allocate projected distance.",ERR,ERROR,*999)
                 ALLOCATE(PROJECTED_XI(DATA_PROJECTION%NUMBER_OF_XI,NUMBER_OF_DATA_POINTS),STAT=ERR) !the information for each data point is stored in the corresponding column to be consistent with PROJECTED_DISTANCE
-                IF(ERR/=0) CALL FLAG_ERROR("Could not allocate projected.",ERR,ERROR,*999)
+                IF(ERR/=0) CALL FlagError("Could not allocate projected.",ERR,ERROR,*999)
                 ALLOCATE(SORTING_IND_2(NUMBER_OF_DATA_POINTS),STAT=ERR) 
-                IF(ERR/=0) CALL FLAG_ERROR("Could not allocate sorting ind 2.",ERR,ERROR,*999)          
+                IF(ERR/=0) CALL FlagError("Could not allocate sorting ind 2.",ERR,ERROR,*999)          
                 !gather and distribute the number of closest elements from all computational nodes
                 CALL MPI_ALLGATHER(NUMBER_OF_CLOSEST_CANDIDATES,1,MPI_INTEGER,GLOBAL_NUMBER_OF_CLOSEST_CANDIDATES,1,MPI_INTEGER, &
                   & COMPUTATIONAL_ENVIRONMENT%MPI_COMM,MPI_IERROR)
@@ -1192,9 +1192,9 @@ CONTAINS
                 TOTAL_NUMBER_OF_CLOSEST_CANDIDATES=SUM(GLOBAL_NUMBER_OF_CLOSEST_CANDIDATES,1) !sum of all number of closest candidates from all computational nodes
                 !allocate arrays to store information gathered from all computational node
                 ALLOCATE(GLOBAL_CLOSEST_DISTANCES(NUMBER_OF_DATA_POINTS,TOTAL_NUMBER_OF_CLOSEST_CANDIDATES),STAT=ERR) !the information for each data point is stored in the corresponding row so they are contiguous in memory for easy MPI access
-                IF(ERR/=0) CALL FLAG_ERROR("Could not allocate all closest distances.",ERR,ERROR,*999)
+                IF(ERR/=0) CALL FlagError("Could not allocate all closest distances.",ERR,ERROR,*999)
                 ALLOCATE(SORTING_IND_1(TOTAL_NUMBER_OF_CLOSEST_CANDIDATES),STAT=ERR) 
-                IF(ERR/=0) CALL FLAG_ERROR("Could not allocate sorting ind 1.",ERR,ERROR,*999)
+                IF(ERR/=0) CALL FlagError("Could not allocate sorting ind 1.",ERR,ERROR,*999)
                 !MPI:create and commit MPI_TYPE_CONTIGUOUS      
                 CALL MPI_TYPE_CONTIGUOUS(NUMBER_OF_DATA_POINTS,MPI_DOUBLE_PRECISION,MPI_CLOSEST_DISTANCES,MPI_IERROR)
                 CALL MPI_ERROR_CHECK("MPI_TYPE_CONTIGUOUS",MPI_IERROR,ERR,ERROR,*999)        
@@ -1299,10 +1299,10 @@ CONTAINS
                           ENDIF
                         ENDDO
                       CASE DEFAULT
-                        CALL FLAG_ERROR("Data projection number of xi is invalid",ERR,ERROR,*999)
+                        CALL FlagError("Data projection number of xi is invalid",ERR,ERROR,*999)
                     END SELECT
                   CASE DEFAULT
-                    CALL FLAG_ERROR("No match for data projection type found",ERR,ERROR,*999)
+                    CALL FlagError("No match for data projection type found",ERR,ERROR,*999)
                 END SELECT          
                 !MPI:find the shortest projected distance in all domains
                 CALL MPI_ALLREDUCE(MPI_IN_PLACE,PROJECTED_DISTANCE,NUMBER_OF_DATA_POINTS,MPI_2DOUBLE_PRECISION,MPI_MINLOC, &
@@ -1410,27 +1410,27 @@ CONTAINS
                             & DATA_PROJECTION%DATA_PROJECTION_RESULTS(data_point_idx)%XI,ERR,ERROR,*999)
                         ENDDO
                       CASE DEFAULT
-                        CALL FLAG_ERROR("Data projection number of xi is invalid",ERR,ERROR,*999)
+                        CALL FlagError("Data projection number of xi is invalid",ERR,ERROR,*999)
                     END SELECT !DATA_PROJECTION%NUMBER_OF_XI
                   CASE DEFAULT
-                    CALL FLAG_ERROR("No match for data projection type found",ERR,ERROR,*999)
+                    CALL FlagError("No match for data projection type found",ERR,ERROR,*999)
                 END SELECT                  
               ENDIF !NUMBER_COMPUTATIONAL_NODES>1
               DATA_PROJECTION%DATA_PROJECTION_PROJECTED=.TRUE.
             ELSE
-              CALL FLAG_ERROR("Data projection and projection field are not sharing the same mesh.",ERR,ERROR,*999)
+              CALL FlagError("Data projection and projection field are not sharing the same mesh.",ERR,ERROR,*999)
             ENDIF !ASSOCIATED(DATA_PROJECTION%MESH,PROJECTION_FIELD%DECOMPOSITION%MESH)
           ELSE
-            CALL FLAG_ERROR("Projection field have not been finished.",ERR,ERROR,*999)
+            CALL FlagError("Projection field have not been finished.",ERR,ERROR,*999)
           ENDIF !PROJECTION_FIELD%FIELD_FINISHED
         ELSE
-          CALL FLAG_ERROR("Projection field is not associated.",ERR,ERROR,*999)
+          CALL FlagError("Projection field is not associated.",ERR,ERROR,*999)
         ENDIF !ASSOCIATED(PROJECTION_FIELD)  
       ELSE
-        CALL FLAG_ERROR("Data projection have not been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data projection have not been finished.",ERR,ERROR,*999)
       ENDIF !DATA_PROJECTION%DATA_PROJECTION_FINISHED
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF !ASSOCIATED(DATA_PROJECTION)  
 
     ! Deallocate arrays used within this routine
@@ -1522,17 +1522,17 @@ CONTAINS
                ENDDO !coordIdx     
              ENDDO !dataPointIdx
            ELSE
-             CALL FLAG_ERROR("Data points is not associated.",err,error,*999)
+             CALL FlagError("Data points is not associated.",err,error,*999)
            ENDIF
          ELSE
-           CALL FLAG_ERROR("Data projection is not associated.",err,error,*999)
+           CALL FlagError("Data projection is not associated.",err,error,*999)
          ENDIF
        ELSE
-         CALL FLAG_ERROR("Cannot evaluate data points position on field other than geometric or geometric general type.", &
+         CALL FlagError("Cannot evaluate data points position on field other than geometric or geometric general type.", &
            & err,error,*999)
        ENDIF
     ELSE
-      CALL FLAG_ERROR("Field is not associated.",err,error,*999)
+      CALL FlagError("Field is not associated.",err,error,*999)
     ENDIF
     
     EXITS("DataProjection_DataPointsPositionEvaluate")
@@ -1561,10 +1561,10 @@ CONTAINS
       IF(DATA_PROJECTION%DATA_PROJECTION_FINISHED) THEN
         MAXIMUM_ITERATION_UPDATE=DATA_PROJECTION%MAXIMUM_ITERATION_UPDATE       
       ELSE
-        CALL FLAG_ERROR("Data projection have not been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data projection have not been finished.",ERR,ERROR,*999)
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
     
     EXITS("DataProjection_MaximumInterationUpdateGet")
@@ -1592,16 +1592,16 @@ CONTAINS
 
     IF(ASSOCIATED(DATA_PROJECTION)) THEN
       IF(DATA_PROJECTION%DATA_PROJECTION_FINISHED) THEN
-        CALL FLAG_ERROR("Data projection have been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data projection have been finished.",ERR,ERROR,*999)
       ELSE
         IF((MAXIMUM_ITERATION_UPDATE>=0.1).AND.(MAXIMUM_ITERATION_UPDATE<=1)) THEN
           DATA_PROJECTION%MAXIMUM_ITERATION_UPDATE=MAXIMUM_ITERATION_UPDATE
         ELSE
-          CALL FLAG_ERROR("Data projection maximum iteration update must be between 0.1 and 1.",ERR,ERROR,*999)
+          CALL FlagError("Data projection maximum iteration update must be between 0.1 and 1.",ERR,ERROR,*999)
         ENDIF
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
     
     EXITS("DataProjection_MaximumInterationUpdateSet")
@@ -1632,10 +1632,10 @@ CONTAINS
       IF(DATA_PROJECTION%DATA_PROJECTION_FINISHED) THEN      
         MAXIMUM_NUMBER_OF_ITERATIONS=DATA_PROJECTION%MAXIMUM_NUMBER_OF_ITERATIONS       
       ELSE
-        CALL FLAG_ERROR("Data projection have not been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data projection have not been finished.",ERR,ERROR,*999)
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
     
     EXITS("DataProjection_MaximumNumberOfIterationsGet")
@@ -1663,16 +1663,16 @@ CONTAINS
 
     IF(ASSOCIATED(DATA_PROJECTION)) THEN
       IF(DATA_PROJECTION%DATA_PROJECTION_FINISHED) THEN
-        CALL FLAG_ERROR("Data projection have been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data projection have been finished.",ERR,ERROR,*999)
       ELSE      
         IF(MAXIMUM_NUMBER_OF_ITERATIONS>=1) THEN
           DATA_PROJECTION%MAXIMUM_NUMBER_OF_ITERATIONS=MAXIMUM_NUMBER_OF_ITERATIONS
         ELSE
-          CALL FLAG_ERROR("Data projection maximum number of iterations must be at least 1.",ERR,ERROR,*999)
+          CALL FlagError("Data projection maximum number of iterations must be at least 1.",ERR,ERROR,*999)
         ENDIF
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
     
     EXITS("DataProjection_MaximumNumberOfIterationsSet")
@@ -1821,10 +1821,10 @@ CONTAINS
           ENDIF
         ENDDO !ne
       ELSE
-        CALL FLAG_ERROR("Data projection have not been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data projection have not been finished.",ERR,ERROR,*999)
       ENDIF    
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
     
     EXITS("DATA_PROJECTION_NEWTON_ELEMENTS_EVALUATE_1")
@@ -2033,10 +2033,10 @@ CONTAINS
           ENDIF
         ENDDO !ne
       ELSE
-        CALL FLAG_ERROR("Data projection have not been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data projection have not been finished.",ERR,ERROR,*999)
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
     
     EXITS("DATA_PROJECTION_NEWTON_ELEMENTS_EVALUATE_2")
@@ -2348,10 +2348,10 @@ CONTAINS
           ENDIF
         ENDDO !ne
       ELSE
-        CALL FLAG_ERROR("Data projection have not been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data projection have not been finished.",ERR,ERROR,*999)
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
     
     EXITS("DATA_PROJECTION_NEWTON_ELEMENTS_EVALUATE_3")
@@ -2567,10 +2567,10 @@ CONTAINS
           ENDIF
         ENDDO !ne
       ELSE
-        CALL FLAG_ERROR("Data projection have not been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data projection have not been finished.",ERR,ERROR,*999)
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
     
     EXITS("DATA_PROJECTION_NEWTON_FACES_EVALUATE")
@@ -2726,10 +2726,10 @@ CONTAINS
           ENDIF
         ENDDO !ne
       ELSE
-        CALL FLAG_ERROR("Data projection have not been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data projection have not been finished.",ERR,ERROR,*999)
       ENDIF    
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
     
     EXITS("DATA_PROJECTION_NEWTON_LINES_EVALUATE")
@@ -2759,10 +2759,10 @@ CONTAINS
       IF(DATA_PROJECTION%DATA_PROJECTION_FINISHED) THEN
         NUMBER_OF_CLOSEST_ELEMENTS=DATA_PROJECTION%NUMBER_OF_CLOSEST_ELEMENTS       
       ELSE
-        CALL FLAG_ERROR("Data projection have not been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data projection have not been finished.",ERR,ERROR,*999)
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
     
     EXITS("DataProjection_NumberOfClosestElementsGet")
@@ -2790,16 +2790,16 @@ CONTAINS
 
     IF(ASSOCIATED(DATA_PROJECTION)) THEN
       IF(DATA_PROJECTION%DATA_PROJECTION_FINISHED) THEN
-        CALL FLAG_ERROR("Data projection have been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data projection have been finished.",ERR,ERROR,*999)
       ELSE
         IF(NUMBER_OF_CLOSEST_ELEMENTS>=1) THEN
           DATA_PROJECTION%NUMBER_OF_CLOSEST_ELEMENTS=NUMBER_OF_CLOSEST_ELEMENTS
         ELSE
-          CALL FLAG_ERROR("Data projection number of closest elements must be at least 1.",ERR,ERROR,*999)
+          CALL FlagError("Data projection number of closest elements must be at least 1.",ERR,ERROR,*999)
         ENDIF
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
     
     EXITS("DataProjection_NumberOfClosestElementsSet")
@@ -2832,9 +2832,9 @@ CONTAINS
     IF(ASSOCIATED(dataProjection)) THEN
       IF(SIZE(elementUserNumber,1)==SIZE(localFaceLineNumbers,1)) THEN
         ALLOCATE(dataProjection%candidateElementNumbers(SIZE(elementUserNumber,1)),STAT=ERR)
-        IF(ERR/=0) CALL FLAG_ERROR("Could not allocate candidiate element numbers.",ERR,ERROR,*998)
+        IF(ERR/=0) CALL FlagError("Could not allocate candidiate element numbers.",ERR,ERROR,*998)
         ALLOCATE(dataProjection%localFaceLineNumbers(SIZE(localFaceLineNumbers,1)),STAT=ERR)
-        IF(ERR/=0) CALL FLAG_ERROR("Could not allocate candidiate local face/line numbers.",ERR,ERROR,*999)
+        IF(ERR/=0) CALL FlagError("Could not allocate candidiate local face/line numbers.",ERR,ERROR,*999)
         DO elementIdx=1,SIZE(elementUserNumber,1)
           CALL MeshTopologyElementCheckExists(dataProjection%MESH,meshComponentNumber,elementUserNumber(elementIdx), &
             & elementExists,elementMeshNumber,err,error,*999)       
@@ -2842,15 +2842,15 @@ CONTAINS
             dataProjection%candidateElementNumbers(elementIdx)=elementUserNumber(elementIdx)
             dataProjection%localFaceLineNumbers(elementIdx)=localFaceLineNumbers(elementIdx)
           ELSE
-            CALL FLAG_ERROR("Element with user number ("//TRIM(NUMBER_TO_VSTRING &
+            CALL FlagError("Element with user number ("//TRIM(NUMBER_TO_VSTRING &
               & (elementUserNumber(elementIdx),"*",err,ERROR))//") does not exist.",err,error,*999)
           ENDIF
         ENDDO !elementIdx
       ELSE
-        CALL FLAG_ERROR("Input user element numbers and face numbers sizes do not match.",err,error,*999)
+        CALL FlagError("Input user element numbers and face numbers sizes do not match.",err,error,*999)
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",err,error,*999)
+      CALL FlagError("Data projection is not associated.",err,error,*999)
     ENDIF
     
     EXITS("DataProjection_ProjectionCandidatesSet")
@@ -2886,10 +2886,10 @@ CONTAINS
       IF(DATA_PROJECTION%DATA_PROJECTION_FINISHED) THEN
         PROJECTION_TYPE=DATA_PROJECTION%PROJECTION_TYPE       
       ELSE
-        CALL FLAG_ERROR("Data projection have not been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data projection have not been finished.",ERR,ERROR,*999)
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
     
     EXITS("DATA_PROJECTION_PROJECTION_TYPE_GET")
@@ -2918,7 +2918,7 @@ CONTAINS
 
     IF(ASSOCIATED(DATA_PROJECTION)) THEN
       IF(DATA_PROJECTION%DATA_PROJECTION_FINISHED) THEN
-        CALL FLAG_ERROR("Data projection have been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data projection have been finished.",ERR,ERROR,*999)
       ELSE
         DATA_PROJECTION%PROJECTION_TYPE=PROJECTION_TYPE
         SELECT CASE(PROJECTION_TYPE)
@@ -2929,11 +2929,11 @@ CONTAINS
           CASE (DATA_PROJECTION_ALL_ELEMENTS_PROJECTION_TYPE)
             DATA_PROJECTION%NUMBER_OF_XI=DATA_PROJECTION%MESH%NUMBER_OF_DIMENSIONS
           CASE DEFAULT
-            CALL FLAG_ERROR("Input projection type is undefined.",ERR,ERROR,*999)
+            CALL FlagError("Input projection type is undefined.",ERR,ERROR,*999)
         END SELECT
         IF(DATA_PROJECTION%NUMBER_OF_XI/=SIZE(DATA_PROJECTION%STARTING_XI,1)) THEN
           ALLOCATE(STARTING_XI(DATA_PROJECTION%NUMBER_OF_XI),STAT=ERR)
-          IF(ERR/=0) CALL FLAG_ERROR("Could not allocate starting xi.",ERR,ERROR,*999)
+          IF(ERR/=0) CALL FlagError("Could not allocate starting xi.",ERR,ERROR,*999)
           IF(DATA_PROJECTION%NUMBER_OF_XI>SIZE(DATA_PROJECTION%STARTING_XI,1)) THEN
             STARTING_XI(1:SIZE(DATA_PROJECTION%STARTING_XI,1))=DATA_PROJECTION%STARTING_XI(1:SIZE(DATA_PROJECTION%STARTING_XI,1))
             STARTING_XI(SIZE(DATA_PROJECTION%STARTING_XI,1):DATA_PROJECTION%NUMBER_OF_XI)=0.5_DP
@@ -2942,12 +2942,12 @@ CONTAINS
           ENDIF
           DEALLOCATE(DATA_PROJECTION%STARTING_XI)
           ALLOCATE(DATA_PROJECTION%STARTING_XI(DATA_PROJECTION%NUMBER_OF_XI),STAT=ERR)
-          IF(ERR/=0) CALL FLAG_ERROR("Could not allocate data projection starting xi.",ERR,ERROR,*999)
+          IF(ERR/=0) CALL FlagError("Could not allocate data projection starting xi.",ERR,ERROR,*999)
           DATA_PROJECTION%STARTING_XI(1:DATA_PROJECTION%NUMBER_OF_XI)=STARTING_XI(1:DATA_PROJECTION%NUMBER_OF_XI)
         ENDIF
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
     
     EXITS("DATA_PROJECTION_PROJECTION_TYPE_SET")
@@ -2977,10 +2977,10 @@ CONTAINS
       IF(DATA_PROJECTION%DATA_PROJECTION_FINISHED) THEN
         RELATIVE_TOLERANCE=DATA_PROJECTION%RELATIVE_TOLERANCE       
       ELSE
-        CALL FLAG_ERROR("Data projection have not been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data projection have not been finished.",ERR,ERROR,*999)
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
     
     EXITS("DATA_PROJECTION_RELATIVE_TOLERANCE_GET")
@@ -3007,16 +3007,16 @@ CONTAINS
 
     IF(ASSOCIATED(DATA_PROJECTION)) THEN
       IF(DATA_PROJECTION%DATA_PROJECTION_FINISHED) THEN
-        CALL FLAG_ERROR("Data projection have been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data projection have been finished.",ERR,ERROR,*999)
       ELSE      
         IF(RELATIVE_TOLERANCE>=0) THEN
           DATA_PROJECTION%RELATIVE_TOLERANCE=RELATIVE_TOLERANCE
         ELSE
-          CALL FLAG_ERROR("Data projection relative tolerance must be a positive real number.",ERR,ERROR,*999)
+          CALL FlagError("Data projection relative tolerance must be a positive real number.",ERR,ERROR,*999)
         ENDIF
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
     
     EXITS("DATA_PROJECTION_RELATIVE_TOLERANCE_SET")
@@ -3051,13 +3051,13 @@ CONTAINS
         ELSE
           WRITE(LOCAL_ERROR,'("The size of the supplied starting xi  array of ",I2," is too small. The size must be >= ",I2,".")' &
             & )SIZE(STARTING_XI,1),SIZE(DATA_PROJECTION%STARTING_XI,1)
-          CALL FLAG_ERROR(LOCAL_ERROR,ERR,ERROR,*999)
+          CALL FlagError(LOCAL_ERROR,ERR,ERROR,*999)
         ENDIF
       ELSE
-        CALL FLAG_ERROR("Data projection have not been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data projection have not been finished.",ERR,ERROR,*999)
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
     
     EXITS("DATA_PROJECTION_STARTING_XI_GET")
@@ -3087,7 +3087,7 @@ CONTAINS
 
     IF(ASSOCIATED(DATA_PROJECTION)) THEN
       IF(DATA_PROJECTION%DATA_PROJECTION_FINISHED) THEN
-        CALL FLAG_ERROR("Data projection have been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data projection have been finished.",ERR,ERROR,*999)
       ELSE      
         IF(SIZE(STARTING_XI,1)==SIZE(DATA_PROJECTION%STARTING_XI,1)) THEN
           VALID_INPUT=.TRUE.
@@ -3100,14 +3100,14 @@ CONTAINS
           IF(VALID_INPUT) THEN
             DATA_PROJECTION%STARTING_XI(1:SIZE(STARTING_XI))=STARTING_XI(1:SIZE(STARTING_XI))
           ELSE
-            CALL FLAG_ERROR("Data projection starting xi must be between 0 and 1.",ERR,ERROR,*999)
+            CALL FlagError("Data projection starting xi must be between 0 and 1.",ERR,ERROR,*999)
           ENDIF
         ELSE
-          CALL FLAG_ERROR("Data projection starting xi dimension mismatch.",ERR,ERROR,*999)
+          CALL FlagError("Data projection starting xi dimension mismatch.",ERR,ERROR,*999)
         ENDIF
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
     
     EXITS("DATA_PROJECTION_STARTING_XI_SET")
@@ -3142,11 +3142,11 @@ CONTAINS
       IF(DATA_POINT_EXISTS) THEN
         DATA_PROJECTION%DATA_PROJECTION_RESULTS(DATA_POINT_GLOBAL_NUMBER)%ELEMENT_NUMBER=ELEMENT_USER_NUMBER
       ELSE
-        CALL FLAG_ERROR("Data point with user number ("//TRIM(NUMBER_TO_VSTRING &
+        CALL FlagError("Data point with user number ("//TRIM(NUMBER_TO_VSTRING &
             & (DATA_POINT_USER_NUMBER,"*",ERR,ERROR))//") does not exist.",ERR,ERROR,*999)
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",err,error,*999)
+      CALL FlagError("Data projection is not associated.",err,error,*999)
     ENDIF
     
     EXITS("DATA_PROJECTION_ELEMENT_SET")
@@ -3181,13 +3181,13 @@ CONTAINS
             & DATA_POINT_GLOBAL_NUMBER,ERR,ERROR,*999)
           PROJECTION_DISTANCE=DATA_PROJECTION%DATA_PROJECTION_RESULTS(DATA_POINT_GLOBAL_NUMBER)%DISTANCE
         ELSE
-          CALL FLAG_ERROR("Data projection have not been projected.",ERR,ERROR,*999)
+          CALL FlagError("Data projection have not been projected.",ERR,ERROR,*999)
         ENDIF
       ELSE
-        CALL FLAG_ERROR("Data projection have not been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data projection have not been finished.",ERR,ERROR,*999)
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
 
     EXITS("DATA_PROJECTION_RESULT_DISTANCE_GET")
@@ -3216,7 +3216,7 @@ CONTAINS
     IF(ASSOCIATED(DATA_PROJECTION)) THEN
       LABEL=DATA_PROJECTION%LABEL
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
     
     EXITS("DATA_PROJECTION_LABEL_GET_VS")
@@ -3252,7 +3252,7 @@ CONTAINS
         LABEL=CHAR(DATA_PROJECTION%LABEL,C_LENGTH)
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
     
     EXITS("DATA_PROJECTION_LABEL_GET_C")
@@ -3281,7 +3281,7 @@ CONTAINS
     IF(ASSOCIATED(DATA_PROJECTION)) THEN
       DATA_PROJECTION%LABEL=LABEL
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
 
     EXITS("DATA_PROJECTION_LABEL_SET_C")
@@ -3310,7 +3310,7 @@ CONTAINS
     IF(ASSOCIATED(DATA_PROJECTION)) THEN
       DATA_PROJECTION%LABEL=LABEL
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
 
     EXITS("DATA_PROJECTION_LABEL_SET_VS")
@@ -3346,13 +3346,13 @@ CONTAINS
             & DATA_POINT_GLOBAL_NUMBER,ERR,ERROR,*999)
           PROJECTION_ELEMENT_NUMBER=DATA_PROJECTION%DATA_PROJECTION_RESULTS(DATA_POINT_GLOBAL_NUMBER)%ELEMENT_NUMBER
         ELSE
-          CALL FLAG_ERROR("Data projection have not been projected.",ERR,ERROR,*999)  
+          CALL FlagError("Data projection have not been projected.",ERR,ERROR,*999)  
         ENDIF    
       ELSE
-        CALL FLAG_ERROR("Data projection have not been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data projection have not been finished.",ERR,ERROR,*999)
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
 
     EXITS("DATA_PROJECTION_RESULT_ELEMENT_NUMBER_GET")
@@ -3390,17 +3390,17 @@ CONTAINS
               & DATA_POINT_GLOBAL_NUMBER,ERR,ERROR,*999)
             PROJECTION_ELEMENT_FACE_NUMBER=DATA_PROJECTION%DATA_PROJECTION_RESULTS(DATA_POINT_GLOBAL_NUMBER)%ELEMENT_FACE_NUMBER
           ELSE
-            CALL FLAG_ERROR("Data projection data projection projection type is not set to boundary faces projection type.", &
+            CALL FlagError("Data projection data projection projection type is not set to boundary faces projection type.", &
               & ERR,ERROR,*999)
           ENDIF
         ELSE
-          CALL FLAG_ERROR("Data projection have not been projected.",ERR,ERROR,*999)  
+          CALL FlagError("Data projection have not been projected.",ERR,ERROR,*999)  
         ENDIF    
       ELSE
-        CALL FLAG_ERROR("Data projection have not been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data projection have not been finished.",ERR,ERROR,*999)
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
     
     EXITS("DataProjection_ResultElementFaceNumberGet")
@@ -3438,17 +3438,17 @@ CONTAINS
               & DATA_POINT_GLOBAL_NUMBER,ERR,ERROR,*999)
             PROJECTION_ELEMENT_LINE_NUMBER=DATA_PROJECTION%DATA_PROJECTION_RESULTS(DATA_POINT_GLOBAL_NUMBER)%ELEMENT_LINE_NUMBER
           ELSE
-            CALL FLAG_ERROR("Data projection data projection projection type is not set to boundary lines projection type.", &
+            CALL FlagError("Data projection data projection projection type is not set to boundary lines projection type.", &
               & ERR,ERROR,*999)
           ENDIF
         ELSE
-          CALL FLAG_ERROR("Data projection have not been projected.",ERR,ERROR,*999)  
+          CALL FlagError("Data projection have not been projected.",ERR,ERROR,*999)  
         ENDIF    
       ELSE
-        CALL FLAG_ERROR("Data projection have not been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data projection have not been finished.",ERR,ERROR,*999)
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
 
     EXITS("DataProjection_ResultElementLineNumberGet")
@@ -3483,13 +3483,13 @@ CONTAINS
             & DATA_POINT_GLOBAL_NUMBER,ERR,ERROR,*999)
           PROJECTION_EXIT_TAG=DATA_PROJECTION%DATA_PROJECTION_RESULTS(DATA_POINT_GLOBAL_NUMBER)%EXIT_TAG
         ELSE
-          CALL FLAG_ERROR("Data projection have not been projected.",ERR,ERROR,*999)  
+          CALL FlagError("Data projection have not been projected.",ERR,ERROR,*999)  
         ENDIF
       ELSE
-        CALL FLAG_ERROR("Data projection have not been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data projection have not been finished.",ERR,ERROR,*999)
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
 
     EXITS("DATA_PROJECTION_RESULT_EXIT_TAG_GET")
@@ -3525,20 +3525,20 @@ CONTAINS
           IF(SIZE(PROJECTION_XI,1)==SIZE(DATA_PROJECTION%DATA_PROJECTION_RESULTS(DATA_POINT_GLOBAL_NUMBER)%XI,1)) THEN
             PROJECTION_XI=DATA_PROJECTION%DATA_PROJECTION_RESULTS(DATA_POINT_GLOBAL_NUMBER)%XI
           ELSE
-            CALL FLAG_ERROR("projection xi has size of "//TRIM(NUMBER_TO_VSTRING(SIZE(PROJECTION_XI,1),"*",ERR,ERROR))// &
+            CALL FlagError("projection xi has size of "//TRIM(NUMBER_TO_VSTRING(SIZE(PROJECTION_XI,1),"*",ERR,ERROR))// &
               & "but it needs to have size of "// &
               & TRIM(NUMBER_TO_VSTRING(SIZE(DATA_PROJECTION%DATA_PROJECTION_RESULTS &
               & (DATA_POINT_GLOBAL_NUMBER)%XI,1),"*",ERR,ERROR))// &
               & "." ,ERR,ERROR,*999)
           ENDIF
         ELSE
-          CALL FLAG_ERROR("Data projection have not been projected.",ERR,ERROR,*999)
+          CALL FlagError("Data projection have not been projected.",ERR,ERROR,*999)
         ENDIF   
       ELSE
-        CALL FLAG_ERROR("Data projection have not been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data projection have not been finished.",ERR,ERROR,*999)
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
 
     EXITS("DATA_PROJECTION_RESULT_XI_GET")
@@ -3575,20 +3575,20 @@ CONTAINS
             DATA_PROJECTION%DATA_PROJECTION_RESULTS(DATA_POINT_GLOBAL_NUMBER)%XI(1:SIZE(PROJECTION_XI,1))= &
               & PROJECTION_XI(1:SIZE(PROJECTION_XI,1))
           ELSE
-            CALL FLAG_ERROR("projection xi has size of "//TRIM(NUMBER_TO_VSTRING(SIZE(PROJECTION_XI,1),"*",ERR,ERROR))// &
+            CALL FlagError("projection xi has size of "//TRIM(NUMBER_TO_VSTRING(SIZE(PROJECTION_XI,1),"*",ERR,ERROR))// &
               & "but it needs to have size of "// &
               & TRIM(NUMBER_TO_VSTRING(SIZE(DATA_PROJECTION%DATA_PROJECTION_RESULTS &
               & (DATA_POINT_GLOBAL_NUMBER)%XI,1),"*",ERR,ERROR))// &
               & "." ,ERR,ERROR,*999)
           ENDIF
         ELSE
-          CALL FLAG_ERROR("Data projection have not been projected.",ERR,ERROR,*999)
+          CALL FlagError("Data projection have not been projected.",ERR,ERROR,*999)
         ENDIF   
       ELSE
-        CALL FLAG_ERROR("Data projection have not been finished.",ERR,ERROR,*999)
+        CALL FlagError("Data projection have not been finished.",ERR,ERROR,*999)
       ENDIF
     ELSE
-      CALL FLAG_ERROR("Data projection is not associated.",ERR,ERROR,*999)
+      CALL FlagError("Data projection is not associated.",ERR,ERROR,*999)
     ENDIF
 
     EXITS("DATA_PROJECTION_RESULT_XI_SET")
