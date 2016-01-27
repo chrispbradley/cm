@@ -4510,14 +4510,19 @@ CONTAINS
               CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
                 FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%maxNumberElementInterpolationParameters=-1
                 IF(ASSOCIATED(DECOMPOSITION%TOPOLOGY%dataPoints)) THEN
-                  DO ne=1,DOMAIN%TOPOLOGY%ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS
-                    globalElementNumber=DECOMPOSITION%TOPOLOGY%ELEMENTS%ELEMENTS(ne)%GLOBAL_NUMBER
-                    IF(DECOMPOSITION%TOPOLOGY%dataPoints%numberOfElementDataPoints(globalElementNumber)> &
-                      & FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%maxNumberElementInterpolationParameters) THEN
-                      FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%maxNumberElementInterpolationParameters= &
-                        & DECOMPOSITION%TOPOLOGY%dataPoints%numberOfElementDataPoints(globalElementNumber)
-                    ENDIF
-                  ENDDO
+                  IF(ALLOCATED(DECOMPOSITION%TOPOLOGY%dataPoints%numberOfElementDataPoints)) THEN
+                    DO ne=1,DOMAIN%TOPOLOGY%ELEMENTS%TOTAL_NUMBER_OF_ELEMENTS
+                      globalElementNumber=DECOMPOSITION%TOPOLOGY%ELEMENTS%ELEMENTS(ne)%GLOBAL_NUMBER
+                      IF(DECOMPOSITION%TOPOLOGY%dataPoints%numberOfElementDataPoints(globalElementNumber)> &
+                        & FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%maxNumberElementInterpolationParameters) THEN
+                        FIELD_VARIABLE%COMPONENTS(COMPONENT_NUMBER)%maxNumberElementInterpolationParameters= &
+                          & DECOMPOSITION%TOPOLOGY%dataPoints%numberOfElementDataPoints(globalElementNumber)
+                      ENDIF
+                    ENDDO
+                  ELSE
+                    CALL FlagError("Decomposition topology data points number of element data points is not allocated.", &
+                      & err,error,*999)
+                  ENDIF
                 ELSE
                   CALL FlagError("Decomposition topology data points is not associated.",err,error,*999)
                 ENDIF
