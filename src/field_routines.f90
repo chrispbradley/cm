@@ -8351,11 +8351,13 @@ CONTAINS
     TYPE(VARYING_STRING), INTENT(OUT) :: ERROR !<The error string
     INTEGER(INTG), OPTIONAL, INTENT(IN) :: componentType !<The components type to interpolate
     !Local Variables
-    INTEGER(INTG) :: component_idx,local_derivative_idx,version_idx,global_derivative_idx,element_node_idx,node_idx, &
-      & element_parameter_idx,dof_idx,node_scaling_dof_idx,scaling_idx,startComponentIdx,endComponentIdx
+    INTEGER(INTG) :: component_idx,dataPoint,dataPointIdx,local_derivative_idx,version_idx,global_derivative_idx, &
+      & element_node_idx,node_idx,element_parameter_idx,dof_idx,node_scaling_dof_idx,scaling_idx,startComponentIdx, &
+      & endComponentIdx
     REAL(DP), POINTER :: FIELD_PARAMETER_SET_DATA(:),SCALE_FACTORS(:)
     TYPE(BASIS_TYPE), POINTER :: BASIS
     TYPE(COORDINATE_SYSTEM_TYPE), POINTER :: COORDINATE_SYSTEM
+    TYPE(DECOMPOSITION_TYPE), POINTER :: DECOMPOSITION
     TYPE(DOMAIN_ELEMENTS_TYPE), POINTER :: ELEMENTS_TOPOLOGY
     TYPE(DOMAIN_NODES_TYPE), POINTER :: NODES_TOPOLOGY
     TYPE(FIELD_TYPE), POINTER :: FIELD
@@ -8451,7 +8453,7 @@ CONTAINS
                         INTERPOLATION_PARAMETERS%PARAMETERS(element_parameter_idx,component_idx)=FIELD_PARAMETER_SET_DATA(dof_idx)
                       ENDDO !local_derivative_idx
                     ENDDO !element_node_idx
-                CASE(FIELD_UNIT_SCALING,FIELD_ARITHMETIC_MEAN_SCALING,FIELD_GEOMETRIC_MEAN_SCALING,FIELD_HARMONIC_MEAN_SCALING)
+                  CASE(FIELD_UNIT_SCALING,FIELD_ARITHMETIC_MEAN_SCALING,FIELD_GEOMETRIC_MEAN_SCALING,FIELD_HARMONIC_MEAN_SCALING)
                     scaling_idx=INTERPOLATION_PARAMETERS%FIELD_VARIABLE%COMPONENTS(component_idx)%SCALING_INDEX
                     NULLIFY(SCALE_FACTORS)
                     CALL DISTRIBUTED_VECTOR_DATA_GET(INTERPOLATION_PARAMETERS%FIELD%SCALINGS%SCALINGS(scaling_idx)% &
@@ -8491,6 +8493,15 @@ CONTAINS
                 CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
                   CALL FlagError("Not implemented.",ERR,ERROR,*999)
                 CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
+                  decomposition=>INTERPOLATION_PARAMETERS%FIELD_VARIABLE%COMPONENTS(component_idx)%DOMAIN%DECOMPOSITION
+                  INTERPOLATION_PARAMETERS%NUMBER_OF_PARAMETERS(component_idx)=BASIS%NUMBER_OF_ELEMENT_PARAMETERS
+                  DO dataPointIdx=1,decomposition%numberOfElementDataPoints(element_idx)
+                    dataPoint=decomposition%elementDataPoint(element_idx)%dataIndices(dataPointIdx)%localNumber
+                    element_parameter_idx=dataPointIdx
+                    dof_idx=INTERPOLATION_PARAMETERS%FIELD_VARIABLE%COMPONENTS(component_idx)%PARAM_TO_DOF_MAP% &
+                          & DATA_POINT_PARAM2DOF_MAP%DATA_POINTS(dataPoint)
+                    INTERPOLATION_PARAMETERS%PARAMETERS(element_parameter_idx,component_idx)=FIELD_PARAMETER_SET_DATA(dof_idx)
+                  ENDDO !dataPointIdx
                   CALL FlagError("Not implemented.",ERR,ERROR,*999)
                 CASE DEFAULT
                   LOCAL_ERROR="The interpolation type of "//TRIM(NUMBER_TO_VSTRING(INTERPOLATION_PARAMETERS%FIELD_VARIABLE% &
@@ -31068,7 +31079,7 @@ CONTAINS
     INTEGER(INTG), INTENT(OUT) :: err !<The error code
     TYPE(VARYING_STRING), INTENT(OUT) :: error !<The error string
     !Local Variables
-    INTEGER(INTG) :: variableIdx,variableIdx2,variableType,variableType2
+    INTEGER(INTG) :: componentIdx,interpolationType,variableIdx,variableIdx2,variableType,variableType2
     LOGICAL :: duplicates
     TYPE(VARYING_STRING) :: localError
 
@@ -31095,6 +31106,42 @@ CONTAINS
               & TRIM(NumberToVString(variableType,"*",err,error))//"."
             CALL FlagError(localError,err,error,*999)
           ENDIF
+          !Check the component setups
+          DO variableIdx=1,field%NUMBER_OF_VARIABLES
+            variableType=field%CREATE_VALUES_CACHE%VARIABLE_TYPES(variableIdx)
+            DO componentIdx=1,field%CREATE_VALUES_CACHE%NUMBER_OF_COMPONENTS(variableType)
+              !Do interpolation type specific checks
+              interpolationType=FIELD%CREATE_VALUES_CACHE%INTERPOLATION_TYPE(componentIdx,variableType)
+              SELECT CASE(interpolationType)
+              CASE(FIELD_CONSTANT_INTERPOLATION)
+                !Do nothing
+              CASE(FIELD_ELEMENT_BASED_INTERPOLATION)
+                !Do nothing
+              CASE(FIELD_NODE_BASED_INTERPOLATION)
+                !Do nothing
+              CASE(FIELD_GRID_POINT_BASED_INTERPOLATION)
+                !Do nothing
+              CASE(FIELD_GAUSS_POINT_BASED_INTERPOLATION)
+                !Do nothing
+              CASE(FIELD_DATA_POINT_BASED_INTERPOLATION)
+                !Check that the data projection is set
+                IF(.NOT.ASSOCIATED(field%dataProjection)) THEN
+                  localError="Data point interpolation is used for component "// &
+                    & TRIM(NumberToVString(componentIdx,"*",err,error))//" of field variable type "// &
+                    & TRIM(NumberToVString(variableType,"*",err,error))//" of field number "// &
+                    & TRIM(NumberToVString(field%USER_NUMBER,"*",err,error))// &
+                    & " but the data projection has not been set for this field."
+                  CALL FlagError(localError,err,error,*999)
+                ENDIF
+              CASE DEFAULT
+                localError="The interpolation type of "//TRIM(NumberToVString(interpolationType,"*",err,error))// &
+                  & " is unknown for component "//TRIM(NumberToVString(componentIdx,"*",err,error))// &
+                  & " of field variable type "//TRIM(NumberToVString(variableType,"*",err,error))//" of field number "// &
+                  & TRIM(NumberToVString(field%USER_NUMBER,"*",err,error))//"."
+                CALL FlagError(localError,err,error,*999)
+              END SELECT
+            ENDDO !componentIdx
+          ENDDO !variableIdx
         ELSE
           localError="Invalid field setup. The field has "//TRIM(NumberToVString(field%NUMBER_OF_VARIABLES,"*",err,error))// &
             & " variables and should have > 0 variables."
